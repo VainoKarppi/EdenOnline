@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>ArmaExtension_x64</AssemblyName>
+    <Version>1.0.0</Version>
+
+
+    <OutputType>Library</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <PublishAot>true</PublishAot>
+    <SelfContained>true</SelfContained>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <DebugType>none</DebugType>
+    <PublishTrimmed>true</PublishTrimmed>
+    <Configuration>Release</Configuration>
+    <StripSymbols>true</StripSymbols>
+    <Optimization>true</Optimization>
+    <IsTrimmable>false</IsTrimmable>
+
+    <NoWarn>IL3002;IL2026;IL2065;IL3050;IL2069;IL3053;IDE0270;IDE0019</NoWarn>
+    
+  </PropertyGroup>
+
+  <ItemGroup>
+    <TrimmerRootDescriptor Include="linker.xml" />
+  </ItemGroup>
+
+</Project>
