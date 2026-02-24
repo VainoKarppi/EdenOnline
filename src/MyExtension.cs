@@ -1,16 +1,16 @@
 ﻿
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 using System.Threading.Tasks;
 using ArmaExtension;
 using static ArmaExtension.Logger;
 
 namespace ArmaExtension; // Do not change the namespace, it is updated automatically by the build system.
 
-// 
 
 [ArmaExtensionPlugin]
-public static class MyExtension {
+public static partial class EdenOnline {
     public static class ArmaMethods {
         // CALLED FROM ARMA USING:
         // _data = "ArmaExtension" callExtension "Version";
@@ -19,48 +19,28 @@ public static class MyExtension {
             return Extension.Version;
         }
 
-        // CALLED FROM ARMA USING:
-        // _data = "ArmaExtension" callExtension ["Numeric",[10,10]];
-        // _data == "[""SUCCESS"",[20]]"
-        public static double Numeric(double first, double second) {
-            Log($"Numeric Method Called: {first}+{second}");
-            return first + second;
+        public static bool Connect(string ip, int port, string username, string worldname, string armaVersion, object[] mods, string password) {
+            string clientHash = GetHash(new object[] {worldname, mods, Extension.Version, armaVersion});
+            Log($"Connect Method Called: {ip}:{port}, world: {worldname}, username: {username},  mods: {string.Join(",", mods)}, clientHash: {clientHash}, password: {password}");
+
+            Client.Connect(ip, port, username, clientHash);
+            return true;
         }
 
-        // IF YOU WANT TO USE ASYNC METHODS, YOU NEED TO USE THE ASYNC KEY
-        // CALLED FROM ARMA USING:
-        // _data = "ArmaExtension" callExtension ["Boolean|99999",[true]];
-        // _data == "[""ASYNC_SENT"",CANCEL_TOKEN]"
+        public static bool StartServer(string username, double port, string worldname, string armaVersion, object[] mods, string? password = null) {
 
-        // You can then retrieve the result using:
-        // addMissionEventHandler ["ExtensionCallback", { ... } Example in github
+            string clientHash = GetHash(new object[] {worldname, mods, Extension.Version, armaVersion});
+            Log($"Starting server: {clientHash} for world: {worldname}, username: {username}, mods: {string.Join(",", mods)}, clientHash: {clientHash}, password: {password}");
 
-        public static object[] Boolean(bool input) {
-            Log($"Boolean Method Called: {input}");
-            return [true, 1000];
+            Server.Start(clientHash, password);
+            Client.Connect("127.0.0.1", (int)port, username, clientHash);
+            return true;
         }
-        
-        
-        public static string String(string input)
-        {
-            Log($"String Method Called: {input}");
-            return "IS THIS WORKINGgg";
+
+        public static string GetHash(object item) {
+            return item.GetHashCode().ToString();
         }
-        public static void Null(bool input) {
-            Log($"Null Method Called: {input}");
-        }
-        public static object[] Array(double first, object[] second, double third) {
-            Log("Array Method Called");
-            return [1, 2, 3, 4, 5];
-        }
-        public static object[] ArrayInner(object[] items) {
-            Log("ArrayInner Method Called");
-            return [1, 2, 3, 4, new object[] { 1 }, 5];
-        }
-        public static object[] NoArgs() {
-            Log("NoArgs Method Called");
-            return [1, 2, 3, 4, 5];
-        }
+
     }
 
 
@@ -76,20 +56,18 @@ public static class MyExtension {
         Extension.VersionCalled += version => Log($"VersionCalled event triggered with version: {version}");
         Extension.MethodCalled += methodName => Log($"MethodCalled event triggered with method: {methodName}");
 
-        Extension.MethodCalledWithArgs += (methodName, args) => Log($"MethodCalledWithArgs event: {methodName} with args: {args}");
-        Extension.MethodCalledWithArgsResponse += (methodName, response, success) => Log($"MethodCalledWithArgsAndReturn event: {methodName} with response: {response}");
+        Extension.MethodCalledWithArgs += (methodName, args) => Log($"MethodCalledWithArgs event: {methodName} with args: {JsonSerializer.Serialize(args)}");
+        Extension.MethodCalledWithArgsResponse += (methodName, response, success) => Log($"MethodCalledWithArgsAndReturn event: {methodName} with response: {JsonSerializer.Serialize(response)}, success: {success}");
 
-        Extension.AsyncTaskStarted += (method, asyncKey, args) => Log($"AsyncTaskStarted event triggered with method: {method}, asyncKey: {asyncKey}, args: {args}");
-        Extension.AsyncTaskCompleted += (method, asyncKey, response, success) => Log($"AsyncTaskCompleted event triggered with method: {method}, asyncKey: {asyncKey}, success: {success}, response: {response}");
+        Extension.AsyncTaskStarted += (method, asyncKey, args) => Log($"AsyncTaskStarted event triggered with method: {method}, asyncKey: {asyncKey}, args: {JsonSerializer.Serialize(args)}");
+        Extension.AsyncTaskCompleted += (method, asyncKey, response, success) => Log($"AsyncTaskCompleted event triggered with method: {method}, asyncKey: {asyncKey}, success: {success}, response: {JsonSerializer.Serialize(response)}");
         Extension.AsyncTaskCancelled += (asyncKey, success) => Log($"AsyncTaskCancelled event triggered with asyncKey: {asyncKey}, success: {success},");
 
-        Extension.OnSendToArma += (method, data) => Log($"OnSendToArma event triggered with method: {method}, data: {data},");
+        Extension.OnSendToArma += (method, data) => Log($"OnSendToArma event triggered with method: {method}, data: {JsonSerializer.Serialize(data)},");
 
         Extension.ErrorOccurred += ex => Log($"ErrorOccurred event triggered: {ex}");
 
 
-        // Send data to arma
-        Extension.SendToArma("test_method1", [1, 2, 3]);
-        Extension.SendToArma("test_method2", [true]);
+        Log("EdenOnline Extension Initialized");
     }
 }

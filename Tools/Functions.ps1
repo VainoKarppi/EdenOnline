@@ -154,6 +154,13 @@ function Update-NamespacesAndUsings($assemblyName) {
 function Build-Project {
     param ($projectPath, $destinationPath)
 
+    # Get the first .csproj file in the folder
+    $csprojPath = Get-ChildItem -Path $projectPath -Filter "*.csproj" | Select-Object -First 1
+
+    if (-not $csprojPath) {
+        throw "No .csproj file found in $projectPath"
+    }
+
     $buildInfo = Get-BuildInfo
 
     $outputPath = "$projectPath\bin\Release\$($buildInfo.TargetFramework)\$($buildInfo.RuntimeIdentifier)\publish"
@@ -193,7 +200,7 @@ function Build-Project {
 
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
     $startInfo.FileName = "dotnet"
-    $startInfo.Arguments = "publish `"$projectPath`""
+    $startInfo.Arguments = "publish `"$($csprojPath.FullName)`""
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
     $startInfo.UseShellExecute = $false

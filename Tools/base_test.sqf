@@ -8,30 +8,8 @@
 "XXXX" callExtension "version";
 
 
-"XXXX" callExtension ["Array|0",[10,[123],5]];
-sleep 0.3;
-"XXXX" callExtension ["ArrayInner|1",[[10,[123],5,["test",[2]]]]];
-sleep 0.3;
-"XXXX" callExtension ["Numeric|2",[10,10,10]];
-sleep 0.3;
-"XXXX" callExtension ["Boolean|3",[true]];
-sleep 0.3;
-"XXXX" callExtension ["String|5",["asdasd"]];
-sleep 0.3;
-"XXXX" callExtension ["Null|4",[nil]];
+"XXXX" callExtension ["StartServer",["test",5000,"Altis", "2.00.146773",["ACE3", "3.16.0"], ""]];
 
 
-sleep 0.3;
-"XXXX" callExtension ["Numeric",[10,10]];
-
-sleep 0.3;
-"XXXX" callExtension "NoArgs";
-sleep 0.3;
-"XXXX" callExtension "NoArgs|3333";
-sleep 0.3;
-"XXXX" callExtension "Numeric";
-sleep 0.3;
-"XXXX" callExtension ["String",["asdasd"]];
-
-sleep 0.3;
+sleep 1;
 freeExtension "XXXX";
