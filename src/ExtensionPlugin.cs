@@ -188,7 +188,7 @@ public static class ArmaMethods {
 
         Events.OnSendToArma += (method, data) => Debug($"OnSendToArma event triggered with method: {method}, data count: {data?.Length ?? 0}");
         
-        Events.OnErrorOccurred += ex => Debug($"ErrorOccurred event triggered: {ex}");
+        Events.OnErrorOccurred += ex => Debug($"ErrorOccurred event triggered: {ex.Message}");
 
         ServerObjectManager.AddOrUpdateObject(new ServerObject(
             "obj1",

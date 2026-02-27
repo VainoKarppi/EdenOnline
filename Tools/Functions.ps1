@@ -2,6 +2,10 @@ function Get-ProjectPath {
     return Resolve-Path "$PSScriptRoot\.."
 }
 
+function Get-ProjectBuildPath {
+    return Resolve-Path "$PSScriptRoot\Build"
+}
+
 function Terminate-ExistingProcess {
     $existingTesterProcess = Get-Process -Name "callExtension_x64" -ErrorAction SilentlyContinue
     if ($existingTesterProcess) {
@@ -130,21 +134,29 @@ function Update-NamespacesAndUsings($assemblyName) {
     Write-Host "Old Assembly Name: $oldAssemblyName" -ForegroundColor Yellow
 
     foreach ($file in $csFiles) {
-        $lines = Get-Content -Path $file.FullName
+        $content = Get-Content -Path $file.FullName
+        $updated = $false
 
-        for ($i = 0; $i -lt $lines.Length; $i++) {
-            # Replace namespace declaration
-            if ($lines[$i] -match '^\s*namespace\s+([^\s;{]+)') {
-                $lines[$i] = $lines[$i] -replace '(^\s*namespace\s+)([^\s;{]+)', "`$1$assemblyName"
+        for ($i = 0; $i -lt $content.Length; $i++) {
+            $line = $content[$i]
+
+            # Replace namespace only if it starts with old assembly name
+            if ($line -match "^\s*namespace\s+$oldAssemblyName(\.|;|$)") {
+                $content[$i] = $line -replace "^\s*namespace\s+$oldAssemblyName", "namespace $assemblyName"
+                $updated = $true
             }
 
-            elseif ($lines[$i] -match "^\s*using(\s+static)?\s+$oldAssemblyName(\.|;|$)") {
-                
-                $lines[$i] = $lines[$i] -replace "(^\s*using(\s+static)?\s+)$oldAssemblyName", "`$1$assemblyName"
+            # Replace using statements referencing old assembly name
+            elseif ($line -match "^\s*using(\s+static)?\s+$oldAssemblyName(\.|;|$)") {
+                $content[$i] = $line -replace "^\s*using(\s+static)?\s+$oldAssemblyName", "using`$1 $assemblyName"
+                $updated = $true
             }
         }
 
-        Set-Content -Path $file.FullName -Value ($lines -join "`n") -Encoding UTF8
+        # Only write if changes were made
+        if ($updated) {
+            Set-Content -Path $file.FullName -Value ($content -join "`n") -Encoding UTF8
+        }
     }
 
     Write-Host "Updated namespaces and using statements in .cs files." -ForegroundColor Green

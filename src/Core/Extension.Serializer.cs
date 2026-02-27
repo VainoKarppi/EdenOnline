@@ -137,7 +137,7 @@ internal static class Serializer
     /// Prepares the parameter array for method invocation.
     /// Truncates extra arguments, validates required parameters, and fills optional defaults.
     /// </summary>
-    internal static object?[] PrepareMethodParameters(MethodInfo method, object?[] unserializedData, int? asyncKey)
+    internal static object?[] PrepareMethodParameters(MethodInfo method, object?[] unserializedData, int? asyncKey = null)
     {
         ParameterInfo[] parameters = method.GetParameters();
         int requiredCount = parameters.Count(p => !p.IsOptional);

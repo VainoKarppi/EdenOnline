@@ -58,17 +58,17 @@ public static partial class MethodSystem {
                         return HandleAsyncStatus(output, outputSize, originalMethod, asyncKey);
 
                     case ExtensionResultCode.GET_AVAILABLE_METHODS:
-                        return HandleGetMethods(output, outputSize, originalMethod, asyncKey);
+                        return HandleGetMethods(output, outputSize, originalMethod);
                 }
             }
 
-            if (!MethodExists(originalMethod)) throw new Exception("Invalid Method");
+            if (!MethodExists(originalMethod)) throw new Exception($"Method {originalMethod} not found!");
 
             // Execute method
             if (async) {
                 return ExecuteAsyncMethod(originalMethod, argArray, asyncKey, output, outputSize);
             } else {
-                return ExecuteSyncMethod(originalMethod, argArray, asyncKey, output, outputSize);
+                return ExecuteSyncMethod(originalMethod, argArray, output, outputSize);
             }
 
         } catch (Exception ex) {
@@ -81,26 +81,38 @@ public static partial class MethodSystem {
         }
     }
 
-    private static int ExecuteSyncMethod(string originalMethod, string[] argArray, int asyncKey, nint output, int outputSize)
+    private static int ExecuteSyncMethod(string originalMethod, string[] argArray, nint output, int outputSize)
     {
         MethodInfo methodToInvoke = GetMethod(originalMethod);
         bool isVoid = IsVoidMethod(methodToInvoke);
 
+
+        // TODO, if no async key is provided for async method, do we still want to fire and forget it as long as it has no return value?
+        //TODO If method is async and no asyn key is provided: throw error
+        // If no key is provided
+
         object?[] unserializedData = Serializer.DeserializeJsonArray(argArray);
 
         // Prepare parameters (truncate, validate, fill defaults)
-        object?[] finalParams = Serializer.PrepareMethodParameters(methodToInvoke, unserializedData, asyncKey);
+        object?[] finalParams = Serializer.PrepareMethodParameters(methodToInvoke, unserializedData);
 
-        // Invoke method
-        object? result = methodToInvoke.Invoke(null, finalParams);
+        bool isAsync = methodToInvoke.ReturnType == typeof(Task);
+        bool isAsyncWeithReturn = methodToInvoke.ReturnType == typeof(ValueTask);
 
-        Console.WriteLine($"Method '{originalMethod}' invoked. Result: {result}");
 
-        if (result is Task task) task.Wait();
 
-        object? returnValue = result is Task t && t.GetType().IsGenericType
-            ? ((dynamic)t).Result
-            : result;
+        if (IsAsyncWithReturn(methodToInvoke)) {
+            throw new Exception($"Method {methodToInvoke.Name} can only be called using async key!");
+        }
+
+        object? returnValue = null;
+        if (isVoid) {
+            // Fire and forget
+            _ = Task.Run(() => methodToInvoke.Invoke(null, finalParams));
+        } else {
+            returnValue = methodToInvoke.Invoke(null, finalParams);
+        }
+
 
         Events.RaiseMethodCalledWithArgsResponse(originalMethod, [returnValue], true);
 
@@ -109,7 +121,7 @@ public static partial class MethodSystem {
             (int)ReturnCodes.Success);
     }
 
-    private static int HandleGetMethods(nint output, int outputSize, string originalMethod, int asyncKey)
+    private static int HandleGetMethods(nint output, int outputSize, string originalMethod)
     {
         object[]? methodInfo = BuildArmaMethodList();
 
@@ -254,8 +266,19 @@ public static partial class MethodSystem {
         // Fallback for objects
         return "Anything";
     }
+
+    internal static bool IsAsyncWithReturn(MethodInfo methodInfo) {
+        if (methodInfo == null) return false;
+
+        var type = methodInfo.ReturnType;
+
+        return type.IsGenericType && (
+            type.GetGenericTypeDefinition() == typeof(Task<>)
+            || type.GetGenericTypeDefinition() == typeof(ValueTask<>)
+        );
+    }
     
-    internal static bool MethodExists(string method) {
+    private static bool MethodExists(string method) {
         if (string.IsNullOrEmpty(method)) return false;
 
         foreach (var container in MethodContainers) {
@@ -273,9 +296,16 @@ public static partial class MethodSystem {
         // true void
         if (returnType == typeof(void)) return true;
 
-        // async void equivalent
-        if (returnType == typeof(Task)) return true;
-        if (returnType == typeof(ValueTask)) return true;
+        // async void equivalents (no result)
+        if (returnType == typeof(Task) || returnType == typeof(ValueTask))
+            return true;
+
+        // Task<T> or ValueTask<T> → NOT void
+        if (returnType.IsGenericType) {
+            var def = returnType.GetGenericTypeDefinition();
+            if (def == typeof(Task<>) || def == typeof(ValueTask<>))
+                return false;
+        }
 
         // everything else returns a value
         return false;
