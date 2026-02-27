@@ -123,7 +123,7 @@ function Update-NamespacesAndUsings($assemblyName) {
     if ($assemblyName -eq $oldAssemblyName) {
         return
     }
-
+    
     Write-Host ""
     Write-Host "Updating namespace and using names..." -ForegroundColor Blue
     Write-Host "New Assembly Name: $assemblyName" -ForegroundColor Green
@@ -153,6 +153,8 @@ function Update-NamespacesAndUsings($assemblyName) {
 
 function Build-Project {
     param ($projectPath, $destinationPath)
+
+    # TODO move project to build folder and use that, so that the namespace names dont get changed in the "editor" version
 
     # Get the first .csproj file in the folder
     $csprojPath = Get-ChildItem -Path $projectPath -Filter "*.csproj" | Select-Object -First 1

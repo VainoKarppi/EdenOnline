@@ -5,16 +5,15 @@
 //
 // !!!!!!!!!!!!!!!
 
-"XXXX" callExtension "version";
+//"XXXX" callExtension "version";
 //"XXXX" callExtension "TestNetwork";
 
-"XXXX" callExtension ["GetHash",[123123]]
-sleep 1
-"XXXX" callExtension ["AsyncReturnTest|2",[]]
+//"XXXX" callExtension ["GetHash",[123123]]
+//"XXXX" callExtension ["AsyncReturnTest|2",[]]
 
-"XXXX" callExtension "ASYNC_STATUS|2"
+//"XXXX" callExtension "ASYNC_STATUS|2"
 
-//"XXXX" callExtension ["StartServer|10",["test",5000,"Altis", "2.00.146773",["ACE3", "3.16.0"], ""]];
+"XXXX" callExtension ["StartServer",["test",5000,"Altis", "2.00.146773",["ACE3", "3.16.0"], ""]];
 
 sleep 1;
 
