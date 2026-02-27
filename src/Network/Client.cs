@@ -1,13 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
-using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using ArmaExtension;
-using EdenOnline;
 using EdenOnline.Models;
 using EdenOnline.Network;
 using static ArmaExtension.Logger;

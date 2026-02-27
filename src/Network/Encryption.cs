@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Concurrent;
-using System.IO;
-using System.Linq;
-using System.Net.Sockets;
 using System.Security.Cryptography;
-using EdenOnline.Network;
+
 using static ArmaExtension.Logger;
+
+using EdenOnline.Network;
+
+
+namespace EdenOnline;
 
 public static class Encryption
 {
