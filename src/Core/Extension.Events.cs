@@ -1,23 +1,25 @@
 using System;
 using System.Reflection;
 using System.Threading;
-using System.Threading.Tasks;
 using static ArmaExtension.Logger;
-using static ArmaExtension.Enums;
-using static ArmaExtension.MethodSystem;
 
 namespace ArmaExtension;
 
 public static partial class Events {
     // EVENTS
     public static event Action<string>? OnVersionCalled;
+
     public static event Action<string>? OnMethodCalled;
+    public static event Action<string, object?[], bool>? OnMethodCalledResponse;
+
     public static event Action<string, object?[]>? OnMethodCalledWithArgs;
     public static event Action<string, object?[], bool>? OnMethodCalledWithArgsResponse;
+
     public static event Action<string, int, object?[]>? OnAsyncTaskStarted;
     public static event Action<string, int, object?[], bool>? OnAsyncTaskCompleted;
-    public static event Action<string, object?[]>? OnSendToArma;
     public static event Action<int, bool>? OnAsyncTaskCancelled;
+
+    public static event Action<string, object?[]>? OnSendToArma;
     public static event Action<Exception>? OnErrorOccurred;
     
     
@@ -42,36 +44,44 @@ public static partial class Events {
         }
     }
 
+    internal static void RaiseVersionCalled(string version) {
+        OnVersionCalled.InvokeFireAndForget(version);
+    }
+
+
+    internal static void RaiseMethodCalled(string method) {
+        OnMethodCalled.InvokeFireAndForget(method);
+    }
+    internal static void RaiseMethodCalledResponse(string method, object?[]? response, bool success) {
+        OnMethodCalledResponse.InvokeFireAndForget(method, response ?? [], success);
+    }
+
+
+    internal static void RaiseMethodCalledWithArgs(string method, object?[]? unserializedData) {
+        OnMethodCalledWithArgs.InvokeFireAndForget(method, unserializedData ?? []);
+    }
+    internal static void RaiseMethodCalledWithArgsResponse(string method, object?[]? response, bool success) {
+        OnMethodCalledWithArgsResponse.InvokeFireAndForget(method, response ?? [], success);
+    }
+
+
     internal static void RaiseAsyncTaskStartd(string method, int asyncKey, object?[] unserializedData) {
         OnAsyncTaskStarted.InvokeFireAndForget(method, asyncKey, unserializedData);
     }
     internal static void RaiseAsyncTaskCompleted(string method, int asyncKey, bool success, object?[]? unserializedData = null) {
         OnAsyncTaskCompleted.InvokeFireAndForget(method, asyncKey, unserializedData ?? [], success);
     }
-
-    // helper methods for raising events from outside the Events class
     internal static void RaiseAsyncTaskCancelled(int asyncKey, bool success) {
         OnAsyncTaskCancelled.InvokeFireAndForget(asyncKey, success);
     }
 
-    internal static void RaiseMethodCalledWithArgsResponse(string method, object?[]? response, bool success) {
-        OnMethodCalledWithArgsResponse.InvokeFireAndForget(method, response ?? [], success);
-    }
-
-    internal static void RaiseErrorOccurred(Exception ex) {
-        OnErrorOccurred.InvokeFireAndForget(ex);
-    }
-
-    // Additional helpers used by other core components
-    internal static void RaiseVersionCalled(string version) {
-        OnVersionCalled.InvokeFireAndForget(version);
-    }
-
-    internal static void RaiseMethodCalled(string method) {
-        OnMethodCalled.InvokeFireAndForget(method);
-    }
 
     internal static void RaiseSendToArma(string method, object?[] data) {
         OnSendToArma.InvokeFireAndForget(method, data);
+    }
+
+
+    internal static void RaiseErrorOccurred(Exception ex) {
+        OnErrorOccurred.InvokeFireAndForget(ex);
     }
 }

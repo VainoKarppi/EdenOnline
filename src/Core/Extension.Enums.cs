@@ -1,4 +1,4 @@
-namespace ArmaExtension;
+﻿namespace ArmaExtension;
 
 internal static partial class Enums {
     internal enum ReturnCodes {
@@ -23,9 +23,7 @@ internal static partial class Enums {
         ASYNC_STATUS,
         ASYNC_STATUS_NOT_FOUND,
         ASYNC_STATUS_RUNNING,
-        ASYNC_STATUS_COMPLETED,
-        ASYNC_STATUS_FAULTED,
-        ASYNC_STATUS_CANCELLED,
+        GET_AVAILABLE_METHODS,
         CALLFUNCTION
     }
 }

@@ -2,10 +2,6 @@
 using System.Collections.Concurrent;
 using System.IO;
 using System.Threading;
-using static ArmaExtension.Logger;
-using static ArmaExtension.Enums;
-using static ArmaExtension.MethodSystem;
-using static ArmaExtension.Events;
 
 namespace ArmaExtension;
 

@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 using static ArmaExtension.Logger;
-using static ArmaExtension.Enums;
 using static ArmaExtension.MethodSystem;
 using static ArmaExtension.PluginLoader;
-using System.Diagnostics;
 
 namespace ArmaExtension;
 

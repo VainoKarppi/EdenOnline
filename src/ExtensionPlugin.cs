@@ -8,7 +8,7 @@ using static ArmaExtension.Logger;
 using ArmaExtension;
 
 using EdenOnline.Models;
-using static EdenOnline.EdenOnline;
+using EdenOnline.Network;
 
 namespace EdenOnline;
 
@@ -90,15 +90,11 @@ public static class ArmaMethods {
         return item.GetHashCode().ToString();
     }
 
-    // "XXXX" callExtension ["Array",["asdasd", true, 9999, "9999", [100,100,100], [0,180,0], 1.0]];
-    public static object[] Array(string first, bool second, double third, string fourth, object[] fifth, object[] sixth, double seventh, Dictionary<string, object> eight, bool ninth = false) {
-        Log($"Array method called with: {first}, {second}, {third}, {fourth}, {string.Join(",", fifth)}, {string.Join(",", sixth)}, {seventh}, {eight}, {ninth}");
-        return [1, 2, 3, 4, 5];
-    }
+
 
     public static void TestNetwork()
     {
-    /*
+
         // ✅ Create a test ServerObject
         ServerObject obj = new(
             "testObject",
@@ -161,7 +157,6 @@ public static class ArmaMethods {
         {
             Console.WriteLine($"Restored ServerObject: Id={item.Id}, Classname={item.Classname}");
         }
-        */
     }
 
 
@@ -170,7 +165,6 @@ public static class ArmaMethods {
     // ! INITIALIZED WHEN FIRST EXTENSION CALL IS MADE
     // If just public static void is used in Main(), it will block the Arma 3 until this method is finished
     // If its using public static async Task, this will not block the Arma 3, but events might not have been registered yet.
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArmaMethods))]
     public static void Main()
     {
         Log("Called EdenOnline Main method");
@@ -181,7 +175,9 @@ public static class ArmaMethods {
         // Subscribe to events
         // The Events class prefixes all event names with "On". Use the correct identifiers below.
         Events.OnVersionCalled += version => Debug($"VersionCalled event triggered with version: {version}");
+
         Events.OnMethodCalled += methodName => Debug($"MethodCalled event triggered with method: {methodName}");
+        Events.OnMethodCalledResponse += (methodName, response, success) => Debug($"MethodCalledResponse event: {methodName} with response count: {response?.Length ?? 0}, success: {success}");
 
         Events.OnMethodCalledWithArgs += (methodName, args) => Debug($"MethodCalledWithArgs event: {methodName} with args count: {args?.Length ?? 0}");
         Events.OnMethodCalledWithArgsResponse += (methodName, response, success) => Debug($"MethodCalledWithArgsResponse event: {methodName} with response count: {response?.Length ?? 0}, success: {success}");

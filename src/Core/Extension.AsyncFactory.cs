@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Reflection;
@@ -32,9 +32,10 @@ internal static class AsyncFactory {
 
         var task = tuple.Task;
 
-        if (task.IsCanceled) return ExtensionResultCode.ASYNC_STATUS_CANCELLED;
-        if (task.IsFaulted) return ExtensionResultCode.ASYNC_STATUS_FAULTED;
-        if (task.IsCompleted) return ExtensionResultCode.ASYNC_STATUS_COMPLETED;
+        // TODO make task gets removed from AsyncTasks list if canceled/faulted/completed
+        if (task.IsCanceled) return ExtensionResultCode.ASYNC_STATUS_NOT_FOUND; 
+        if (task.IsFaulted) return ExtensionResultCode.ASYNC_STATUS_NOT_FOUND;
+        if (task.IsCompleted) return ExtensionResultCode.ASYNC_STATUS_NOT_FOUND;
 
         return ExtensionResultCode.ASYNC_STATUS_RUNNING;
     }

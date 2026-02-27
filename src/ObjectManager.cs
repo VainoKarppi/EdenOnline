@@ -6,51 +6,49 @@ using EdenOnline.Models;
 
 namespace EdenOnline;
 
-public static partial class EdenOnline
+
+public static class ServerObjectManager
 {
-    public static class ServerObjectManager
+    public static ConcurrentDictionary<string, ServerObject> Objects { get; set; } = new();
+
+    /// <summary>Adds a new object or overwrites existing with same Id.</summary>
+    public static void AddOrUpdateObject(ServerObject obj)
     {
-        public static ConcurrentDictionary<string, ServerObject> Objects { get; set; } = new();
+        Objects[obj.Id] = obj;
+    }
 
-        /// <summary>Adds a new object or overwrites existing with same Id.</summary>
-        public static void AddOrUpdateObject(ServerObject obj)
-        {
-            Objects[obj.Id] = obj;
-        }
+    /// <summary>Remove object by Id.</summary>
+    public static bool RemoveObject(string id)
+    {
+        return Objects.TryRemove(id, out _);
+    }
 
-        /// <summary>Remove object by Id.</summary>
-        public static bool RemoveObject(string id)
-        {
-            return Objects.TryRemove(id, out _);
-        }
+    /// <summary>Get object by Id.</summary>
+    public static bool TryGetObject(string id, out ServerObject? obj)
+    {
+        return Objects.TryGetValue(id, out obj);
+    }
 
-        /// <summary>Get object by Id.</summary>
-        public static bool TryGetObject(string id, out ServerObject? obj)
-        {
-            return Objects.TryGetValue(id, out obj);
-        }
+    /// <summary>Get a snapshot of all objects (for broadcasting to clients).</summary>
+    public static List<ServerObject> GetAllObjects()
+    {
+        return [.. Objects.Values];
+    }
 
-        /// <summary>Get a snapshot of all objects (for broadcasting to clients).</summary>
-        public static List<ServerObject> GetAllObjects()
-        {
-            return [.. Objects.Values];
-        }
+    /// <summary>Clear all objects (e.g., when mission ends).</summary>
+    public static void Clear()
+    {
+        Objects.Clear();
+    }
 
-        /// <summary>Clear all objects (e.g., when mission ends).</summary>
-        public static void Clear()
+    /// <summary>Update object properties safely if it exists.</summary>
+    public static bool UpdateObject(string id, Action<ServerObject> updater)
+    {
+        if (Objects.TryGetValue(id, out var obj))
         {
-            Objects.Clear();
+            updater(obj);
+            return true;
         }
-
-        /// <summary>Update object properties safely if it exists.</summary>
-        public static bool UpdateObject(string id, Action<ServerObject> updater)
-        {
-            if (Objects.TryGetValue(id, out var obj))
-            {
-                updater(obj);
-                return true;
-            }
-            return false;
-        }
+        return false;
     }
 }

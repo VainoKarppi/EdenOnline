@@ -2,12 +2,7 @@
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using System.Text.Json;
 using System.Text.Json.Nodes;
-using static ArmaExtension.Logger;
-using static ArmaExtension.Enums;
-using static ArmaExtension.MethodSystem;
-using static ArmaExtension.Events;
 
 namespace ArmaExtension;
 
