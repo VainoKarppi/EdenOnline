@@ -1,125 +1,179 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using static ArmaExtension.Logger;
+using static ArmaExtension.Enums;
+using static ArmaExtension.MethodSystem;
+using static ArmaExtension.Events;
 
 namespace ArmaExtension;
 
-
-
-public static class Serializer {
+internal static class Serializer
+{
     /// <summary>
-    /// Unserializes data from Arma into an object[].
+    /// Deserialize an Arma array string into object[], supporting nested arrays.
     /// </summary>
-    /// <param name="parameters"></param>
-    /// <returns>object array that contains all the data</returns>
-    public static object?[] DeserializeJsonArray(string[] armaString) {
-
+    internal static object?[] DeserializeJsonArray(string[] armaString)
+    {
         if (armaString.Length == 0) return [];
 
-        List<object?> result = [];
+        var result = new object?[armaString.Length];
 
-        if (armaString.Length > 0) {
-            foreach (var item in armaString) {
-                
-                try {
-                    JsonNode? node = JsonNode.Parse(item);  // Attempt to parse the string as JSON
-                    if (node == null) throw new Exception();
+        for (int i = 0; i < armaString.Length; i++)
+        {
+            string item = armaString[i];
+            object? parsed;
 
-                    if (node is JsonArray jsonArray) {
-                        result.Add(ConvertJsonArray(jsonArray));  // Handle array and recursively convert
-                    } else if (node is JsonValue value) {
-                        // Use TryParseSingleArmaItem to parse the value
-                        if (!TryParseSingleArmaItem(value.ToString(), out object? parsedValue)) {
-                            parsedValue = null;  // If parsing fails, set to null (or handle as needed)
-                        }
-                        result.Add(parsedValue);
-                    } else {
-                        result.Add(null);  // If it's something else (shouldn't happen with valid JSON)
-                    }
-                } catch (JsonException) {
-                    // If parsing fails (invalid JSON), treat it as a regular value
-                    if (!TryParseSingleArmaItem(item, out object? parsedItem)) {
-                        parsedItem = null;  // If parsing fails, set to null (or handle as needed)
-                    }
-                    result.Add(parsedItem);
+            try
+            {
+                if (item.StartsWith("[") && item.EndsWith("]"))
+                {
+                    var node = JsonNode.Parse(item);
+                    parsed = node is JsonArray arr ? ConvertJsonArray(arr) : null;
+                }
+                else
+                {
+                    TryParseSingleArmaItem(item, out parsed);
                 }
             }
+            catch
+            {
+                parsed = item;
+            }
+
+            result[i] = parsed;
         }
 
-        return result.ToArray();  // Return the final result array
-    }
-    private static object?[] ConvertJsonArray(JsonArray jsonArray) {
-        object?[] result = new object[jsonArray.Count];
-        for (int i = 0; i < jsonArray.Count; i++) {
-            JsonNode? item = jsonArray[i];
-            if (item is JsonArray nestedArray) {
-                result[i] = ConvertJsonArray(nestedArray);  // Recursively process nested arrays
-            } else if (item is JsonValue value) {
-                // Call TryParseSingleArmaItem and check the result
-                if (!TryParseSingleArmaItem(value.ToString(), out result[i])) {
-                    result[i] = null!;  // If parsing fails, set to null (or handle it as needed)
-                }
-            } else {
-                result[i] = null!;  // Handle any other unexpected cases
-            }
-        }
         return result;
     }
-    public static string PrintArray(object?[]? array) {
-        if (array is null) return "[]";
 
-        return "[" + string.Join(",", array.Select(item =>
-            item switch {
-                object[] nested => PrintArray(nested),
-                bool b => b.ToString().ToLower(),
-                string str => @$"""{str}""",
-                _ => item?.ToString() ?? "null"
-            })) + "]";
+    internal static object? ConvertJsonArray(JsonArray jsonArray)
+    {
+        var temp = new object?[jsonArray.Count];
+
+        for (int i = 0; i < jsonArray.Count; i++)
+        {
+            var item = jsonArray[i];
+            if (item is JsonArray nested)
+            {
+                temp[i] = ConvertJsonArray(nested); // recursive array
+            }
+            else if (item is JsonValue val)
+            {
+                TryParseSingleArmaItem(val.ToString(), out temp[i]); // immediately parse value
+            }
+            else
+            {
+                temp[i] = null;
+            }
+        }
+
+        return temp; // return only primitive values or object[]
     }
-    
 
-    // TODO can never return false
-    public static bool TryParseSingleArmaItem(string item, out object? result) {
-        // Try parsing a boolean
-        if (bool.TryParse(item, out bool b)) {
-            result = b;
+    internal static bool TryParseSingleArmaItem(string item, out object? result)
+    {
+        result = null;
+        if (string.IsNullOrWhiteSpace(item)) return true;
+
+        var trimmed = item.Trim();
+        var lower = trimmed.ToLower();
+
+        // Null-like values
+        if (lower == "nil" || lower == "any" || lower == "nan" || lower == "objnull")
+            return true;
+
+        // Integer
+        if (int.TryParse(trimmed, NumberStyles.Any, CultureInfo.InvariantCulture, out int i))
+        {
+            result = i;
             return true;
         }
 
-        // Try parsing a double (numeric value)
-        if (double.TryParse(item, NumberStyles.Any, CultureInfo.InvariantCulture, out double d)) {
+        // Double
+        if (double.TryParse(trimmed, NumberStyles.Any, CultureInfo.InvariantCulture, out double d))
+        {
             result = d;
             return true;
         }
 
-        // Check if it's a quoted string
-        if (item.StartsWith('"') && item.EndsWith('"')) {
-            result = item.Trim('"');
+        // Boolean
+        if (bool.TryParse(trimmed, out bool b))
+        {
+            result = b;
             return true;
         }
 
-        // Handle nulls
-        if (item.ToLower() == "nil" || item.ToLower() == "any" || item.ToLower() == "nan" || item.ToLower() == "objNull") {
-            result = null;
+        // Quoted string
+        if (trimmed.StartsWith('"') && trimmed.EndsWith('"'))
+        {
+            result = trimmed[1..^1];
             return true;
         }
 
-        result = item;  // If nothing else matches, return the original string
+        // Fallback string
+        result = trimmed;
         return true;
     }
 
+    /// <summary>
+    /// Convert object array into Arma-style array string.
+    /// Supports nested arrays.
+    /// </summary>
+    internal static string PrintArray(object?[]? array)
+    {
+        if (array == null) return "[]";
+        return "[" + string.Join(",", array.Select(PrintItem)) + "]";
+    }
 
-    //TODO: Implement this
-    private static string ParseDictionaryToArma(Dictionary<object, object> dict) {
-        List<string> pairs = [];
-        foreach (var kvp in dict) {
-            string key = kvp.Key is string ? $"'{kvp.Key}'" : kvp.Key.ToString()!;
-            string value = kvp.Value is string ? $"'{kvp.Value}'" : kvp.Value.ToString()!;
-            pairs.Add($"{key},{value}");
+    internal static string PrintItem(object? item) => item switch
+    {
+        object[] arr => PrintArray(arr),
+        bool b => b.ToString().ToLower(),
+        string str => $"\"{str}\"",
+        null => "nil",
+        _ => Convert.ToString(item, CultureInfo.InvariantCulture)!
+    };
+
+    /// <summary>
+    /// Prepares the parameter array for method invocation.
+    /// Truncates extra arguments, validates required parameters, and fills optional defaults.
+    /// </summary>
+    internal static object?[] PrepareMethodParameters(MethodInfo method, object?[] unserializedData, int? asyncKey)
+    {
+        ParameterInfo[] parameters = method.GetParameters();
+        int requiredCount = parameters.Count(p => !p.IsOptional);
+
+        // Truncate extra arguments
+        if (unserializedData.Length > parameters.Length)
+            unserializedData = unserializedData.Take(parameters.Length).ToArray();
+
+        // Check minimum required parameters
+        if (unserializedData.Length < requiredCount)
+        {
+            if (asyncKey.HasValue)
+                throw new ArmaAsyncException(asyncKey.Value,
+                    $"Parameter count mismatch for method {method.Name}. Expected at least {requiredCount} ({parameters.Length} total, {parameters.Length - requiredCount} optional), got {unserializedData.Length}.");
+            else
+                throw new ArmaException(
+                    $"Parameter count mismatch for method {method.Name}. Expected at least {requiredCount} ({parameters.Length} total, {parameters.Length - requiredCount} optional), got {unserializedData.Length}.");
         }
-        return $"[{string.Join(",", pairs)}]";
+
+        // Fill missing optional parameters with defaults
+        if (unserializedData.Length < parameters.Length)
+        {
+            object?[] extended = new object?[parameters.Length];
+            Array.Copy(unserializedData, extended, unserializedData.Length);
+
+            for (int i = unserializedData.Length; i < parameters.Length; i++)
+                extended[i] = parameters[i].DefaultValue;
+
+            unserializedData = extended;
+        }
+
+        return unserializedData;
     }
 }

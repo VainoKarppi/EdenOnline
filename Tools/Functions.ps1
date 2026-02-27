@@ -176,6 +176,7 @@ function Build-Project {
 <linker>
     <assembly fullname=""$($buildInfo.AssemblyName)"">
         <type fullname=""$($assemblyNameWithoutSuffix).*"" preserve=""all"" />
+        <type fullname=""EdenOnline.*"" preserve=""all"" />
     </assembly>
 </linker>
     "

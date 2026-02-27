@@ -1,0 +1,83 @@
+1 [Client initiates TCP connection to server]
+       |
+       v
+2 [Client generates ECDH key pair (P-256) for secure communication]
+       |
+       v
+3 [Client sends its public key to server]
+       |
+       v
+4 [Server shares its own ECDH key pair that was generated on start]
+       |
+       v
+6 [Server sends its public key back to client]
+       |
+       v
+6 [Both sides derive a shared secret from the exchanged keys]
+       |  
+       v
+   -> Store shared secret in dictionary (SharedSecrets[TcpClient]) for encryption/decryption
+
+7 [Client sends encrypted handshake payload]
+       |-- Payload contains:
+            - Client version
+            - Extension version/hash
+            - Mods list/hash
+            - Optional password
+            - Optional request ID for response callback
+       |
+       v
+8 [Server receives and decrypts handshake data using shared secret]
+       |
+       v
+9 [Server validates:]
+       - Client version & extension version against allowed hashes
+       - Mods hash & list
+       - Password (if required)
+       - Reject connection if invalid → send error and disconnect
+
+10 [Server assigns client to the correct world/session]
+       |-- If client is in the wrong world, change it to the server’s current world
+       |
+       v
+11 [Server locks edits/interaction for this client]
+       |-- Prevent client from modifying objects until fully synced
+       |
+       v
+12 [Server sends current server time to client]
+       |-- Ensures consistent timestamps for objects and incremental updates
+       |
+       v
+13 [Server sends initial object state snapshot]
+       |-- Objects, NPCs, and other relevant entities
+       |-- Include server-side creation timestamps
+       |
+       v
+14 [Client applies initial objects and adjusts local clock]
+       |-- Ensures local object times match server’s timeline
+       |
+       v
+15 [Server sends incremental object updates/deltas]
+       |-- Based on server time, apply updates in correct order
+       |
+       v
+16 [Server unlocks edits for client]
+       |-- Client can now interact with objects safely
+       |
+       v
+17 [Server starts UDP server for real-time updates]
+       |-- Player camera positions, fast-moving entities, and other low-latency data
+       |
+       v
+18 [Continuous sync loop]
+       - TCP: reliable object state updates and important messages
+       - UDP: real-time position/camera updates
+       - Time synchronization adjustments based on server clock
+       - Ping monitoring to detect lag or desync
+       |
+       v
+19 [Optional Enhancements / Features]
+       - Delta compression for object updates to reduce bandwidth
+       - Event batching for high-frequency events
+       - Reconnection logic if client disconnects and reconnects
+       

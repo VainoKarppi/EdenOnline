@@ -1,3 +1,7 @@
+using static ArmaExtension.Logger;
+using static ArmaExtension.Enums;
+using static ArmaExtension.MethodSystem;
+using static ArmaExtension.Events;
 using System;
 
 namespace ArmaExtension;

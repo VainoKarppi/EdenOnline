@@ -2,22 +2,24 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Threading.Tasks;
-using ArmaExtension;
 using static ArmaExtension.Logger;
+using static ArmaExtension.Enums;
+using static ArmaExtension.MethodSystem;
+using static ArmaExtension.Events;
 
 // [assembly: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MyExtension))]
 // Moved DynamicDependency attribute to a valid location below
 namespace ArmaExtension;
 
 [AttributeUsage(AttributeTargets.Class)]
-public class ArmaExtensionPluginAttribute : Attribute { }
+internal class ArmaExtensionPluginAttribute : Attribute { }
 
 
-public static partial class Extension
+internal static partial class PluginLoader
 {
     private static bool _initialized = false;
 
-    private static bool InitializePlugins()
+    internal static bool InitializePlugins()
     {
         if (_initialized) return false;
 
@@ -36,7 +38,7 @@ public static partial class Extension
 
             if (mainMethod != null && mainMethod.GetParameters().Length == 0)
             {
-                Log($"Invoking {type.FullName}.Main()");
+                Debug($"Invoking {type.FullName}.Main()");
                 mainMethod.Invoke(null, null);
             }
         }

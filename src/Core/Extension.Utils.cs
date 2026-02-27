@@ -4,9 +4,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
-
-using static ArmaExtension.Logger;
-
 namespace ArmaExtension;
 
 public static partial class Extension {
@@ -18,8 +15,8 @@ public static partial class Extension {
     internal static string GetAssemblyLocation() {
         string? dir = Assembly.GetExecutingAssembly().Location;
         if (string.IsNullOrEmpty(dir)) dir = AppContext.BaseDirectory;
-        if (string.IsNullOrEmpty(dir)) dir = Assembly.GetAssembly(typeof(Extension))?.Location;
-        if (string.IsNullOrEmpty(dir)) dir = typeof(Extension).Assembly.Location;
+        if (string.IsNullOrEmpty(dir)) dir = Assembly.GetAssembly(typeof(Enums))?.Location;
+        if (string.IsNullOrEmpty(dir)) dir = typeof(Enums).Assembly.Location;
 
         if (string.IsNullOrEmpty(dir)) dir = AppContext.BaseDirectory;
 

@@ -2,6 +2,10 @@
 using System.Collections.Concurrent;
 using System.IO;
 using System.Threading;
+using static ArmaExtension.Logger;
+using static ArmaExtension.Enums;
+using static ArmaExtension.MethodSystem;
+using static ArmaExtension.Events;
 
 namespace ArmaExtension;
 
@@ -23,7 +27,7 @@ public static class Logger {
 
     private static void WriterThread() {
         try {
-            Log("Starting WriterThread...");
+            Debug("Starting WriterThread...");
             string dir = Extension.AssemblyDirectory;
             string logFolder = Path.Combine(Path.GetDirectoryName(dir) ?? string.Empty, $"{Extension.ExtensionName}_Logs");
 
@@ -47,7 +51,7 @@ public static class Logger {
                 Thread.Sleep(5);
             }
         } catch (Exception ex) {
-            Log($"WriterThread ERRORR: {ex.Message}");
+            Error($"WriterThread: {ex.Message}");
         }
     }
 
@@ -61,11 +65,14 @@ public static class Logger {
     /// </summary>
     /// <param name="text">A text to be logged</param>
     /// <param name="forcePrintConsole">Print the message directly in to the Console</param>
-    public static void Log(object? text, bool forcePrintConsole = false) {
+    public static void Log(object? text, LogLevel level = LogLevel.Info, bool forcePrintConsole = false) {
         if (text == null || !Enabled) return;
+
+        // Check log level
+        if (level < CurrentLogLevel) return;
         
         string time = DateTime.Now.ToString("HH:mm:ss.fff");
-        string logText = $"{time} | {text}";
+        string logText = $"{time} | [{level}] {text}";
 
         if (forcePrintConsole || LogToConsole) Console.WriteLine(logText);
         
@@ -75,5 +82,25 @@ public static class Logger {
             writerThread = new Thread(WriterThread) { IsBackground = true };
             writerThread.Start();
         }
+    }
+
+    public static void Debug(object? text, bool forcePrintConsole = false) {
+        Log(text, LogLevel.Debug, forcePrintConsole);
+    }
+    public static void Error(object? text, bool forcePrintConsole = false) {
+        Log(text, LogLevel.Error, forcePrintConsole);
+    }
+
+    public static void Warning(object? text, bool forcePrintConsole = false) {
+        Log(text, LogLevel.Warning, forcePrintConsole);
+    }
+
+    public static LogLevel CurrentLogLevel { get; set; } = LogLevel.Info;
+
+    public enum LogLevel {
+        Debug,
+        Info,
+        Warning,
+        Error
     }
 }
