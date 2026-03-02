@@ -77,6 +77,13 @@ public static class NetworkHelper
     private static int _requestId;
     public static int GenerateRequestId() => Interlocked.Increment(ref _requestId);
 
+    public static void SendClientMessage(MessageType messageType, object? data = null)
+    {
+        Connection? client = Client.ClientListener;
+        if (client == null || !client.Connected) return;
+        
+        SendMessage(client, messageType, client.Id, data);
+    }
     /// <summary>
     /// Send a network message over TCP
     /// </summary>

@@ -13,9 +13,12 @@
 
 //"XXXX" callExtension "TestNetwork";
 
+sleep 1;
+// string objectID, string classname, object[] position, object[] rotation, string parentId, string groupId
+"XXXX" callExtension ["CreateObject",["test","5000",[0,0,0],[1,1,1]]];
+
+
 sleep 5;
-
-
 "XXXX" callExtension "Disconnect";
 
 sleep 2;

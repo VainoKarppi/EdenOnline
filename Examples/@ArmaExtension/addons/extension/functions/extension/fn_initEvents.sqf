@@ -9,6 +9,7 @@ addMissionEventHandler ["ExtensionCallback",{
 	if (_name == "" || _function == "") exitWith {};
 
 	if (_name == EXT_var_extensionName) then {
+		_data = parseSimpleArray _data;
 		diag_log format ["_function=%1, _data=%2", _function, _data];
 
 		(_function splitString "|") params ["_type",["_requestID","-1"],["_returnCode","1"]];
@@ -25,7 +26,11 @@ addMissionEventHandler ["ExtensionCallback",{
 			
 			EXT_var_extensionResponses set [_requestID,[_data,_returnCode]];	
 		} else {
-			diag_log format ["ERROR: %1", _data select 0]
+			if (count _data > 0) then {
+				diag_log format ["ERROR: %1", _data select 0]
+			} else {
+				diag_log format ["ERROR: %1", _data]
+			}
 		};
 	};
 }];

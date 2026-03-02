@@ -53,6 +53,8 @@ public static class Client
                 throw new Exception("Unable to receive clientID");
             }
 
+            Console.WriteLine($"UUUSEER ID: {userId}");
+
             return (int)userId;
         }
         catch (Exception ex)
@@ -155,7 +157,7 @@ public static class Client
     {
         if (ClientListener == null || !ClientListener.Connected) throw new InvalidOperationException("Client is not connected.");
 
-        List<ServerObject>? response = await NetworkHelper.SendRequestAsync<List<ServerObject>?>(ClientListener, MessageType.ObjectSync, null);
+        List<ArmaObject>? response = await NetworkHelper.SendRequestAsync<List<ArmaObject>?>(ClientListener, MessageType.ObjectSync, null);
 
         if (response == null)
         {
@@ -168,7 +170,7 @@ public static class Client
         foreach (var obj in response)
         {
             Console.WriteLine($"[CLIENT] Received object from server sync: {obj.Classname} (ID: {obj.Id})");
-            Extension.SendToArma("ObjectSync", [obj]);
+            Extension.SendToArma("ObjectSync", [obj.Id, obj.Classname, obj.Position, obj.Rotation, obj.ParentId, obj.GroupId, obj.Metadata]);
         }
 
         // TODO request for objects where timestamp later than x
@@ -214,6 +216,28 @@ public static class Client
                 {
                     NetworkHelper.Responses[message.MessageId] = message.Data;
                     continue;
+                }
+
+                switch (message.MessageType)
+                {
+                    case MessageType.ObjectCreate:
+                        if (message.Data == null) continue;
+
+                        ArmaObject? obj = NetworkSerializer.DeserializeData<ArmaObject>(message.Data);
+                        if (obj == null) continue;
+                        Extension.SendToArma("ObjectCreated", [obj.Id, obj.Classname, obj.Position, obj.Rotation, obj.ParentId, obj.GroupId, obj.Metadata]);
+                        break;
+
+                    case MessageType.ObjectUpdate:
+
+                        break;
+
+                    case MessageType.ObjectRemove:
+
+                        break;
+
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(message.MessageType), "Unsupported object update type");
                 }
 
                 if (message.MessageType == MessageType.ServerShutdown) return;

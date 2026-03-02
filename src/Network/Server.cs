@@ -271,7 +271,7 @@ public static class Server
             return;
         }
 
-        List<ServerObject> objects = ServerObjectManager.GetAllObjects();
+        List<ArmaObject> objects = ObjectManager.GetAllObjects();
         
         NetworkHelper.SendResponseMessage(client, MessageType.ObjectSync, ServerID, message.MessageId, objects);
     }
@@ -282,7 +282,7 @@ public static class Server
             throw new ArgumentNullException(nameof(message.Data), "Message data is null");
 
         // Deserialize the ServerObject from the message
-        ServerObject? update = NetworkSerializer.DeserializeData<ServerObject>(message.Data);
+        ArmaObject? update = NetworkSerializer.DeserializeData<ArmaObject>(message.Data);
         if (update == null)
             throw new ArgumentNullException(nameof(update), "Invalid ServerObject data");
 
@@ -290,12 +290,12 @@ public static class Server
         {
             case MessageType.ObjectCreate:
                 // Add new object (or overwrite if it exists)
-                ServerObjectManager.AddObject(update);
+                ObjectManager.AddObject(update);
                 break;
 
             case MessageType.ObjectUpdate:
                 // Update only provided fields
-                ServerObjectManager.UpdateObject(update.Id, existing =>
+                ObjectManager.UpdateObject(update.Id, existing =>
                 {
                     if (!string.IsNullOrEmpty(update.Classname)) existing.Classname = update.Classname;
                     if (update.Position?.Length > 0) existing.Position = update.Position;
@@ -309,7 +309,7 @@ public static class Server
 
             case MessageType.ObjectRemove:
                 // Remove object by Id
-                ServerObjectManager.RemoveObject(update.Id);
+                ObjectManager.RemoveObject(update.Id);
                 break;
 
             default:
@@ -321,7 +321,7 @@ public static class Server
         // Notify all clients
         foreach (var client in Clients)
         {
-            if (message.SenderId == client.Id) continue; // Dont send back to client
+            //if (message.SenderId == client.Id) continue; // Dont send back to client
             NetworkHelper.SendMessage(client, message.MessageType, message.SenderId, update);
         }
     }
@@ -339,11 +339,11 @@ public static class Server
             while (client.Connected)
             {
                 NetworkMessage? message = NetworkHelper.ReadMessage(client);
+                if (message == null) continue; // print?
 
-                if (message == null) continue;
-                if (message.MessageType == MessageType.Handshake)
-                {
+                if (message.MessageType == MessageType.Handshake) {
                     if (!client.HandshakeDone) HandleClientHandshake(client, message);
+                    continue;
                 }
 
 

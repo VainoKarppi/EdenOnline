@@ -22,7 +22,19 @@ public static class NetworkSerializer
         PropertyNameCaseInsensitive = true,
         WriteIndented = false,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        TypeInfoResolver = new DefaultJsonTypeInfoResolver() // Native AOT-safe
+
+        // NativeAOT-safe
+        TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
+
+        // Converters to handle dynamic dictionaries and lists
+        Converters =
+        {
+            // Convert Dictionary<string, object?> recursively
+            new DictionaryStringObjectConverter(),
+
+            // Convert List<T> dynamically
+            new ListDynamicConverterFactory()
+        }
     };
 
     private const int CompressThreshold = 200;
@@ -81,7 +93,7 @@ public static class NetworkSerializer
             data
         ];
 
-        byte[] payloadBytes = SerializeToBytes(payload, compress: true);
+        byte[] payloadBytes = SerializeToBytes(payload, compress: false);
 
         // Encrypt payload if encryption is enabled
         // TODO Fix UnpackMessage decrypt before enabling this feature!
@@ -212,61 +224,104 @@ public static class NetworkSerializer
         if (string.IsNullOrWhiteSpace(json))
             return default;
 
-        Type targetType = typeof(T);
-
-        // Special-case: T is List<U>
-        if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(List<>))
-        {
-            Type itemType = targetType.GetGenericArguments()[0];
-
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
-
-            if (root.ValueKind != JsonValueKind.Array)
-                throw new InvalidOperationException("Expected JSON array for List<> deserialization.");
-
-            var list = (System.Collections.IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(itemType))!;
-
-            foreach (var element in root.EnumerateArray())
-            {
-                var item = JsonSerializer.Deserialize(element.GetRawText(), itemType, Options);
-                if (item is not null)
-                    list.Add(item);
-            }
-
-            return (T)list;
-        }
-        else
-        {
-            // Single object
-            return JsonSerializer.Deserialize<T>(json, Options);
-        }
+        return JsonSerializer.Deserialize<T>(json, Options);
     }
 
     
-    public static T? Reconstruct<T>(object? data)
+    public sealed class ListDynamicConverterFactory : JsonConverterFactory
     {
-        if (data is null) return default;
+        public override bool CanConvert(Type typeToConvert)
+            => typeToConvert.IsGenericType && typeToConvert.GetGenericTypeDefinition() == typeof(List<>);
 
-        // Direct cast if already the right type
-        if (data is T t) return t;
-
-        // Dictionary -> JSON deserialization
-        if (data is Dictionary<string, object?> dict)
+        public override JsonConverter CreateConverter(Type type, JsonSerializerOptions options)
         {
-            var bytes = SerializeToBytes(dict);
-            return JsonSerializer.Deserialize<T>(bytes, Options);
+            Type itemType = type.GetGenericArguments()[0];
+            Type converterType = typeof(ListDynamicConverter<>).MakeGenericType(itemType);
+            return (JsonConverter)Activator.CreateInstance(converterType)!;
         }
 
-        // Array -> List<U> deserialization
-        if (typeof(T).IsGenericType && typeof(T).GetGenericTypeDefinition() == typeof(List<>) && data is object[] arr)
+        private sealed class ListDynamicConverter<TItem> : JsonConverter<List<TItem>>
         {
-            var bytes = SerializeToBytes(arr);
-            return JsonSerializer.Deserialize<T>(bytes, Options);
-        }
+            public override List<TItem> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            {
+                using var doc = JsonDocument.ParseValue(ref reader);
+                if (doc.RootElement.ValueKind != JsonValueKind.Array)
+                    throw new JsonException("Expected JSON array for List<T>");
 
-        return default;
+                var list = new List<TItem>();
+                foreach (var element in doc.RootElement.EnumerateArray())
+                {
+                    var item = JsonSerializer.Deserialize<TItem>(element.GetRawText(), options)!;
+                    list.Add(item);
+                }
+
+                return list;
+            }
+
+            public override void Write(Utf8JsonWriter writer, List<TItem> value, JsonSerializerOptions options)
+            {
+                writer.WriteStartArray();
+                foreach (var item in value)
+                    JsonSerializer.Serialize(writer, item, options);
+                writer.WriteEndArray();
+            }
+        }
     }
 
+    public sealed class DictionaryStringObjectConverter : JsonConverter<Dictionary<string, object?>>
+    {
+        public override Dictionary<string, object?> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            using var doc = JsonDocument.ParseValue(ref reader);
+            return ReadObject(doc.RootElement);
+        }
+
+        public override void Write(Utf8JsonWriter writer, Dictionary<string, object?> value, JsonSerializerOptions options)
+        {
+            writer.WriteStartObject();
+
+            foreach (var kvp in value)
+            {
+                writer.WritePropertyName(kvp.Key);
+                JsonSerializer.Serialize(writer, kvp.Value, options);
+            }
+
+            writer.WriteEndObject();
+        }
+
+        private static Dictionary<string, object?> ReadObject(JsonElement element)
+        {
+            var dict = new Dictionary<string, object?>();
+
+            foreach (var prop in element.EnumerateObject())
+                dict[prop.Name] = ReadValue(prop.Value);
+
+            return dict;
+        }
+
+        private static object? ReadValue(JsonElement element)
+        {
+            return element.ValueKind switch
+            {
+                JsonValueKind.String => element.GetString(),
+                JsonValueKind.Number => element.TryGetInt64(out var l) ? l : element.GetDouble(),
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                JsonValueKind.Object => ReadObject(element),
+                JsonValueKind.Array => ReadArray(element),
+                _ => null
+            };
+        }
+
+        private static List<object?> ReadArray(JsonElement element)
+        {
+            var list = new List<object?>();
+
+            foreach (var item in element.EnumerateArray())
+                list.Add(ReadValue(item));
+
+            return list;
+        }
+    }
 
 }

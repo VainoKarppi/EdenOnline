@@ -54,34 +54,31 @@ public static class ArmaMethods {
         return true;
     }
 
-    public static async Task AsyncTest(string input = "test") {
-        Log($"AsyncTest Method Called with input: {input}");
-        await Task.Delay(2000); // Simulate some async work
-        Log("AsyncTest Method Completed");
-    }
-
-    public static async Task<bool> AsyncReturnTest(string input = "test") {
-        Log($"AsyncReturnTest Method Called with input: {input}");
-        await Task.Delay(2000); // Simulate some async work
-        Log("AsyncReturnTest Method Completed");
-
-        return true;
-    }
-
-    public static bool CreateObject(string objectID, string classname, object[] position, object[] rotation, double scale = 1) {
+    public static string CreateObject(string objectID, string classname, object[] position, object[] rotation) {
         Log($"CreateObject Method Called: {objectID}, {classname}, position: [{string.Join(",", position)}], rotation: [{string.Join(",", rotation)}]");
         //if (!Client.IsConnected) throw new Exception("Client is not connected. Cannot create object.");
         
-        ServerObject obj = new ServerObject{};
-        ServerObjectManager.AddObject(obj);
-
-        Console.WriteLine(NetworkSerializer.SerializeToBytes(obj));
-
-        object[] messageData = [obj];
+        ArmaObject obj = new(
+            "testObject3",
+            "Land_CncBarrier_striped_F",
+            [0, 5, 0],
+            [0, 5, 0]
+        );
+        obj.Metadata = new() {
+            ["health"] = "100",
+            ["damage"] = 0,
+            ["owner"] = "server",
+            ["simulation"] = true,
+            ["isLocked"] = "false",
+            ["fuel"] = 1.0,
+            ["ammo"] = 1.0,
+        };
         
-        //Client.SendMessage(MessageType.ObjectCreate, messageData);
-        
-        return true;
+        ObjectManager.AddObject(obj);
+
+        NetworkHelper.SendClientMessage(MessageType.ObjectCreate, obj);
+
+        return obj.Id;
     }
     public static string GetHash(object item) {
         return item.GetHashCode().ToString();
@@ -91,45 +88,49 @@ public static class ArmaMethods {
 
     public static void TestNetwork()
     {
+        try {
+            // ✅ Create a test ServerObject
+            ArmaObject obj = new(
+                "testObject",
+                "Land_CncBarrier_striped_F",
+                [0, 0, 0],
+                [0, 0, 0],
+                "parentid",
+                "groupid"
+            );
+            obj.Metadata = new Dictionary<string, object?>
+            {
+                ["health"] = "100",
+                ["damage"] = "0",
+                ["owner"] = "server",
+                ["simulation"] = "true",
+                ["isLocked"] = "false",
+                ["fuel"] = "1.0",
+                ["ammo"] = "1.0",
+            };
+
+            byte[] full = NetworkSerializer.PackMessage(2, MessageType.ObjectSync, 1, obj);
+            Console.WriteLine("Serialized bytes length: " + full.Length);
+            Console.WriteLine("Serialized bytes (UTF8 string): " + System.Text.Encoding.UTF8.GetString(full));
+
+            var (fullRespId, fullMethod, fullSender, fullTypeName, fullData) = NetworkSerializer.UnpackMessage(full);
+            Console.WriteLine($"message unpacked: responseId={fullRespId}, method={fullMethod}, senderId={fullSender}, type={fullTypeName}, data={(fullData == null ? "null" : fullData.ToString())}");
+            
+            //listData = [{"id":"obj1","classname":"asd"}]
+            Console.WriteLine($"DATA 555: {fullData}");
+            ArmaObject? deserialized2 = NetworkSerializer.DeserializeData<ArmaObject>(fullData!);
+            Console.WriteLine(deserialized2?.Metadata);
+        } catch (Exception ex) {
+            Console.WriteLine(ex);
+        }
         
-        // ✅ Create a test ServerObject
-        ServerObject obj = new(
-            "testObject",
-            "Land_CncBarrier_striped_F",
-            [0, 0, 0],
-            [0, 0, 0]
-        );
 
-        // ✅ Serialize to bytes
-        byte[] bytes = NetworkSerializer.SerializeToBytes(obj);
-        Console.WriteLine("Serialized bytes length: " + bytes.Length);
-        Console.WriteLine("Serialized bytes (UTF8 string): " + System.Text.Encoding.UTF8.GetString(bytes));
-
-        // ✅ Serialize into a network message wrapper
-        int responseId = 1;
-        MessageType responseMethod = MessageType.ObjectUpdate;
-        int senderId = 42;
-        
-        byte[] networkMessage = NetworkSerializer.PackMessage(responseId, responseMethod, senderId, obj);
-        Console.WriteLine("Packed network message length: " + networkMessage.Length);
-        Console.WriteLine("Packed network message (UTF8 string, skipping length prefix): " + System.Text.Encoding.UTF8.GetString(networkMessage[4..]));
-
-        // ✅ Deserialize back from network message
-        var (respId, method, sender, type, data) = NetworkSerializer.UnpackMessage(networkMessage);
-        Console.WriteLine($"DATA 1: {data}");
-        Console.WriteLine($"Unpacked message: responseId={respId}, method={method}, senderId={sender}, type={type}");
-
-        // ✅ Reconstruct the actual ServerObject from dynamic data
-        ServerObject? restoredObj = NetworkSerializer.DeserializeData<ServerObject>(data!);
-        Console.WriteLine($"Restored ServerObject: Id={restoredObj?.Id}, Classname={restoredObj?.Classname}, " +
-            $"Position=[{string.Join(",", restoredObj?.Position ?? [])}], " +
-            $"Rotation=[{string.Join(",", restoredObj?.Rotation ?? [])}]");
 
 
 
 
         try {
-            List<ServerObject> objects = [
+            List<ArmaObject> objects = [
                 new("obj1", "Land_CncBarrier_striped_F", [0, 0, 0], [0, 0, 0]),
                 new("obj2", "Land_Tank_01", [10, 0, 0], [0, 0, 0]),
                 new("obj3", "Land_CncBarrier_striped_F", [20, 0, 0], [0, 0, 0]),
@@ -142,9 +143,9 @@ public static class ArmaMethods {
             
             //listData = [{"id":"obj1","classname":"asd"}]
             Console.WriteLine($"DATA 2: {listData}");
-            List<ServerObject>? deserialized = NetworkSerializer.DeserializeData<List<ServerObject>>(listData!);
+            List<ArmaObject>? deserialized = NetworkSerializer.DeserializeData<List<ArmaObject>>(listData!);
 
-            foreach (ServerObject item in deserialized ?? [])
+            foreach (ArmaObject item in deserialized ?? [])
             {
                 Console.WriteLine($"Restored ServerObject: Id={item.Id}, Classname={item.Classname}");
             }
@@ -184,28 +185,28 @@ public static class ArmaMethods {
         
         Events.OnErrorOccurred += ex => Debug($"ErrorOccurred event triggered: {ex.Message}");
 
-        ServerObjectManager.AddObject(new ServerObject(
+        ObjectManager.AddObject(new ArmaObject(
             "obj1",
             "Land_CncBarrier_striped_F",
             [0, 0, 0],
             [0, 0, 0]
         ));
 
-        ServerObjectManager.AddObject(new ServerObject(
+        ObjectManager.AddObject(new ArmaObject(
             "obj2",
             "Land_Tank_01",
             [10, 0, 0],
             [0, 0, 0]
         ));
 
-        ServerObjectManager.AddObject(new ServerObject(
+        ObjectManager.AddObject(new ArmaObject(
             "obj3",
             "Land_CncBarrier_striped_F",
             [20, 0, 0],
             [0, 0, 0]
         ));
 
-        ServerObjectManager.AddObject(new ServerObject(
+        ObjectManager.AddObject(new ArmaObject(
             "obj4",
             "Land_CncBarrier_striped_F",
             [30, 0, 0],

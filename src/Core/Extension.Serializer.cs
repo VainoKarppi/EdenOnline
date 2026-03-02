@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
@@ -124,14 +125,28 @@ internal static class Serializer
         return "[" + string.Join(",", array.Select(PrintItem)) + "]";
     }
 
-    internal static string PrintItem(object? item) => item switch
+    private static string PrintItem(object? item) => item switch
     {
-        object[] arr => PrintArray(arr),
-        bool b => b.ToString().ToLower(),
-        string str => $"\"{str}\"",
         null => "nil",
+        bool b => b.ToString().ToLower(),
+        string s => $"\"{s}\"",
+        object[] arr => PrintArray(arr),
+        IDictionary<string, object?> dict => PrintDictionary(dict),
+        IEnumerable<object?> list => PrintArray(list.ToArray()),
         _ => Convert.ToString(item, CultureInfo.InvariantCulture)!
     };
+
+    // Converts Dictionary<string, object?> to Arma array format
+    private static string PrintDictionary(IDictionary<string, object?> dict)
+    {
+        if (dict.Count == 0) return "[]";
+
+        var items = dict.Select(kvp =>
+            $"[\"{kvp.Key}\",{PrintItem(kvp.Value)}]"
+        );
+
+        return "[" + string.Join(",", items) + "]";
+    }
 
     /// <summary>
     /// Prepares the parameter array for method invocation.

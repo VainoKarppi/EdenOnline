@@ -7,12 +7,12 @@ using EdenOnline.Models;
 namespace EdenOnline;
 
 
-public static class ServerObjectManager
+public static class ObjectManager
 {
-    public static ConcurrentDictionary<string, ServerObject> Objects { get; set; } = new();
+    public static ConcurrentDictionary<string, ArmaObject> Objects { get; set; } = new();
 
     /// <summary>Adds a new object or overwrites existing with same Id.</summary>
-    public static void AddObject(ServerObject obj)
+    public static void AddObject(ArmaObject obj)
     {
         Objects[obj.Id] = obj;
     }
@@ -24,13 +24,13 @@ public static class ServerObjectManager
     }
 
     /// <summary>Get object by Id.</summary>
-    public static bool TryGetObject(string id, out ServerObject? obj)
+    public static bool TryGetObject(string id, out ArmaObject? obj)
     {
         return Objects.TryGetValue(id, out obj);
     }
 
     /// <summary>Get a snapshot of all objects (for broadcasting to clients).</summary>
-    public static List<ServerObject> GetAllObjects()
+    public static List<ArmaObject> GetAllObjects()
     {
         return [.. Objects.Values];
     }
@@ -42,7 +42,7 @@ public static class ServerObjectManager
     }
 
     /// <summary>Update object properties safely if it exists.</summary>
-    public static bool UpdateObject(string id, Action<ServerObject> updater)
+    public static bool UpdateObject(string id, Action<ArmaObject> updater)
     {
         if (Objects.TryGetValue(id, out var obj))
         {
