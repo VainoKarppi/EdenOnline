@@ -4,6 +4,8 @@ using System.Net.Sockets;
 
 using static ArmaExtension.Logger;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace EdenOnline.Network;
 
@@ -13,24 +15,18 @@ namespace EdenOnline.Network;
 
 public enum MessageType : byte
 {
-    ClientHandshake = 0,
-    ServerHandshake = 1,
-    ServerHandshakeComplete = 2,
-    ServerShutdown = 3,
-    ObjectSync = 4,
-    ObjectUpdate = 5,
-    ClientDisconnect = 6,
-    Ping = 7,
-    Custom = 254
+    Handshake,
+    HandshakeTimeout,
+    ServerShutdown,
+    ObjectSync,
+    ObjectCreate,
+    ObjectRemove,
+    ObjectUpdate,
+    ClientDisconnect,
+    Ping,
+    Custom
 }
 
-public enum Target : byte
-{
-    Everyone = 0,
-    Server = 1,
-    Self = 2,
-    Others = 3
-}
 
 // ============================================================================
 // MESSAGE CLASSES
@@ -38,18 +34,18 @@ public enum Target : byte
 
 public class NetworkMessage
 {
-    public int ResponseId { get; set; } = -1;
-    public bool IsRequest { get; set; } = false; // Used to identify if this message expects a response
+    public int MessageId { get; set; } = -1;
     public MessageType MessageType { get; set; }
     public int SenderId { get; set; } = -1;
     public Type DataType { get; set; } = typeof(object);
-    public object? Data { get; set; }
+    public string? Data { get; set; }
 }
 
 public class HandshakeMessage
 {
     public string Status { get; set; } = "";
     public string Username { get; set; } = "";
+    public string World { get; set; } = "";
     public string Hash { get; set; } = "";
     public int ClientId { get; set; }
     public string[] OtherClients { get; set; } = []; // Todo return IDs and Names instead of just names
@@ -66,6 +62,7 @@ public class Connection : TcpClient
     public int Id { get; set; } = -1;
     public string Username { get; set; } = "Unknown";
     public string Hash { get; set; } = "";
+    public bool HandshakeDone { get; set; } = false;
 }
 
 public static class NetworkHelper
@@ -75,8 +72,10 @@ public static class NetworkHelper
     /// List of pending requests waiting for response, keyed by requestId. The value is the callback to invoke when response is received.
     /// </summary>
     /// <returns></returns>
-    private static readonly ConcurrentDictionary<int, Action<NetworkMessage>> PendingRequests = new();
-    private static int _nextRequestId = 0;
+    public static readonly List<int> Requests = [];
+    public static readonly ConcurrentDictionary<int, string?> Responses = new();
+    private static int _requestId;
+    public static int GenerateRequestId() => Interlocked.Increment(ref _requestId);
 
     /// <summary>
     /// Send a network message over TCP
@@ -88,7 +87,6 @@ public static class NetworkHelper
         {
             byte[] messageBytes = NetworkSerializer.PackMessage(responseId, messageType, senderId, data);
             client.GetStream().Write(messageBytes, 0, messageBytes.Length);
-            Debug($"[NetworkHelper] Sent message: type={messageType}, responseId={responseId}, size={messageBytes.Length}");
         }
         catch (Exception ex)
         {
@@ -96,14 +94,14 @@ public static class NetworkHelper
         }
     }
 
-    public static void SendResponseMessage(Connection client, MessageType messageType, int senderId, object? data = null, int requestId = -1)
+    public static void SendResponseMessage(Connection client, MessageType messageType, int senderId, int messageId = -1, object? data = null)
     {
         if (client == null || !client.Connected) return;
         try
         {
-            byte[] messageBytes = NetworkSerializer.PackMessage(requestId, messageType, senderId, data);
+            byte[] messageBytes = NetworkSerializer.PackMessage(messageId, messageType, senderId, data);
             client.GetStream().Write(messageBytes, 0, messageBytes.Length);
-            Debug($"[NetworkHelper] Sent response message: type={messageType}, responseId={requestId}, size={messageBytes.Length}");
+            Console.WriteLine($"Sent network message: msgId:{messageId}, msgType:{messageType}, sender:{senderId}, data:{data}");
         }
         catch (Exception ex)
         {
@@ -114,14 +112,14 @@ public static class NetworkHelper
     /// <summary>
     /// Send a simple message without data
     /// </summary>
-    public static void SendMessage(Connection client, int responseId, MessageType messageType, int senderId)
+    public static void SendMessage(Connection client, int messageId, MessageType messageType, int senderId)
     {
         if (client == null || !client.Connected) return;
         try
         {
-            byte[] messageBytes = NetworkSerializer.PackMessage(responseId, messageType, senderId);
+            byte[] messageBytes = NetworkSerializer.PackMessage(messageId, messageType, senderId);
             client.GetStream().Write(messageBytes, 0, messageBytes.Length);
-            Debug($"[NetworkHelper] Sent message: type={messageType}, responseId={responseId}, size={messageBytes.Length}");
+            Console.WriteLine($"Sent network message: msgId:{messageId}, msgType:{messageType}, sender:{senderId}, data:{null}");
         }
         catch (Exception ex)
         {
@@ -154,11 +152,13 @@ public static class NetworkHelper
             Buffer.BlockCopy(payload, 0, fullMessage, 4, payloadLen);
 
             // Unpack using NetworkSerializer
-            var (respId, msgType, senderId, dataType, data) = NetworkSerializer.UnpackMessage(fullMessage);
+            var (msgId, msgType, senderId, dataType, data) = NetworkSerializer.UnpackMessage(fullMessage);
+
+            Console.WriteLine($"Received network message: msgId:{msgId}, msgType:{msgType}, sender:{senderId}, type:{dataType}, data:{data}");
 
             return new NetworkMessage
             {
-                ResponseId = respId,
+                MessageId = msgId,
                 MessageType = msgType,
                 SenderId = senderId,
                 DataType = dataType,
@@ -167,48 +167,102 @@ public static class NetworkHelper
         }
         catch (Exception ex)
         {
+            if (client == null || !client.Connected) return null;
             Console.WriteLine($"[NetworkHelper] ReadMessage exception: {ex}");
             return null;
         }
     }
 
 
-    /// <summary>
-    /// Send a typed request with automatic response conversion
-    /// </summary>
-    public static int SendRequest<TResponse>(Connection client, MessageType type, object? data, Action<TResponse?> callback)
+
+    public static async Task<T?> SendRequestAsync<T>(Connection client, MessageType type, object? data, int timeoutMs = 10000)
     {
-        if (client == null || !client.Connected) return -1;
+        if (client == null || !client.Connected)
+            throw new Exception("Client not connected!");
 
-        int requestId = Interlocked.Increment(ref _nextRequestId);
+        int requestId = GenerateRequestId();
 
-        // TODO Get senderId, and if called from server set as 1
-        byte[] message = NetworkSerializer.PackMessage(requestId, type, 0, data);
+        // Register request
+        Requests.Add(requestId);
 
-        // store callback BEFORE sending
-        PendingRequests[requestId] = msg =>
-        {
-            try
-            {
-                callback?.Invoke((TResponse?)msg.Data);
-            }
-            catch (Exception ex)
-            {
-                Error($"Callback error: {ex}");
-            }
-        };
+        // TODO fix sender id when server
+        byte[] message = NetworkSerializer.PackMessage(requestId, type, client.Id, data);
 
         try
         {
-            client.GetStream().Write(message, 0, message.Length);
+            Debug($"[NetworkHelper] Sent Request: type={type}, requestId={requestId}, clientId={client.Id}");
+            await client.GetStream().WriteAsync(message);
         }
         catch (Exception ex)
         {
-            Error($"Failed to send request: {ex}");
-            PendingRequests.TryRemove(requestId, out _);
-            return -1;
+            Requests.Remove(requestId);
+            throw new Exception($"Failed to send request: {ex}");
         }
 
-        return requestId;
+        // Wait asynchronously for the response
+        try {
+            string? receivedData = await WaitWithTimeout(requestId, timeoutMs);
+            if (receivedData == null) return default;
+
+            T? deserialized = NetworkSerializer.DeserializeData<T>(receivedData);
+
+            return deserialized;
+        } finally {
+            // Cleanup regardless of success or failure
+            Requests.Remove(requestId);
+            Responses.TryRemove(requestId, out _);
+        }
+    }
+    public static T? SendRequest<T>(Connection client, MessageType type, object? data, int timeoutMs = 10000) {
+        try {
+            var response = SendRequestAsync<T>(client, type, data, timeoutMs)
+                .GetAwaiter()
+                .GetResult();
+
+            return response;
+        }
+        catch (Exception ex) {
+            Error($"SendRequest sync error: {ex}");
+            throw;
+        }
+    }
+
+    private static async Task<string?> WaitWithTimeout(int requestId, int timeoutMs)
+    {
+        try
+        {
+            Console.WriteLine($"Waiting for response to request {requestId}");
+
+            using var cts = new CancellationTokenSource(timeoutMs);
+
+            // Polling loop, but asynchronously
+            string? response;
+            while (!Responses.TryGetValue(requestId, out response))
+            {
+                if (cts.Token.IsCancellationRequested)
+                    throw new TimeoutException($"Request {requestId} timed out after {timeoutMs} ms");
+
+                await Task.Delay(1, cts.Token); // async wait
+            }
+
+            Requests.Remove(requestId);
+            Responses.TryRemove(requestId, out _);
+
+            return response;
+        }
+        catch (TimeoutException)
+        {
+            Console.WriteLine($"[TIMEOUT] Request {requestId} timed out after {timeoutMs} ms");
+            Requests.Remove(requestId);
+            Responses.TryRemove(requestId, out _);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] Request {requestId} failed: {ex}");
+            Requests.Remove(requestId);
+            Responses.TryRemove(requestId, out _);
+            throw;
+        }
     }
 }

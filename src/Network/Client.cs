@@ -1,8 +1,12 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using ArmaExtension;
 using EdenOnline.Models;
 using EdenOnline.Network;
@@ -17,11 +21,12 @@ public static class Client
     private static NetworkStream? _stream;
     private static Thread? _receiveThread;
 
-    private static readonly ConcurrentDictionary<int, Action<NetworkMessage>> PendingRequests = new();
+    private static long _serverTimeOffsetMilliseconds = 0;
 
     public static Action<MessageType, object?>? OnMessageReceived;
+    
 
-    public static bool Connect(string host, int port, string userName, string clientHash)
+    public static async Task<int> Connect(string host, int port, string userName, string worldName, string clientHash)
     {
         try
         {
@@ -34,24 +39,91 @@ public static class Client
 
             Encryption.PerformClientKeyExchange(ClientListener);
 
+            SyncServerTime();
+
             _receiveThread = new Thread(ReceiveLoop) { IsBackground = true };
             _receiveThread.Start();
 
             ClientListener.Username = userName;
             ClientListener.Hash = clientHash;
 
-            RequestHandshake();
+            int? userId = await RequestHandshake(worldName);
+            if (userId == null) {
+                Disconnect();
+                throw new Exception("Unable to receive clientID");
+            }
 
-            return true;
+            return (int)userId;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Connect exception: {ex}");
-            return false;
+            Disconnect();
+            throw; // Throw error to arma
         }
     }
 
-    public static void RequestHandshake()
+    // TODO send client time once to server, and calculate delta instead. Long --> short (saving bandwidth)
+    private static void SyncServerTime()
+    {
+        if (ClientListener == null || !ClientListener.Connected) throw new InvalidOperationException("Client is not connected.");
+
+        const int attempts = 10;
+        List<long> offsets = [];
+
+        var stream = ClientListener.GetStream();
+
+        for (int i = 0; i < attempts; i++)
+        {
+            try
+            {
+                // Record local send time
+                long t0 = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+                // Send sync request (example: you may need a real request packet)
+                byte[] request = [0x01]; // TODO make as real request. Or not??
+                stream.Write(request, 0, request.Length);
+
+                // Read server response (example assumes server sends UnixTime as 8-byte long)
+                byte[] response = new byte[8];
+                int read = 0;
+                while (read < 8)
+                    read += stream.Read(response, read, 8 - read);
+
+                long serverTime = BitConverter.ToInt64(response, 0);
+
+                // Record local receive time
+                long t1 = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+                // Round-trip time estimate
+                long rtt = t1 - t0;
+
+                // Estimate offset: serverTime - (t0 + rtt/2)
+                long offset = serverTime - (t0 + rtt / 2);
+                offsets.Add(offset);
+
+                Thread.Sleep(20);
+            }
+            catch
+            {
+                // ignore failed attempt
+            }
+        }
+
+        if (offsets.Count > 0)
+        {
+            // Use median or average to reduce outliers
+            _serverTimeOffsetMilliseconds = (long)offsets.Average();
+            Console.WriteLine($"Server time offset: {_serverTimeOffsetMilliseconds} ms");
+        }
+    }
+
+    private static DateTimeOffset GetServerTime()
+    {
+        return DateTimeOffset.UtcNow.AddMilliseconds(_serverTimeOffsetMilliseconds);
+    }
+
+    public static async Task<int> RequestHandshake(string worldName)
     {
         if (ClientListener == null || !ClientListener.Connected) throw new InvalidOperationException("Client is not connected.");
         
@@ -61,53 +133,45 @@ public static class Client
         {
             Username = ClientListener.Username,
             Hash = ClientListener.Hash,
+            World = worldName,
             ClientId = -1,
             OtherClients = []
         };
 
-        NetworkHelper.SendRequest<HandshakeMessage>(ClientListener, MessageType.ClientHandshake, handshakeData, response => {
-            if (response == null)
-            {
-                Console.WriteLine("Handshake failed or malformed response.");
-                Disconnect();
-                return;
-            }
+        HandshakeMessage? response = await NetworkHelper.SendRequestAsync<HandshakeMessage>(ClientListener, MessageType.Handshake, handshakeData);
 
-            if (response.Status == "SUCCESS")
-            {
-                ClientListener.Id = response.ClientId;
-                Log($"[CLIENT] Handshake success. ClientId={ClientListener.Id}");
-                RequestServerSync();
-            }
-            else
-            {
-                Console.WriteLine($"Handshake rejected: {response.Status}");
-                Disconnect();
-            }
-        });
+        if (response == null) throw new Exception("Unable to get response from server");
+
+        if (response.Status != "SUCCESS") throw new Exception($"Handshake rejected: {response.Status}");
+
+        ClientListener.Id = response.ClientId;
+        Log($"[CLIENT] Handshake success. ClientId={ClientListener.Id}");
+        await RequestObjectSync();
+
+        return response.ClientId;
     }
 
-    public static void RequestServerSync()
+    public static async Task RequestObjectSync()
     {
         if (ClientListener == null || !ClientListener.Connected) throw new InvalidOperationException("Client is not connected.");
 
-        NetworkHelper.SendRequest<List<ServerObject>>(ClientListener, MessageType.ObjectSync, null,
-            response =>
-            {
-                if (response == null || response.Count < 1)
-                {
-                    Console.WriteLine("Object sync failed.");
-                    return;
-                }
+        List<ServerObject>? response = await NetworkHelper.SendRequestAsync<List<ServerObject>?>(ClientListener, MessageType.ObjectSync, null);
 
-                Console.WriteLine($"[CLIENT] Processing {response.Count} objects from sync");
-                foreach (var obj in response)
-                {
-                    Console.WriteLine($"[CLIENT] Received object from server sync: {obj.Classname} (ID: {obj.Id})");
-                    Extension.SendToArma("ObjectSync", new object[] { obj });
-                }
-            }
-        );
+        if (response == null)
+        {
+            Console.WriteLine("Object sync failed.");
+            return;
+        }
+
+        Console.WriteLine($"[CLIENT] Processing {response.Count} objects from sync");
+        Extension.SendToArma("ObjectSyncCount", [response.Count]); // First send object count to track progress
+        foreach (var obj in response)
+        {
+            Console.WriteLine($"[CLIENT] Received object from server sync: {obj.Classname} (ID: {obj.Id})");
+            Extension.SendToArma("ObjectSync", [obj]);
+        }
+
+        // TODO request for objects where timestamp later than x
     }
 
     public static void Disconnect()
@@ -140,21 +204,19 @@ public static class Client
         {
             while (ClientListener != null && ClientListener.Connected)
             {
-                // Read message
                 NetworkMessage? message = NetworkHelper.ReadMessage(ClientListener);
                 if (message == null) break;
+                
+                if (message.MessageType == MessageType.ServerShutdown) return;
 
-                Console.WriteLine($"[CLIENT] Received message of type {message.MessageType}, responseId: {message.ResponseId}");
-
-                // Handle pending request responses
-                if (message.ResponseId >= 0 && PendingRequests.TryRemove(message.ResponseId, out var callback))
+                // Check if is response to specific request
+                if (message.MessageId > 0)
                 {
-                    callback?.Invoke(message);
+                    NetworkHelper.Responses[message.MessageId] = message.Data;
                     continue;
                 }
 
-                // Fire unsolicited messages
-                OnMessageReceived?.Invoke(message.MessageType, message.Data);
+                if (message.MessageType == MessageType.ServerShutdown) return;
             }
         }
         catch (Exception ex)

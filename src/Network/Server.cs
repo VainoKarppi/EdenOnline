@@ -9,6 +9,7 @@ using static ArmaExtension.Logger;
 
 using EdenOnline.Network;
 using EdenOnline.Models;
+using System.Threading.Tasks;
 
 namespace EdenOnline;
 
@@ -23,6 +24,7 @@ public static class Server
     private const int Port = 5000;
     public static bool IsRunning => _listener != null;
     private static string? ServerHash;
+    public static string? ServerWorld;
     private static string? ServerPassword;
 
     private const int ServerID = 1;
@@ -32,15 +34,15 @@ public static class Server
         // UDP relay started by UdpRelayServer elsewhere
     }
 
-    public static void Start(string serverHash = "", string? password = null, bool dedicatedServer = false)
+    public static void Start(string serverHash = "", string serverWorld = "", string? password = null, bool dedicatedServer = false)
     {
         if (Client.ClientListener != null) throw new InvalidOperationException("Client is already running.");
         if (_listener != null) throw new InvalidOperationException("Server is already running.");
 
-        if (string.IsNullOrEmpty(serverHash)) ServerHash = serverHash;
 
-        // If not a dedicated server, also start the client to connect to self
+        if (!string.IsNullOrEmpty(serverHash)) ServerHash = serverHash;
         if (!string.IsNullOrWhiteSpace(password)) ServerPassword = password;
+        if (!string.IsNullOrEmpty(serverWorld)) ServerWorld = serverWorld;
 
         _udpServer = new UdpRelayServer(Port);
         _udpServer.Start();
@@ -61,12 +63,8 @@ public static class Server
         _udpServer = null;
 
         // Notify all clients with a shutdown message
-        foreach (var client in Clients)
-        {
-            NetworkHelper.SendMessage(client, MessageType.ServerShutdown, ServerID, Array.Empty<object>(), 0);
-        }
-
-
+        foreach (var client in Clients) NetworkHelper.SendMessage(client, MessageType.ServerShutdown, ServerID);
+        
         _listener?.Stop();
         Log("[SERVER] TCP & UDP Servers stopped.");
         
@@ -96,7 +94,7 @@ public static class Server
                 // Listener was stopped, exit gracefully
                 break;
             }
-            catch (SocketException se) when (se.SocketErrorCode == System.Net.Sockets.SocketError.Interrupted)
+            catch (SocketException se) when (se.SocketErrorCode == SocketError.Interrupted)
             {
                 // Listener stopped; ignore
                 break;
@@ -108,7 +106,14 @@ public static class Server
         }
     }
 
-    
+    private static void RemoveConnection(Connection client)
+    {
+        try
+        {
+            Clients.Remove(client);
+            client?.Close();
+        } catch {}
+    }
     private static void HandleClientConnection(object? obj)
     {
         if (obj is not Connection client) return;
@@ -121,75 +126,211 @@ public static class Server
 
             // Wait until client requests key exchange, then perform it and then send server key back to client
             Encryption.PerformServerKeyExchange(client);
-            
-            // Start handshake, check password/hash and if successful, add to client list
-            HandleClientHandshake(client);
+
+            Debug("[SERVER] Starting time sync...");
+            SyncClientTime(client);
+            Debug("[SERVER] Time sync success");
+
+            ThreadPool.QueueUserWorkItem(WaitForHandshake, client);
             
             // TODO if mods and hash match, but world is wrong, send message to client to change world, and wait for response
 
-            // After handshake, send initial object sync
-            SendServerObjectsSync(client);
-
-            // TODO add timeout checks and disconnect if client is idle for too long or doesn't complete handshake in time
-            // TODO Make sure user is connected to UDP server
-
-
-            // Start message handling loop for this client
             ThreadPool.QueueUserWorkItem(HandleClientMessages, client);
+
+            // TODO Make sure user is connected to UDP server
         }
         catch (Exception ex)
         {
             Error($"[SERVER] HandleClientConnection exception: {ex}");
-            try { client.Close(); } catch { }
+            RemoveConnection(client);
         }
     }
 
-    private static void HandleClientHandshake(Connection client)
+    private static void WaitForHandshake(object? obj)
     {
-        NetworkMessage? message = NetworkHelper.ReadMessage(client);
+        if (obj is not Connection client) return;
 
-        if (message == null || message.MessageType != MessageType.ClientHandshake)
+        const int handshakeTimeoutMs = 2000; // 5 seconds
+        const int checkIntervalMs = 10;      // how often to check
+        int elapsedMs = 0;
+
+        while (!client.HandshakeDone && elapsedMs < handshakeTimeoutMs)
         {
-            Warning($"[SERVER] Unexpected handshake type {message?.MessageType ?? MessageType.Custom}");
-            client.Close();
+            Thread.Sleep(checkIntervalMs);
+            elapsedMs += checkIntervalMs;
+        }
+
+        if (!client.HandshakeDone)
+        {
+            // Handshake did not complete in time
+            NetworkHelper.SendMessage(client, MessageType.HandshakeTimeout, ServerID);
+            RemoveConnection(client);
+            Log($"[SERVER] Handshake timeout for client {client.Client.RemoteEndPoint}");
+        }
+    }
+
+    private static void SyncClientTime(Connection client)
+    {
+        try
+        {
+            var stream = client.GetStream();
+
+            for (int i = 0; i < 10; i++)
+            {
+                // Read request (1 byte expected)
+                byte[] requestBuffer = new byte[1];
+                int read = 0;
+                while (read < 1)
+                {
+                    int r = stream.Read(requestBuffer, read, 1 - read);
+                    if (r == 0)
+                        return; // client disconnected
+                    read += r;
+                }
+
+                // Check if request is the time request (0x01)
+                if (requestBuffer[0] != 0x01)
+                    continue; // not a time request, skip
+
+                // Get current server Unix time in milliseconds
+                long serverUnixTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                byte[] response = BitConverter.GetBytes(serverUnixTime);
+
+                // Send response back to client
+                stream.Write(response, 0, response.Length);
+                stream.Flush();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error syncing time for client: {ex.Message}");
+        }
+    }
+
+    private static void HandleClientHandshake(Connection client, NetworkMessage message)
+    {
+        if (message == null || message.Data == null || message.MessageType != MessageType.Handshake)
+        {
+            Warning($"[SERVER] Unexpected handshake type {message?.MessageType}: Returned: {message?.MessageType}");
+            RemoveConnection(client);
             return;
         }
 
-        if (message.Data == null || !(message.Data is HandshakeMessage handshakeMessage))
+        HandshakeMessage? data = NetworkSerializer.DeserializeData<HandshakeMessage>(message.Data);
+        if (data == null)
         {
             Warning("[SERVER] Empty handshake");
-            client.Close();
+            RemoveConnection(client);
             return;
         }
 
-        client.Username = handshakeMessage.Username;
-        client.Hash = handshakeMessage.Hash;
+        if (data.World != ServerWorld)
+        {
+            HandshakeMessage responseFail = new() {
+                Status = "Invalid world"
+            };
+            NetworkHelper.SendResponseMessage(client, MessageType.Handshake, ServerID, message.MessageId, responseFail);
+            RemoveConnection(client);
+            return;
+        }
+
+        client.Username = data.Username;
+        client.Hash = data.Hash;
 
         if (!VerifyClientHandshake(client.Hash))
         {
-            NetworkHelper.SendMessage(client, MessageType.ClientHandshake, ServerID, new object[] { "FAIL", "Hash mismatch" }, message.ResponseId);
-            client.Close();
+            HandshakeMessage responseFail = new() {
+                Status = "Hash mismatch"
+            };
+            NetworkHelper.SendResponseMessage(client, MessageType.Handshake, ServerID, message.MessageId, responseFail);
+            RemoveConnection(client);
             return;
         }
 
         object[] OtherClients = Clients.Select(c => new ArmaClient { Id = c.Id, Username = c.Username }).ToArray();
 
-        object[] response = ["SUCCESS", client.Id, OtherClients];
-        NetworkHelper.SendMessage(client, MessageType.ClientHandshake, ServerID, response, message.ResponseId);
 
+        HandshakeMessage response = new() {
+            Status = "SUCCESS",
+            ClientId = client.Id,
+            OtherClients = []
+        };
+        NetworkHelper.SendResponseMessage(client, MessageType.Handshake, ServerID, message.MessageId, response);
+
+        client.HandshakeDone = true;
         Log($"[SERVER] Handshake success for {client.Username} => {client.Id}");
     }
 
-    private static void SendServerObjectsSync(Connection client)
+    private static void SendServerObjectsSync(Connection client, NetworkMessage message)
     {
-        // TODO
+        //NetworkMessage? message = NetworkHelper.ReadMessage(client);
+        if (message == null || message.MessageType != MessageType.ObjectSync)
+        {
+            Warning($"[SERVER] Unexpected ObjectSync type {message?.MessageType}: Returned: {message?.MessageType}");
+            RemoveConnection(client);
+            return;
+        }
+
+        List<ServerObject> objects = ServerObjectManager.GetAllObjects();
+        
+        NetworkHelper.SendResponseMessage(client, MessageType.ObjectSync, ServerID, message.MessageId, objects);
     }
 
+    private static void HandleObjectUpdate(NetworkMessage message)
+    {
+        if (message.Data == null)
+            throw new ArgumentNullException(nameof(message.Data), "Message data is null");
+
+        // Deserialize the ServerObject from the message
+        ServerObject? update = NetworkSerializer.DeserializeData<ServerObject>(message.Data);
+        if (update == null)
+            throw new ArgumentNullException(nameof(update), "Invalid ServerObject data");
+
+        switch (message.MessageType)
+        {
+            case MessageType.ObjectCreate:
+                // Add new object (or overwrite if it exists)
+                ServerObjectManager.AddObject(update);
+                break;
+
+            case MessageType.ObjectUpdate:
+                // Update only provided fields
+                ServerObjectManager.UpdateObject(update.Id, existing =>
+                {
+                    if (!string.IsNullOrEmpty(update.Classname)) existing.Classname = update.Classname;
+                    if (update.Position?.Length > 0) existing.Position = update.Position;
+                    if (update.Rotation?.Length > 0) existing.Rotation = update.Rotation;
+                    if (update.Timestamp != 0) existing.Timestamp = update.Timestamp;
+                    if (!string.IsNullOrEmpty(update.GroupId)) existing.GroupId = update.GroupId;
+                    if (!string.IsNullOrEmpty(update.ParentId)) existing.ParentId = update.ParentId;
+                    if (update.Metadata != null && update.Metadata.Count > 0) existing.Metadata = update.Metadata;
+                });
+                break;
+
+            case MessageType.ObjectRemove:
+                // Remove object by Id
+                ServerObjectManager.RemoveObject(update.Id);
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(message.MessageType), "Unsupported object update type");
+        }
+
+        if (message.MessageType != MessageType.ObjectRemove) update.Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        // Notify all clients
+        foreach (var client in Clients)
+        {
+            if (message.SenderId == client.Id) continue; // Dont send back to client
+            NetworkHelper.SendMessage(client, message.MessageType, message.SenderId, update);
+        }
+    }
 
     private static void HandleClientMessages(object? obj)
     {
         if (obj is not Connection client) return;
 
+        Console.WriteLine("STARTING CLIENT LOOP");
         // Add to client list after successful handshake
         Clients.Add(client);
 
@@ -200,18 +341,30 @@ public static class Server
                 NetworkMessage? message = NetworkHelper.ReadMessage(client);
 
                 if (message == null) continue;
+                if (message.MessageType == MessageType.Handshake)
+                {
+                    if (!client.HandshakeDone) HandleClientHandshake(client, message);
+                }
+
 
                 // basic handling for a few types
                 switch (message.MessageType)
                 {
-                    case MessageType.ObjectSync:
-                        // client requesting sync — send current objects
-                        SendServerObjectsSync(client);
+                    case MessageType.ObjectSync: 
+                        SendServerObjectsSync(client, message);
                         break;
+
                     case MessageType.ClientDisconnect:
-                        Log($"[SERVER] Client {client.Id} requested disconnect");
-                        client.Close();
+                        //TODO notify other clients
+                        RemoveConnection(client);
                         break;
+                    
+                    case MessageType.ObjectCreate:
+                    case MessageType.ObjectRemove:
+                    case MessageType.ObjectUpdate:
+                        HandleObjectUpdate(message);
+                        break;
+
                     default:
                         Log($"[SERVER] Unhandled {message.MessageType} from {client.Id}");
                         break;
@@ -225,8 +378,7 @@ public static class Server
         finally
         {
             Log($"[SERVER] Client {client.Id} disconnected.");
-            try { client.Close(); } catch { }
-            Clients.Remove(client);
+            RemoveConnection(client);
         }
     }
 

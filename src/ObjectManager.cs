@@ -12,7 +12,7 @@ public static class ServerObjectManager
     public static ConcurrentDictionary<string, ServerObject> Objects { get; set; } = new();
 
     /// <summary>Adds a new object or overwrites existing with same Id.</summary>
-    public static void AddOrUpdateObject(ServerObject obj)
+    public static void AddObject(ServerObject obj)
     {
         Objects[obj.Id] = obj;
     }

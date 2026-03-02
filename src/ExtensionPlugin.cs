@@ -9,6 +9,9 @@ using ArmaExtension;
 
 using EdenOnline.Models;
 using EdenOnline.Network;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace EdenOnline;
 
@@ -22,22 +25,21 @@ public static class ArmaMethods {
         return Extension.Version;
     }
 
-    public static bool Connect(string ip, int port, string username, string worldname, string armaVersion, object[] mods, string password) {
-        string clientHash = GetHash(new object[] {worldname, mods, Extension.Version, armaVersion});
+    public static async Task<bool> Connect(string ip, int port, string username, string worldname, string armaVersion, object[] mods, string password) {
+        string clientHash = GetHash(new object[] {mods, Extension.Version, armaVersion});
         Log($"Connect Method Called: {ip}:{port}, world: {worldname}, username: {username},  mods: {string.Join(",", mods)}, clientHash: {clientHash}, password: {password}");
 
-        Client.Connect(ip, port, username, clientHash);
+        await Client.Connect(ip, port, username, worldname, clientHash);
         return true;
     }
 
-    public static bool StartServer(string username, double port, string worldname, string armaVersion, object[] mods, string? password = null) {
-        string clientHash = GetHash(new object[] {worldname, mods, Extension.Version, armaVersion});
+    public static async Task<int> StartServer(string username, double port, string worldname, string armaVersion, object[] mods, string? password = null) {
+        string clientHash = GetHash(new object[] {mods, Extension.Version, armaVersion});
 
-        Server.Start(clientHash, password);
-        Client.Connect("127.0.0.1", (int)port, username, clientHash);
+        Server.Start(clientHash, worldname, password);
+        int clientID = await Client.Connect("127.0.0.1", (int)port, username, worldname, clientHash);
 
-        //TODO Wait until Client is connected before returning success and return client ID instead
-        return true;
+        return clientID;
     }
 
     public static bool Disconnect() {
@@ -70,13 +72,8 @@ public static class ArmaMethods {
         Log($"CreateObject Method Called: {objectID}, {classname}, position: [{string.Join(",", position)}], rotation: [{string.Join(",", rotation)}]");
         //if (!Client.IsConnected) throw new Exception("Client is not connected. Cannot create object.");
         
-        ServerObject obj = new(
-            objectID,
-            classname,
-            position,
-            rotation
-        );
-        ServerObjectManager.AddOrUpdateObject(obj);
+        ServerObject obj = new ServerObject{};
+        ServerObjectManager.AddObject(obj);
 
         Console.WriteLine(NetworkSerializer.SerializeToBytes(obj));
 
@@ -94,7 +91,7 @@ public static class ArmaMethods {
 
     public static void TestNetwork()
     {
-
+        
         // ✅ Create a test ServerObject
         ServerObject obj = new(
             "testObject",
@@ -112,50 +109,47 @@ public static class ArmaMethods {
         int responseId = 1;
         MessageType responseMethod = MessageType.ObjectUpdate;
         int senderId = 42;
-
+        
         byte[] networkMessage = NetworkSerializer.PackMessage(responseId, responseMethod, senderId, obj);
         Console.WriteLine("Packed network message length: " + networkMessage.Length);
         Console.WriteLine("Packed network message (UTF8 string, skipping length prefix): " + System.Text.Encoding.UTF8.GetString(networkMessage[4..]));
 
         // ✅ Deserialize back from network message
         var (respId, method, sender, type, data) = NetworkSerializer.UnpackMessage(networkMessage);
+        Console.WriteLine($"DATA 1: {data}");
         Console.WriteLine($"Unpacked message: responseId={respId}, method={method}, senderId={sender}, type={type}");
 
         // ✅ Reconstruct the actual ServerObject from dynamic data
-        ServerObject? restoredObj = NetworkSerializer.Reconstruct<ServerObject>(data);
+        ServerObject? restoredObj = NetworkSerializer.DeserializeData<ServerObject>(data!);
         Console.WriteLine($"Restored ServerObject: Id={restoredObj?.Id}, Classname={restoredObj?.Classname}, " +
             $"Position=[{string.Join(",", restoredObj?.Position ?? [])}], " +
-            $"Rotation=[{string.Join(",", restoredObj?.Rotation ?? [])}], Timestamp={restoredObj?.Timestamp}");
+            $"Rotation=[{string.Join(",", restoredObj?.Rotation ?? [])}]");
 
 
 
-        // Test with void data
-        byte[] voidMessage = NetworkSerializer.PackMessage(responseId, MessageType.ClientDisconnect, senderId, null);
-        Console.WriteLine("Packed network message (UTF8 string, skipping length prefix): " + System.Text.Encoding.UTF8.GetString(voidMessage[4..]));
 
-        var (voidRespId, voidMethod, voidSender, voidTypeName, voidData) = NetworkSerializer.UnpackMessage(voidMessage);
-        Console.WriteLine($"Void message unpacked: responseId={voidRespId}, method={voidMethod}, senderId={voidSender}, type={voidTypeName}, data={(voidData == null ? "null" : voidData.ToString())}");
+        try {
+            List<ServerObject> objects = [
+                new("obj1", "Land_CncBarrier_striped_F", [0, 0, 0], [0, 0, 0]),
+                new("obj2", "Land_Tank_01", [10, 0, 0], [0, 0, 0]),
+                new("obj3", "Land_CncBarrier_striped_F", [20, 0, 0], [0, 0, 0]),
+            ];
+            byte[] listMessage = NetworkSerializer.PackMessage(2, MessageType.ObjectSync, 1, objects);
+            Console.WriteLine("Network message: " + System.Text.Encoding.UTF8.GetString(listMessage[4..]));
 
-        // Test with complex nested data
+            var (listRespId, listMethod, listSender, listTypeName, listData) = NetworkSerializer.UnpackMessage(listMessage);
+            Console.WriteLine($"message unpacked: responseId={listRespId}, method={listMethod}, senderId={listSender}, type={listTypeName}, data={(listData == null ? "null" : listData.ToString())}");
+            
+            //listData = [{"id":"obj1","classname":"asd"}]
+            Console.WriteLine($"DATA 2: {listData}");
+            List<ServerObject>? deserialized = NetworkSerializer.DeserializeData<List<ServerObject>>(listData!);
 
-
-        List<ServerObject> objects = [
-            new("obj1", "Land_CncBarrier_striped_F", [0, 0, 0], [0, 0, 0]),
-            new("obj2", "Land_Tank_01", [10, 0, 0], [0, 0, 0]),
-            new("obj3", "Land_CncBarrier_striped_F", [20, 0, 0], [0, 0, 0]),
-        ];
-        byte[] listMessage = NetworkSerializer.PackMessage(responseId, MessageType.ObjectUpdate, senderId, objects);
-        Console.WriteLine("Packed network message (UTF8 string, skipping length prefix): " + System.Text.Encoding.UTF8.GetString(listMessage[4..]));
-
-        var (listRespId, listMethod, listSender, listTypeName, listData) = NetworkSerializer.UnpackMessage(listMessage);
-        Console.WriteLine($"List message unpacked: responseId={listRespId}, method={listMethod}, senderId={listSender}, type={listTypeName}, data count={((List<ServerObject>?)listData)?.Count}");
-
-
-        List<ServerObject>? objectsRestored = NetworkSerializer.Reconstruct<List<ServerObject>>(listData);
-        Console.WriteLine($"Restored List<ServerObject>: count={objectsRestored?.Count}");
-        foreach (ServerObject item in objectsRestored ?? [])
-        {
-            Console.WriteLine($"Restored ServerObject: Id={item.Id}, Classname={item.Classname}");
+            foreach (ServerObject item in deserialized ?? [])
+            {
+                Console.WriteLine($"Restored ServerObject: Id={item.Id}, Classname={item.Classname}");
+            }
+        } catch (Exception ex) {
+            Console.WriteLine(ex);
         }
     }
 
@@ -190,28 +184,28 @@ public static class ArmaMethods {
         
         Events.OnErrorOccurred += ex => Debug($"ErrorOccurred event triggered: {ex.Message}");
 
-        ServerObjectManager.AddOrUpdateObject(new ServerObject(
+        ServerObjectManager.AddObject(new ServerObject(
             "obj1",
             "Land_CncBarrier_striped_F",
             [0, 0, 0],
             [0, 0, 0]
         ));
 
-        ServerObjectManager.AddOrUpdateObject(new ServerObject(
+        ServerObjectManager.AddObject(new ServerObject(
             "obj2",
             "Land_Tank_01",
             [10, 0, 0],
             [0, 0, 0]
         ));
 
-        ServerObjectManager.AddOrUpdateObject(new ServerObject(
+        ServerObjectManager.AddObject(new ServerObject(
             "obj3",
             "Land_CncBarrier_striped_F",
             [20, 0, 0],
             [0, 0, 0]
         ));
 
-        ServerObjectManager.AddOrUpdateObject(new ServerObject(
+        ServerObjectManager.AddObject(new ServerObject(
             "obj4",
             "Land_CncBarrier_striped_F",
             [30, 0, 0],

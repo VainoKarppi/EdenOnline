@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -16,24 +17,41 @@ public static class NetworkSerializer
 {
     private static readonly JsonSerializerOptions Options = new()
     {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
         WriteIndented = false,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         TypeInfoResolver = new DefaultJsonTypeInfoResolver() // Native AOT-safe
     };
 
-    // Serialize any object to UTF8 bytes
-    public static byte[] SerializeToBytes<T>(T value) => JsonSerializer.SerializeToUtf8Bytes(value, Options);
+    private const int CompressThreshold = 200;
 
-    // Deserialize bytes dynamically into Dictionary<string, object?>
-    public static Dictionary<string, object?> DeserializeToDictionary(byte[] data)
+    // Serialize any object to UTF8 bytes
+    public static byte[] SerializeToBytes<T>(T value, bool compress = false)
     {
-        return JsonSerializer.Deserialize<Dictionary<string, object?>>(data, Options)
-            ?? new Dictionary<string, object?>();
+        byte[] utf8Bytes = JsonSerializer.SerializeToUtf8Bytes(value, Options);
+
+        if (!compress || utf8Bytes.Length < CompressThreshold) // optional threshold for compression
+            return utf8Bytes;
+
+        using var output = new MemoryStream();
+        using (var gzip = new System.IO.Compression.GZipStream(output, System.IO.Compression.CompressionLevel.Optimal, leaveOpen: true))
+        {
+            gzip.Write(utf8Bytes, 0, utf8Bytes.Length);
+        }
+
+        byte[] compressed = output.ToArray();
+        byte[] result = new byte[compressed.Length + 1];
+        result[0] = 1; // 1 = compressed
+        Array.Copy(compressed, 0, result, 1, compressed.Length);
+
+        return result;
     }
 
+
     // Pack message with ResponseId, ResponseMethod (enum as int), SenderId, TypeName, and data
-    public static byte[] PackMessage(int responseId, MessageType responseMethod, int senderId, object? data = null)
+    public static byte[] PackMessage(int messageId, MessageType responseMethod, int senderId, object? data = null)
     {
         string typeName;
 
@@ -56,14 +74,14 @@ public static class NetworkSerializer
         }
 
         object?[] payload = [
-            responseId,
+            messageId,
             (int)responseMethod, // enum as integer
             senderId,
             typeName,
             data
         ];
 
-        byte[] payloadBytes = SerializeToBytes(payload);
+        byte[] payloadBytes = SerializeToBytes(payload, compress: true);
 
         // Encrypt payload if encryption is enabled
         // TODO Fix UnpackMessage decrypt before enabling this feature!
@@ -78,7 +96,7 @@ public static class NetworkSerializer
     }
 
     // Unpack message dynamically
-    public static (int ResponseId, MessageType ResponseMethod, int SenderId, Type IncomingDataType, object? Data) 
+    public static (int ResponseId, MessageType ResponseMethod, int SenderId, Type IncomingDataType, string? Data)
         UnpackMessage(byte[] buffer)
     {
         if (buffer.Length < 4) throw new ArgumentException("Invalid buffer length");
@@ -87,6 +105,17 @@ public static class NetworkSerializer
         if (payloadLength != buffer.Length - 4) throw new ArgumentException("Payload length mismatch");
 
         byte[] payloadBytes = buffer[4..];
+
+        // Check compression flag
+        if (payloadBytes.Length > 0 && payloadBytes[0] == 1)
+        {
+            // Compressed payload
+            using var compressedStream = new MemoryStream(payloadBytes, 1, payloadBytes.Length - 1);
+            using var gzip = new System.IO.Compression.GZipStream(compressedStream, System.IO.Compression.CompressionMode.Decompress);
+            using var decompressed = new MemoryStream();
+            gzip.CopyTo(decompressed);
+            payloadBytes = decompressed.ToArray();
+        }
 
         // TODO: If encryption is enabled, decrypt the payload before deserialization
         //payloadBytes = Encryption.DecryptPayload(payloadBytes, sharedSecret);
@@ -144,39 +173,8 @@ public static class NetworkSerializer
         }
 
         object? data = payload[4];
-        if (data is JsonElement jeData)
-        {
-            if (jeData.ValueKind == JsonValueKind.Object)
-            {
-                // If we could resolve a concrete incoming type, try to deserialize into it.
-                if (incomingType != typeof(object) && !incomingType.IsGenericType)
-                {
-                    data = JsonSerializer.Deserialize(jeData.GetRawText(), incomingType, Options);
-                }
-                else
-                {
-                    data = ParseJsonElementToDictionary(jeData);
-                }
-            }
-            else if (jeData.ValueKind == JsonValueKind.Array)
-            {
-                // If incoming type is a generic List<>, deserialize into that specific list type.
-                if (incomingType.IsGenericType && incomingType.GetGenericTypeDefinition() == typeof(List<>))
-                {
-                    data = JsonSerializer.Deserialize(jeData.GetRawText(), incomingType, Options);
-                }
-                else
-                {
-                    data = JsonSerializer.Deserialize<object?[]>(jeData.GetRawText(), Options);
-                }
-            }
-            else
-            {
-                data = ParseJsonElement(jeData);
-            }
-        }
 
-        return (responseId, responseMethod, senderId, incomingType, data);
+        return (responseId, responseMethod, senderId, incomingType, data?.ToString());
     }
 
     // Manually parse JsonElement to Dictionary to avoid AOT issues
@@ -209,9 +207,46 @@ public static class NetworkSerializer
         };
     }
 
-    public static T? Reconstruct<T>(object? data) where T : class
+    public static T? DeserializeData<T>(string json)
     {
-        if (data is null) return null;
+        if (string.IsNullOrWhiteSpace(json))
+            return default;
+
+        Type targetType = typeof(T);
+
+        // Special-case: T is List<U>
+        if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(List<>))
+        {
+            Type itemType = targetType.GetGenericArguments()[0];
+
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            if (root.ValueKind != JsonValueKind.Array)
+                throw new InvalidOperationException("Expected JSON array for List<> deserialization.");
+
+            var list = (System.Collections.IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(itemType))!;
+
+            foreach (var element in root.EnumerateArray())
+            {
+                var item = JsonSerializer.Deserialize(element.GetRawText(), itemType, Options);
+                if (item is not null)
+                    list.Add(item);
+            }
+
+            return (T)list;
+        }
+        else
+        {
+            // Single object
+            return JsonSerializer.Deserialize<T>(json, Options);
+        }
+    }
+
+    
+    public static T? Reconstruct<T>(object? data)
+    {
+        if (data is null) return default;
 
         // Direct cast if already the right type
         if (data is T t) return t;
@@ -230,7 +265,7 @@ public static class NetworkSerializer
             return JsonSerializer.Deserialize<T>(bytes, Options);
         }
 
-        return null;
+        return default;
     }
 
 

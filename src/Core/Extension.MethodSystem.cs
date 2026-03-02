@@ -7,6 +7,7 @@ using static ArmaExtension.Extension;
 using static ArmaExtension.Logger;
 using static ArmaExtension.Enums;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace ArmaExtension;
 
@@ -84,29 +85,20 @@ public static partial class MethodSystem {
     private static int ExecuteSyncMethod(string originalMethod, string[] argArray, nint output, int outputSize)
     {
         MethodInfo methodToInvoke = GetMethod(originalMethod);
-        bool isVoid = IsVoidMethod(methodToInvoke);
 
-
-        // TODO, if no async key is provided for async method, do we still want to fire and forget it as long as it has no return value?
-        //TODO If method is async and no asyn key is provided: throw error
-        // If no key is provided
+        if (IsAsyncWithReturn(methodToInvoke)) {
+            throw new Exception($"Method {methodToInvoke.Name} can only be called using async key!");
+        }
 
         object?[] unserializedData = Serializer.DeserializeJsonArray(argArray);
 
         // Prepare parameters (truncate, validate, fill defaults)
         object?[] finalParams = Serializer.PrepareMethodParameters(methodToInvoke, unserializedData);
 
-        bool isAsync = methodToInvoke.ReturnType == typeof(Task);
-        bool isAsyncWeithReturn = methodToInvoke.ReturnType == typeof(ValueTask);
-
-
-
-        if (IsAsyncWithReturn(methodToInvoke)) {
-            throw new Exception($"Method {methodToInvoke.Name} can only be called using async key!");
-        }
+        bool isVoid = IsVoidMethod(methodToInvoke);
 
         object? returnValue = null;
-        if (isVoid) {
+        if (isVoid && IsAsync(methodToInvoke)) {
             // Fire and forget
             _ = Task.Run(() => methodToInvoke.Invoke(null, finalParams));
         } else {
@@ -265,6 +257,28 @@ public static partial class MethodSystem {
 
         // Fallback for objects
         return "Anything";
+    }
+
+    internal static bool IsAsync(MethodInfo methodInfo) {
+        if (methodInfo == null) return false;
+
+        // Compiler adds this attribute to async methods
+        if (methodInfo.GetCustomAttribute<AsyncStateMachineAttribute>() != null)
+            return true;
+
+        var type = methodInfo.ReturnType;
+
+        if (type == typeof(Task) || type == typeof(ValueTask))
+            return true;
+
+        if (type.IsGenericType)
+        {
+            var def = type.GetGenericTypeDefinition();
+            if (def == typeof(Task<>) || def == typeof(ValueTask<>))
+                return true;
+        }
+
+        return false;
     }
 
     internal static bool IsAsyncWithReturn(MethodInfo methodInfo) {
