@@ -46,7 +46,7 @@ public static partial class MethodSystem {
             string originalMethod = pipeIndex >= 0 ? method[..pipeIndex] : method;
             if (string.IsNullOrEmpty(originalMethod)) throw new Exception("Invalid Method");
 
-            int asyncKey = 0;
+            int asyncKey = -1;
             bool async = pipeIndex >= 0 && int.TryParse(method[(pipeIndex + 1)..], out asyncKey);
 
             // Add method info to context
@@ -98,17 +98,14 @@ public static partial class MethodSystem {
 
         object?[] unserializedData = Serializer.DeserializeJsonArray(methodToInvoke, argArray);
 
-        // Prepare parameters (truncate, validate, fill defaults)
-        object?[] finalParams = Serializer.PrepareMethodParameters(methodToInvoke, unserializedData);
-
         bool isVoid = IsVoidMethod(methodToInvoke);
 
         object? returnValue = null;
         if (isVoid && IsAsync(methodToInvoke)) {
             // Fire and forget
-            _ = Task.Run(() => methodToInvoke.Invoke(null, finalParams));
+            _ = Task.Run(() => methodToInvoke.Invoke(null, unserializedData));
         } else {
-            returnValue = methodToInvoke.Invoke(null, finalParams);
+            returnValue = methodToInvoke.Invoke(null, unserializedData);
         }
 
 

@@ -60,8 +60,7 @@ internal static class AsyncFactory {
                 RaiseAsyncTaskStartd(methodToInvoke.Name, asyncKey, unserializedData);
                 Log(@$"ARMA >> EXTENSION | ASYNC{(isVoid ? "(VOID)" : "")} >> [""{methodToInvoke.Name}|{asyncKey}"", {Serializer.PrintArray(unserializedData)}]");
 
-                object?[] finalParams = Serializer.PrepareMethodParameters(methodToInvoke, unserializedData, asyncKey);
-                object? result = methodToInvoke.Invoke(null, finalParams);
+                object? result = methodToInvoke.Invoke(null, unserializedData);
 
                 if (isVoid) return;
 

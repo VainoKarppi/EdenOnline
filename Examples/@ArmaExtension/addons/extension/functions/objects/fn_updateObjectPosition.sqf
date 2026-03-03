@@ -1,5 +1,8 @@
-
 params ["_object"];
+
+_position = (_object get3DENAttribute "position") select 0;
+
+diag_log format ["UPDATING POSITION %1", _position];
 
 /*
 	_object = ((get3DENSelected "")#0#0);
@@ -9,8 +12,6 @@ params ["_object"];
 */
 // ADD ID AND REGISTER TO LIST
 _id = call EXT_fnc_getId;
-_object setVariable ["EXT_var_objectID",_id];
-EXT_var_objects pushBack _object;
 
 //TODO MAKE SURE IS CONNECTED TO SERVER
 
@@ -19,9 +20,9 @@ EXT_var_objects pushBack _object;
 // TODO CREW
 
 
+
 // hint format ["Entity %1 is in layer %2", typeOf _entity, get3DENLayer _entity];
 
-_attributes = (_object get3DENAttributes "");
-["CreateObject", [_id, _attributes], true] call EXT_fnc_callExtensionAsync;
-// SYNC STATUS
-// ADD EVENTS
+_position = (_object get3DENAttribute "position") select 0;
+systemChat str(_position);
+//["UpdateObjectPosition", [_id, _attributes], true] call EXT_fnc_callExtensionAsync;

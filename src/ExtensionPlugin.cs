@@ -26,18 +26,18 @@ public static class ArmaMethods {
         return Extension.Version;
     }
 
-    public static async Task<bool> Connect(string ip, int port, string username, string worldname, string armaVersion, object[] mods, string password) {
-        string clientHash = GetHash(new object[] {mods, Extension.Version, armaVersion});
-        Log($"Connect Method Called: {ip}:{port}, world: {worldname}, username: {username},  mods: {string.Join(",", mods)}, clientHash: {clientHash}, password: {password}");
+    public static async Task<bool> Connect(string ip, int port, string username, string worldname, string armaVersion, object[] modHashes, string password) {
+        string clientHash = GetHash(new object[] {modHashes, Extension.Version, armaVersion});
+        Log($"Connect Method Called: {ip}:{port}, world: {worldname}, username: {username},  modHashes: {string.Join(",", modHashes)}, clientHash: {clientHash}, password: {password}");
 
         await Client.Connect(ip, port, username, worldname, clientHash);
         return true;
     }
 
-    public static async Task<int> StartServer(string username, double port, string worldname, string armaVersion, object[] mods, string? password = null) {
-        string clientHash = GetHash(new object[] {mods, Extension.Version, armaVersion});
+    public static async Task<int> StartServer(string username, double port, string worldname, string armaVersion, object[] modHashes, string? password = null) {
+        string clientHash = GetHash(new object[] {modHashes, Extension.Version, armaVersion});
 
-        Server.Start(clientHash, worldname, password);
+        Server.Start((int)port, clientHash, worldname, password);
         int clientID = await Client.Connect("127.0.0.1", (int)port, username, worldname, clientHash);
 
         return clientID;

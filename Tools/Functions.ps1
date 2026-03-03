@@ -333,6 +333,16 @@ function Pack-Addons {
         return $false
     }
 
+    # --- Delete existing .pbo files ---
+    $addonFolderPath = Join-Path $modFolder "addons"
+    if (Test-Path $addonFolderPath) {
+        $existingPBOS = Get-ChildItem -Path $addonFolderPath -Filter *.pbo -File
+        foreach ($pbo in $existingPBOS) {
+            Write-Host "Deleting existing PBO: $($pbo.FullName)" -ForegroundColor DarkYellow
+            Remove-Item $pbo.FullName -Force
+        }
+    }
+
     # Get all subfolders in addons directory
     $addonFolders = Get-ChildItem "$modFolder\addons" -Directory
     $i = 0
@@ -365,6 +375,8 @@ function Watch-ExtensionLog {
     $armaPath = Get-ArmaPath
 
     Start-Sleep -Seconds 2
+
+    Write-Host "WAITING FOR EXTENSION LOG TO APPEAR" -ForegroundColor Yellow
 
     if (Test-Path -Path "$armaPath") {
         $logFolder = "$armaPath\" + $((Get-BuildInfo).AssemblyName -replace '_x64$', '') + "_Logs"

@@ -21,7 +21,7 @@ public static class Server
     private static TcpListener? _listener;
     private static UdpRelayServer? _udpServer;
     private static readonly List<Connection> Clients = [];
-    private const int Port = 5000;
+
     public static bool IsRunning => _listener != null;
     private static string? ServerHash;
     public static string? ServerWorld;
@@ -34,7 +34,7 @@ public static class Server
         // UDP relay started by UdpRelayServer elsewhere
     }
 
-    public static void Start(string serverHash = "", string serverWorld = "", string? password = null, bool dedicatedServer = false)
+    public static void Start(int port, string serverHash = "", string serverWorld = "", string? password = null, bool dedicatedServer = false)
     {
         if (Client.ClientListener != null) throw new InvalidOperationException("Client is already running.");
         if (_listener != null) throw new InvalidOperationException("Server is already running.");
@@ -44,12 +44,12 @@ public static class Server
         if (!string.IsNullOrWhiteSpace(password)) ServerPassword = password;
         if (!string.IsNullOrEmpty(serverWorld)) ServerWorld = serverWorld;
 
-        _udpServer = new UdpRelayServer(Port);
+        _udpServer = new UdpRelayServer(port);
         _udpServer.Start();
 
-        _listener = new TcpListener(IPAddress.Any, Port);
+        _listener = new TcpListener(IPAddress.Any, port);
         _listener.Start();
-        Log($"[SERVER] TCP & UDP Server started on port {Port}, with hash: {serverHash}, password protected: {!string.IsNullOrWhiteSpace(password)}, dedicated: {dedicatedServer}");
+        Log($"[SERVER] TCP & UDP Server started on port {port}, with hash: {serverHash}, password protected: {!string.IsNullOrWhiteSpace(password)}, dedicated: {dedicatedServer}");
 
         ThreadPool.QueueUserWorkItem(AcceptClientsLoop);
     }

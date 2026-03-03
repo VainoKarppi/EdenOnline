@@ -10,8 +10,8 @@ params ["_object"];
 	["CreateObject", [_id, _attributes], true] call EXT_fnc_callExtensionAsync;
 */
 // ADD ID AND REGISTER TO LIST
-_object setVariable ["EOE_var_objectID", nil];
-EOE_var_objects deleteAt _object;
+_object setVariable ["EXT_var_objectID", nil];
+EXT_var_objects deleteAt _object;
 
 //TODO MAKE SURE IS CONNECTED TO SERVER
 

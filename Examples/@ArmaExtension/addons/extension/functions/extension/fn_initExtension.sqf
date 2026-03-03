@@ -21,10 +21,14 @@ private _data = (_return select 1) select 0;
 
 if (_return select 0 == "ERROR") exitWith { diag_log format ["ERROR: ", _data]; false };
 
+EXT_var_extensionVersion = _data;
+
 EXT_var_extensionResponses = createHashMap;
 EXT_var_extensionRequests = createHashMap;
 diag_log formatText ["VERSION: %1",_data];
 
-call EXT_fnc_initEvents;
+call EXT_fnc_initExtensionEvents;
+
+call EXT_fnc_init3DENEvents;
 
 true

@@ -61,8 +61,7 @@ while {(diag_tickTime - _startTime) < _timeout} do {
 		_returnData = _return select 0;
 		_success = (_return select 1) == 0;
 	};
-	diag_log format ["LOOP: %1", _loop];
-	uiSleep 0.001;
+	uiSleep 0.005;
 	_loop = _loop + 1;
 };
 

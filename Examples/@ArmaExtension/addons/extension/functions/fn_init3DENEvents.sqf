@@ -16,6 +16,7 @@ add3DENEventHandler ["OnEditableEntityRemoved", {
 
 add3DENEventHandler ["OnEntityDragged", {
 	params ["_entity"];
+	[_entity] spawn EXT_fnc_updateObjectPosition;
 }];
 
 add3DENEventHandler ["OnEntityAttributeChanged", {
