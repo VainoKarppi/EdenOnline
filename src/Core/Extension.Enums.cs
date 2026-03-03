@@ -24,6 +24,7 @@ internal static partial class Enums {
         ASYNC_STATUS_NOT_FOUND,
         ASYNC_STATUS_RUNNING,
         GET_AVAILABLE_METHODS,
+        MANAGE_FLAGS,
         CALLFUNCTION
     }
 }

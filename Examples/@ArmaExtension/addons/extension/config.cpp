@@ -34,10 +34,11 @@ class CfgFunctions
 	};
 
 	class Editor {
-		tag = "EOE";
+		tag = "EXT";
 		class Functions_Main
 		{
 			file = "\scripts\functions";
+			preinit = 1;
 			class init3DEN {}; // Called from Display3DEN:control
 		};
 		class Functions_Extension

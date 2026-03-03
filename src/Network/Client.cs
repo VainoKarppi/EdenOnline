@@ -169,8 +169,8 @@ public static class Client
         Extension.SendToArma("ObjectSyncCount", [response.Count]); // First send object count to track progress
         foreach (var obj in response)
         {
-            Console.WriteLine($"[CLIENT] Received object from server sync: {obj.Classname} (ID: {obj.Id})");
-            Extension.SendToArma("ObjectSync", [obj.Id, obj.Classname, obj.Position, obj.Rotation, obj.ParentId, obj.GroupId, obj.Metadata]);
+            Console.WriteLine($"[CLIENT] Received object from server sync: {obj.Id}");
+            Extension.SendToArma("ObjectSync", [obj.Id, obj.Attributes]);
         }
 
         // TODO request for objects where timestamp later than x
@@ -225,7 +225,7 @@ public static class Client
 
                         ArmaObject? obj = NetworkSerializer.DeserializeData<ArmaObject>(message.Data);
                         if (obj == null) continue;
-                        Extension.SendToArma("ObjectCreated", [obj.Id, obj.Classname, obj.Position, obj.Rotation, obj.ParentId, obj.GroupId, obj.Metadata]);
+                        Extension.SendToArma("ObjectCreated", [obj.Id, obj.Attributes]);
                         break;
 
                     case MessageType.ObjectUpdate:

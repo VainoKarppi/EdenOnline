@@ -15,7 +15,7 @@
 
 sleep 1;
 // string objectID, string classname, object[] position, object[] rotation, string parentId, string groupId
-"XXXX" callExtension ["CreateObject",["test","5000",[0,0,0],[1,1,1]]];
+"XXXX" callExtension ["CreateObject",["AAA",[["ItemClass","B_Truck_01_mover_F"],["Name",""],["Init",""],["Pylons",""],["Position",[3106.45,1646.37,0]],["Rotation",[328.749,0,0]]]]];
 
 
 sleep 5;

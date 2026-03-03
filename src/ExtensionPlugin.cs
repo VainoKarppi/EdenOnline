@@ -12,6 +12,7 @@ using EdenOnline.Network;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
+using System.Xml.Linq;
 
 namespace EdenOnline;
 
@@ -54,32 +55,42 @@ public static class ArmaMethods {
         return true;
     }
 
-    public static string CreateObject(string objectID, string classname, object[] position, object[] rotation) {
-        Log($"CreateObject Method Called: {objectID}, {classname}, position: [{string.Join(",", position)}], rotation: [{string.Join(",", rotation)}]");
-        //if (!Client.IsConnected) throw new Exception("Client is not connected. Cannot create object.");
+    public static string CreateObject(string objectID, Dictionary<string, object?> metadata) {
         
         ArmaObject obj = new(
-            "testObject3",
-            "Land_CncBarrier_striped_F",
-            [0, 5, 0],
-            [0, 5, 0]
+            objectID,
+            metadata
         );
-        obj.Metadata = new() {
-            ["health"] = "100",
-            ["damage"] = 0,
-            ["owner"] = "server",
-            ["simulation"] = true,
-            ["isLocked"] = "false",
-            ["fuel"] = 1.0,
-            ["ammo"] = 1.0,
-        };
         
-        ObjectManager.AddObject(obj);
+        Console.WriteLine(obj.Attributes?.Count);
+        //ObjectManager.AddObject(obj);
 
         NetworkHelper.SendClientMessage(MessageType.ObjectCreate, obj);
 
         return obj.Id;
     }
+
+    public static string UpdateObject(string objectID, Dictionary<string, object?> metadata) {
+        //if (!Client.IsConnected) throw new Exception("Client is not connected. Cannot create object.");
+        
+        ArmaObject obj = new(
+            objectID,
+            metadata
+        );
+        
+        //ObjectManager.UpdateObject(obj);
+
+        NetworkHelper.SendClientMessage(MessageType.ObjectUpdate, obj);
+
+        return obj.Id;
+    }
+
+    public static bool RemoveObject(string objectID) {
+        NetworkHelper.SendClientMessage(MessageType.ObjectRemove, objectID);
+        return true;
+    }
+
+
     public static string GetHash(object item) {
         return item.GetHashCode().ToString();
     }
@@ -92,22 +103,16 @@ public static class ArmaMethods {
             // ✅ Create a test ServerObject
             ArmaObject obj = new(
                 "testObject",
-                "Land_CncBarrier_striped_F",
-                [0, 0, 0],
-                [0, 0, 0],
-                "parentid",
-                "groupid"
+                new Dictionary<string, object?> {
+                    ["health"] = "100",
+                    ["damage"] = "0",
+                    ["owner"] = "server",
+                    ["simulation"] = "true",
+                    ["isLocked"] = false,
+                    ["fuel"] = 1.0,
+                    ["ammo"] = 1.0,
+                }
             );
-            obj.Metadata = new Dictionary<string, object?>
-            {
-                ["health"] = "100",
-                ["damage"] = "0",
-                ["owner"] = "server",
-                ["simulation"] = "true",
-                ["isLocked"] = "false",
-                ["fuel"] = "1.0",
-                ["ammo"] = "1.0",
-            };
 
             byte[] full = NetworkSerializer.PackMessage(2, MessageType.ObjectSync, 1, obj);
             Console.WriteLine("Serialized bytes length: " + full.Length);
@@ -119,7 +124,7 @@ public static class ArmaMethods {
             //listData = [{"id":"obj1","classname":"asd"}]
             Console.WriteLine($"DATA 555: {fullData}");
             ArmaObject? deserialized2 = NetworkSerializer.DeserializeData<ArmaObject>(fullData!);
-            Console.WriteLine(deserialized2?.Metadata);
+            Console.WriteLine(deserialized2?.Attributes);
         } catch (Exception ex) {
             Console.WriteLine(ex);
         }
@@ -131,9 +136,42 @@ public static class ArmaMethods {
 
         try {
             List<ArmaObject> objects = [
-                new("obj1", "Land_CncBarrier_striped_F", [0, 0, 0], [0, 0, 0]),
-                new("obj2", "Land_Tank_01", [10, 0, 0], [0, 0, 0]),
-                new("obj3", "Land_CncBarrier_striped_F", [20, 0, 0], [0, 0, 0]),
+                new(
+                    "testObject1",
+                    new Dictionary<string, object?> {
+                        ["health"] = "100",
+                        ["damage"] = "0",
+                        ["owner"] = "server",
+                        ["simulation"] = "true",
+                        ["isLocked"] = false,
+                        ["fuel"] = 1.0,
+                        ["ammo"] = 1.0,
+                    }
+                ),
+                new(
+                    "testObject2",
+                    new Dictionary<string, object?> {
+                        ["health"] = "100",
+                        ["damage"] = "0",
+                        ["owner"] = "server",
+                        ["simulation"] = "true",
+                        ["isLocked"] = false,
+                        ["fuel"] = 1.0,
+                        ["ammo"] = 1.0,
+                    }
+                ),
+                new(
+                    "testObject3",
+                    new Dictionary<string, object?> {
+                        ["health"] = "100",
+                        ["damage"] = "0",
+                        ["owner"] = "server",
+                        ["simulation"] = "true",
+                        ["isLocked"] = false,
+                        ["fuel"] = 1.0,
+                        ["ammo"] = 1.0,
+                    }
+                )
             ];
             byte[] listMessage = NetworkSerializer.PackMessage(2, MessageType.ObjectSync, 1, objects);
             Console.WriteLine("Network message: " + System.Text.Encoding.UTF8.GetString(listMessage[4..]));
@@ -147,7 +185,7 @@ public static class ArmaMethods {
 
             foreach (ArmaObject item in deserialized ?? [])
             {
-                Console.WriteLine($"Restored ServerObject: Id={item.Id}, Classname={item.Classname}");
+                Console.WriteLine($"Restored ServerObject: Id={item.Id}, Attributes={item.Attributes?.ToString()}");
             }
         } catch (Exception ex) {
             Console.WriteLine(ex);
@@ -185,32 +223,61 @@ public static class ArmaMethods {
         
         Events.OnErrorOccurred += ex => Debug($"ErrorOccurred event triggered: {ex.Message}");
 
-        ObjectManager.AddObject(new ArmaObject(
-            "obj1",
-            "Land_CncBarrier_striped_F",
-            [0, 0, 0],
-            [0, 0, 0]
+        UIEvents.OnLButtonUp += (obj, x, y) => {
+            Console.WriteLine($"LButtonUp triggered at {x}, {y}");
+        };
+
+
+        ObjectManager.AddObject(new(
+            "testObject1",
+            new Dictionary<string, object?> {
+                ["health"] = "100",
+                ["damage"] = "0",
+                ["owner"] = "server",
+                ["simulation"] = "true",
+                ["isLocked"] = false,
+                ["fuel"] = 1.0,
+                ["ammo"] = 1.0,
+            }
         ));
 
-        ObjectManager.AddObject(new ArmaObject(
-            "obj2",
-            "Land_Tank_01",
-            [10, 0, 0],
-            [0, 0, 0]
+        ObjectManager.AddObject(new(
+            "testObject2",
+            new Dictionary<string, object?> {
+                ["health"] = "100",
+                ["damage"] = "0",
+                ["owner"] = "server",
+                ["simulation"] = "true",
+                ["isLocked"] = false,
+                ["fuel"] = 1.0,
+                ["ammo"] = 1.0,
+            }
         ));
 
-        ObjectManager.AddObject(new ArmaObject(
-            "obj3",
-            "Land_CncBarrier_striped_F",
-            [20, 0, 0],
-            [0, 0, 0]
+        ObjectManager.AddObject(new(
+            "testObject3",
+            new Dictionary<string, object?> {
+                ["health"] = "100",
+                ["damage"] = "0",
+                ["owner"] = "server",
+                ["simulation"] = "true",
+                ["isLocked"] = false,
+                ["fuel"] = 1.0,
+                ["ammo"] = 1.0,
+            }
         ));
 
-        ObjectManager.AddObject(new ArmaObject(
-            "obj4",
-            "Land_CncBarrier_striped_F",
-            [30, 0, 0],
-            [0, 0, 0]
+        ObjectManager.AddObject(new(
+            "testObject4",
+            new Dictionary<string, object?> {
+                ["health"] = "100",
+                ["damage"] = "0",
+                ["owner"] = "server",
+                ["simulation"] = "true",
+                ["isLocked"] = false,
+                ["fuel"] = 1.0,
+                ["ammo"] = 1.0,
+            }
         ));
 
         Log("EdenOnline Extension Initialized");

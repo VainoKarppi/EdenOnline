@@ -297,13 +297,7 @@ public static class Server
                 // Update only provided fields
                 ObjectManager.UpdateObject(update.Id, existing =>
                 {
-                    if (!string.IsNullOrEmpty(update.Classname)) existing.Classname = update.Classname;
-                    if (update.Position?.Length > 0) existing.Position = update.Position;
-                    if (update.Rotation?.Length > 0) existing.Rotation = update.Rotation;
-                    if (update.Timestamp != 0) existing.Timestamp = update.Timestamp;
-                    if (!string.IsNullOrEmpty(update.GroupId)) existing.GroupId = update.GroupId;
-                    if (!string.IsNullOrEmpty(update.ParentId)) existing.ParentId = update.ParentId;
-                    if (update.Metadata != null && update.Metadata.Count > 0) existing.Metadata = update.Metadata;
+                    if (update.Attributes != null && update.Attributes.Count > 0) existing.Attributes = update.Attributes;
                 });
                 break;
 

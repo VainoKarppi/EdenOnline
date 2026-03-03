@@ -12,10 +12,11 @@ internal static class Serializer
     /// <summary>
     /// Deserialize an Arma array string into object[], supporting nested arrays.
     /// </summary>
-    internal static object?[] DeserializeJsonArray(string[] armaString)
+    internal static object?[] DeserializeJsonArray(MethodInfo method, string[] armaString)
     {
         if (armaString.Length == 0) return [];
 
+        var parameters = method.GetParameters();
         var result = new object?[armaString.Length];
 
         for (int i = 0; i < armaString.Length; i++)
@@ -25,10 +26,20 @@ internal static class Serializer
 
             try
             {
+                // Detect JSON array input
                 if (item.StartsWith("[") && item.EndsWith("]"))
                 {
                     var node = JsonNode.Parse(item);
-                    parsed = node is JsonArray arr ? ConvertJsonArray(arr) : null;
+
+                    if (node is JsonArray arr){
+                        parsed = ConvertJsonArray(arr);
+
+                        // 🔹 Convert to Dictionary if method expects it
+                        if (i < parameters.Length && parameters[i].ParameterType == typeof(Dictionary<string, object?>) && parsed is object?[] array) {
+                            parsed = ConvertArmaArrayToDictionary(array);
+                        }
+                    }
+                    else parsed = null;
                 }
                 else
                 {
@@ -44,6 +55,21 @@ internal static class Serializer
         }
 
         return result;
+    }
+
+    private static Dictionary<string, object?> ConvertArmaArrayToDictionary(object?[] array)
+    {
+        var dict = new Dictionary<string, object?>();
+
+        foreach (var item in array)
+        {
+            // Format: [["key1", value1], ["key2", value2], ...]
+            if (item is object?[] pair && pair.Length == 2 && pair[0] is string key) {
+                dict[key] = pair[1];
+            }
+        }
+
+        return dict;
     }
 
     internal static object? ConvertJsonArray(JsonArray jsonArray)
@@ -70,49 +96,51 @@ internal static class Serializer
         return temp; // return only primitive values or object[]
     }
 
-    internal static bool TryParseSingleArmaItem(string item, out object? result)
+    internal static void TryParseSingleArmaItem(string item, out object? result)
     {
+        // Preserve exact empty string
+        if (item == "") {
+            result = "";
+            return;
+        }
+
         result = null;
-        if (string.IsNullOrWhiteSpace(item)) return true;
+
+        if (item is null) return;
 
         var trimmed = item.Trim();
-        var lower = trimmed.ToLower();
+        var lower = trimmed.ToLowerInvariant();
 
-        // Null-like values
-        if (lower == "nil" || lower == "any" || lower == "nan" || lower == "objnull")
-            return true;
+        // Null-like values (Arma semantics)
+        if (lower == "nil" || lower == "any" || lower == "nan" || lower == "objnull") {
+            result = null;
+            return;
+        }
 
-        // Integer
-        if (int.TryParse(trimmed, NumberStyles.Any, CultureInfo.InvariantCulture, out int i))
-        {
+        if (int.TryParse(trimmed, NumberStyles.Any, CultureInfo.InvariantCulture, out int i)) {
             result = i;
-            return true;
+            return;
         }
 
-        // Double
-        if (double.TryParse(trimmed, NumberStyles.Any, CultureInfo.InvariantCulture, out double d))
-        {
+        if (double.TryParse(trimmed, NumberStyles.Any, CultureInfo.InvariantCulture, out double d)) {
             result = d;
-            return true;
+            return;
         }
 
-        // Boolean
-        if (bool.TryParse(trimmed, out bool b))
-        {
+        if (bool.TryParse(trimmed, out bool b)) {
             result = b;
-            return true;
+            return;
         }
 
-        // Quoted string
-        if (trimmed.StartsWith('"') && trimmed.EndsWith('"'))
-        {
+        // Quoted string (from JSON-like input)
+        if (trimmed.Length >= 2 && trimmed[0] == '"' && trimmed[^1] == '"') {
             result = trimmed[1..^1];
-            return true;
+            return;
         }
 
-        // Fallback string
+        // Fallback string (DO NOT null this)
         result = trimmed;
-        return true;
+        return;
     }
 
     /// <summary>

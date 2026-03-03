@@ -19,6 +19,7 @@
     <StripSymbols>true</StripSymbols>
     <Optimization>true</Optimization>
     <IsTrimmable>false</IsTrimmable>
+    <TrimMode>partial</TrimMode>
 
     <NoWarn>IL3002;IL2026;IL2065;IL3050;IL2069;IL3053;IDE0270;IDE0019;IL2062</NoWarn>
     

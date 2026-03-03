@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -33,7 +34,8 @@ public static class NetworkSerializer
             new DictionaryStringObjectConverter(),
 
             // Convert List<T> dynamically
-            new ListDynamicConverterFactory()
+            new ListDynamicConverterFactory(),
+            new NullableConverterFactory()
         }
     };
 
@@ -321,6 +323,96 @@ public static class NetworkSerializer
                 list.Add(ReadValue(item));
 
             return list;
+        }
+    }
+
+    public sealed class ObjectDynamicConverter : JsonConverter<object?>
+    {
+        public override object? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            using var doc = JsonDocument.ParseValue(ref reader);
+            return ParseElement(doc.RootElement);
+        }
+
+        private static object? ParseElement(JsonElement element) => element.ValueKind switch
+        {
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number => element.TryGetInt64(out var l) ? l : element.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            JsonValueKind.Object => element.EnumerateObject()
+                                        .ToDictionary(p => p.Name, p => ParseElement(p.Value)),
+            JsonValueKind.Array => element.EnumerateArray().Select(ParseElement).ToArray(),
+            _ => null
+        };
+
+        public override void Write(Utf8JsonWriter writer, object? value, JsonSerializerOptions options)
+        {
+            switch (value)
+            {
+                case null: writer.WriteNullValue(); break;
+                case string s: writer.WriteStringValue(s); break;
+                case bool b: writer.WriteBooleanValue(b); break;
+                case int i: writer.WriteNumberValue(i); break;
+                case long l: writer.WriteNumberValue(l); break;
+                case float f: writer.WriteNumberValue(f); break;
+                case double d: writer.WriteNumberValue(d); break;
+                case IDictionary<string, object?> dict:
+                    writer.WriteStartObject();
+                    foreach (var kvp in dict)
+                    {
+                        writer.WritePropertyName(kvp.Key);
+                        Write(writer, kvp.Value, options);
+                    }
+                    writer.WriteEndObject();
+                    break;
+                case IEnumerable<object?> list:
+                    writer.WriteStartArray();
+                    foreach (var item in list)
+                        Write(writer, item, options);
+                    writer.WriteEndArray();
+                    break;
+                default:
+                    writer.WriteStringValue(Convert.ToString(value, CultureInfo.InvariantCulture));
+                    break;
+            }
+        }
+    }
+    public sealed class NullableConverterFactory : JsonConverterFactory
+    {
+        public override bool CanConvert(Type typeToConvert)
+            => Nullable.GetUnderlyingType(typeToConvert) != null;
+
+        public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options)
+        {
+            Type? underlyingType = Nullable.GetUnderlyingType(typeToConvert);
+            if (underlyingType == null)
+                throw new InvalidOperationException("Type is not nullable");
+
+            // Dynamically create a converter for T?
+            Type converterType = typeof(NullableConverterInner<>).MakeGenericType(underlyingType);
+            return (JsonConverter)Activator.CreateInstance(converterType)!;
+        }
+
+        private sealed class NullableConverterInner<T> : JsonConverter<T?>
+        {
+            public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            {
+                if (reader.TokenType == JsonTokenType.Null)
+                    return default;
+
+                // Deserialize underlying type T directly
+                return JsonSerializer.Deserialize<T>(ref reader, options);
+            }
+
+            public override void Write(Utf8JsonWriter writer, T? value, JsonSerializerOptions options)
+            {
+                if (value != null)
+                    JsonSerializer.Serialize(writer, value, options);
+                else
+                    writer.WriteNullValue();
+            }
         }
     }
 

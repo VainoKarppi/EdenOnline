@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using static ArmaExtension.Logger;
@@ -9,34 +10,7 @@ using static ArmaExtension.PluginLoader;
 namespace ArmaExtension;
 
 public static partial class Extension {
-    /// <summary>
-    /// Get the context information passed from Arma 3.
-    /// </summary>
-    public readonly static List<string> ExtensionContext = []; // TODO: What should we actually contain in this
-    private static bool _contextInitialized = false;
 
-    [UnmanagedCallersOnly(EntryPoint = "RVExtensionContext")]
-    private static unsafe void RVExtensionContext(IntPtr* args, uint argsCnt) {
-        if (_contextInitialized) return;
-
-        ExtensionContext.Clear();
-
-        // We expect at least 5 elements (CaptionText, SteamID, FileSource, MissionName, ServerName)
-        // Defensive: if argsCnt < 5, fill missing with empty string
-        string captionText = argsCnt > 0 && args[0] != IntPtr.Zero ? Marshal.PtrToStringAnsi(args[0]) ?? string.Empty : string.Empty;
-        string steamId = argsCnt > 1 && args[1] != IntPtr.Zero ? Marshal.PtrToStringAnsi(args[1]) ?? string.Empty : string.Empty;
-        string fileSource = argsCnt > 2 && args[2] != IntPtr.Zero ? Marshal.PtrToStringAnsi(args[2]) ?? string.Empty : string.Empty;
-        string missionName = argsCnt > 3 && args[3] != IntPtr.Zero ? Marshal.PtrToStringAnsi(args[3]) ?? string.Empty : string.Empty;
-        string serverName = argsCnt > 4 && args[4] != IntPtr.Zero ? Marshal.PtrToStringAnsi(args[4]) ?? string.Empty : string.Empty;
-
-        ExtensionContext.Add(captionText);
-        ExtensionContext.Add(steamId);
-        ExtensionContext.Add(fileSource);
-        ExtensionContext.Add(missionName);
-        ExtensionContext.Add(serverName);
-
-        _contextInitialized = true;
-    }
 
     /// <summary>
     /// Called only once when Arma 3 loads the extension.

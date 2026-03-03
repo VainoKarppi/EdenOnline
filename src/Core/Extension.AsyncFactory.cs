@@ -40,8 +40,8 @@ internal static class AsyncFactory {
         return ExtensionResultCode.ASYNC_STATUS_RUNNING;
     }
 
-    internal static bool ExecuteAsyncTask(MethodInfo method, string[] argArray, int asyncKey) {
-        bool isVoid = IsVoidMethod(method) || asyncKey == -1;
+    internal static bool ExecuteAsyncTask(MethodInfo methodToInvoke, string[] argArray, int asyncKey) {
+        bool isVoid = IsVoidMethod(methodToInvoke) || asyncKey == -1;
 
         var source = new CancellationTokenSource();
 
@@ -56,18 +56,18 @@ internal static class AsyncFactory {
         // Start the actual task
         var task = Task.Run(async () => {
             try {
-                object?[] unserializedData = Serializer.DeserializeJsonArray(argArray);
-                RaiseAsyncTaskStartd(method.Name, asyncKey, unserializedData);
-                Log(@$"ARMA >> EXTENSION | ASYNC{(isVoid ? "(VOID)" : "")} >> [""{method.Name}|{asyncKey}"", {Serializer.PrintArray(unserializedData)}]");
+                object?[] unserializedData = Serializer.DeserializeJsonArray(methodToInvoke, argArray);
+                RaiseAsyncTaskStartd(methodToInvoke.Name, asyncKey, unserializedData);
+                Log(@$"ARMA >> EXTENSION | ASYNC{(isVoid ? "(VOID)" : "")} >> [""{methodToInvoke.Name}|{asyncKey}"", {Serializer.PrintArray(unserializedData)}]");
 
-                object?[] finalParams = Serializer.PrepareMethodParameters(method, unserializedData, asyncKey);
-                object? result = method.Invoke(null, finalParams);
+                object?[] finalParams = Serializer.PrepareMethodParameters(methodToInvoke, unserializedData, asyncKey);
+                object? result = methodToInvoke.Invoke(null, finalParams);
 
                 if (isVoid) return;
 
                 result = await UnwrapAsync(result);
 
-                RaiseAsyncTaskCompleted(method.Name, asyncKey, true, [result]);
+                RaiseAsyncTaskCompleted(methodToInvoke.Name, asyncKey, true, [result]);
                 Extension.SendAsyncResponseCallbackMessage(
                     ExtensionResultCode.ASYNC_RESPONSE.ToString(),
                     [result],
@@ -76,7 +76,7 @@ internal static class AsyncFactory {
                 );
             } catch (Exception ex) {
                 ex = ex.InnerException ?? ex;
-                RaiseAsyncTaskCompleted(method.Name, asyncKey, false, [ex.Message]);
+                RaiseAsyncTaskCompleted(methodToInvoke.Name, asyncKey, false, [ex.Message]);
                 Extension.SendAsyncResponseCallbackMessage(
                     ExtensionResultCode.ASYNC_SENT_FAILED.ToString(),
                     [ex.Message],
