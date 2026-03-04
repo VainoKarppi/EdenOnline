@@ -9,9 +9,11 @@ if (missionNamespace getVariable ["EXT_var_Connected",false]) exitWith {
 	["YOU ARE ALREADY CONNECTED", 1, 5] call BIS_fnc_3DENNotification;
 };
 
+/*
 if !((all3DENEntities) isEqualto [[],[],[],[],[],[],[],[-999]]) exitWith {
 	["World must be empty first!", 1, 5] call BIS_fnc_3DENNotification;
 };
+*/
 
 EXT_var_expectedObjectSyncCount = -1;
 
@@ -36,7 +38,16 @@ private _id = (_return select 1) select 0;
 missionNamespace setVariable ["EXT_var_clientID",_id];
 
 
-// Start object synchronize
+// Send current world edits to server
+{
+    _attributes = (_x get3DENAttributes "");
+    _id = _x call EXT_fnc_getId;
+
+    ["CreateObject", [_id, _attributes]] call EXT_fnc_callExtensionAsync;
+} forEach (all3DENEntities # 0);
+
+uiSleep 1;
+
 
 private _timeoutSeconds = 30;
 private _startTime = diag_tickTime;

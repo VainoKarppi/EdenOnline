@@ -30,7 +30,7 @@ _timer = [_id] spawn {
 	private _queue = EXT_var_AttributeQueues getOrDefault [_id, createHashMap];
 	if (count _queue == 0) exitWith {};
 
-	diag_log format ["[EXT] Batch sending %1 attrs for %2", _queue, _id];
+	diag_log format ["Batch sending update (%1): %2", _id, _queue];
 	["UpdateObject", [_id, _queue], true] call EXT_fnc_callExtensionAsync;
 
 	EXT_var_AttributeQueues deleteAt _id;

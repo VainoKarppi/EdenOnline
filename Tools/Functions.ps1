@@ -522,7 +522,7 @@ function Start-Arma {
 
         # Start Arma 3 with the mod in windowed mode
         $armaExe = "$armaPath\arma3_x64.exe"
-        $launchArgs = "-window -mod=$modFolder -noBattleEye -nosplash -skipIntro -noPause -enableHT -hugePages -debugCallExtension"
+        $launchArgs = "-window -mod=$modFolder -noBattleEye -nosplash -skipIntro -noPause -enableHT -hugePages"
 
         Write-Host "Launching Arma 3..." -ForegroundColor Green
         Start-Process -FilePath $armaExe -ArgumentList $launchArgs -NoNewWindow

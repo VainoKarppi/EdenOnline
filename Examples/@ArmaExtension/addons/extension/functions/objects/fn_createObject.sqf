@@ -32,8 +32,5 @@ _id = _object call EXT_fnc_getId;
 
 _attributes = (_object get3DENAttributes "");
 
-diag_log _attributes;
-_return = ["CreateObject", [_id, _attributes]] call EXT_fnc_callExtensionAsync;
 
-diag_log _return;
-
+["CreateObject", [_id, _attributes]] call EXT_fnc_callExtensionAsync;

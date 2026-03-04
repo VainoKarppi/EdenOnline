@@ -46,7 +46,6 @@ addMissionEventHandler ["ExtensionCallback",{
 				};
 
 				case "ObjectCreated": {
-					diag_log "ObjectCreated";
 					private _id = _data select 0;
 					private _map = createHashMapFromArray (_data select 1);
 					private _object = create3DENEntity ["Object", _map get "ItemClass", _map get "Position"];
@@ -54,19 +53,18 @@ addMissionEventHandler ["ExtensionCallback",{
 				};
 
 				case "ObjectUpdated": {
-					diag_log "ObjectUpdate";
 					private _id = _data select 0;
 					private _map = createHashMapFromArray (_data select 1);
 
 					{
 						private _objId = _x getVariable "EXT_objectID";
 						if (!isNil "_objId" && _objId == _id) exitWith {
-							private _foundObject = _x;
-							diag_log format ["Matched object %1 for client ID %2", _foundObject, _id];
+							private _object = _x;
 							{
-								_foundObject set3DENAttribute [_x#0, _x#1];
+								if (isNil "_x" || isNil "_y") then { continue };
+
+								_object set3DENAttribute [_x, _y];
 							} forEach _map;
-							
 						};
 					} forEach (all3DENEntities # 0);
 				};
@@ -74,6 +72,15 @@ addMissionEventHandler ["ExtensionCallback",{
 
 				case "ObjectRemoved": {
 					diag_log "ObjectRemoved";
+					private _id = _data select 0;
+					{
+						private _objId = _x getVariable "EXT_objectID";
+						diag_log format ["%1", _objId];
+						if (!isNil "_objId" && _objId == _id) exitWith {
+							diag_log format ["Removed entity: %1", _x];
+							delete3DENEntities [_x];
+						};
+					} forEach (all3DENEntities # 0);
 				};
 
 				default {
