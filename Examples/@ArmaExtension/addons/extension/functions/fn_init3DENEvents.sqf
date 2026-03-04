@@ -1,6 +1,6 @@
 
 
-diag_log "3DEN INITIALIZED";
+diag_log "3DEN Online Events Initialized";
 
 
 // * OBJECTS
@@ -14,13 +14,22 @@ add3DENEventHandler ["OnEditableEntityRemoved", {
 	[_entity] spawn EXT_fnc_deleteObject;
 }];
 
+
+// TODO add to current edit list, and check for every 10 frame, track position, if last update of position 0.5 seconds ago = last position send update
 add3DENEventHandler ["OnEntityDragged", {
 	params ["_entity"];
 	[_entity] spawn EXT_fnc_updateObjectPosition;
 }];
 
+
+// One-time setup - can be called from init.sqf or wherever your mod initializes
+if (isNil "EXT_var_AttributeQueues") then {
+    EXT_var_AttributeQueues = createHashMap;          // object → [ [property, value], ... ]
+    EXT_var_AttributeTimers  = createHashMap;         // object → scriptHandle (for terminate)
+};
+
 add3DENEventHandler ["OnEntityAttributeChanged", {
-	params ["_entity", "_property"];
+	_this spawn EXT_fnc_updateObjectAttributes;
 }];
 
 // * CONNECTIONS

@@ -23,3 +23,19 @@ addMissionEventHandler ["Draw3D", {
 	hint format ["Position: %1\nDirection: %2\nUp: %3", _startPos, _forwardVec, _endPos];
     drawLine3D [_startPos, _endPos, [1, 0, 0, 5]];  // Red color with full alpha
 }];
+
+
+
+// This works in SP for player
+addMissionEventHandler ["Draw3D", {
+
+    private _startASL = eyePos player;
+    private _dir = vectorDirVisual player;  // Visual direction, includes pitch
+    private _endASL = _startASL vectorAdd (_dir vectorMultiply 200);
+
+    drawLine3D [
+        ASLToAGL _startASL,
+        ASLToAGL _endASL,
+        [1,0,0,1]
+    ];
+}];

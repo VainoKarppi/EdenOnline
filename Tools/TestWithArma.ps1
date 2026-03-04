@@ -22,13 +22,14 @@ Write-Host "Project Path: $projectPath" -ForegroundColor Blue
 Write-Host "Mod Path: $modFolder" -ForegroundColor Blue
 Write-Host ""
 
-Terminate-ExistingProcess
+# Terminate-ExistingProcess
 
 if (Build-Project -projectPath $projectPath -destinationPath $modFolder) {
     if (Pack-Addons -modFolder $modFolder) {
         if (Start-Arma) {
             # Combine Watch-ExtensionLog and Watch-RPTLog in the same console
             # E:\SteamLibrary\steamapps\common\Arma 3\ArmaExtension_Logs
+            # TODO FIX WHERE ONLY RPT IS LOGGED
             Start-Job -ScriptBlock {
                 . "$using:functionsScript"
                 Watch-ExtensionLog | ForEach-Object { Write-Host "[EXT] $_" }

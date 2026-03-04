@@ -66,6 +66,12 @@ public static partial class MethodSystem {
                     
                     case ExtensionResultCode.MANAGE_FLAGS:
                         return HandleManageFlags(output, outputSize, originalMethod, argArray);
+                    
+                    case ExtensionResultCode.SET_LOG_LEVEL:
+                        return HandleSetLogLevel(output, outputSize, originalMethod, argArray);
+                    
+                    case ExtensionResultCode.GET_LOG_LEVEL:
+                        return HandleGetLogLevel(output, outputSize, originalMethod);
                 }
             }
 
@@ -86,6 +92,40 @@ public static partial class MethodSystem {
                 $@"[""{ExtensionResultCode.ERROR}"",[""{ex.Message}""]]",
                 (int)ReturnCodes.Error);
         }
+    }
+
+    private static int HandleGetLogLevel(nint output, int outputSize, string method) {
+        return WriteOutput(output, outputSize, method,
+            $@"[""{ExtensionResultCode.SUCCESS}"",[{CurrentLogLevel}]]",
+            (int)ReturnCodes.Success);
+    }
+    private static int HandleSetLogLevel(nint output, int outputSize, string method, string[] args) {
+        if (args.Length == 0)
+            return WriteOutput(output, outputSize, method,
+                $@"[""{ExtensionResultCode.ERROR}"",[""Missing arguments""]]",
+                (int)ReturnCodes.InvalidParameters);
+
+        string arg = args[0];
+        LogLevel logLevel;
+
+        // Try parsing as number first
+        if (int.TryParse(arg, out int numericLevel) && Enum.IsDefined(typeof(LogLevel), numericLevel))
+            logLevel = (LogLevel)numericLevel;
+
+        // Otherwise, try parsing as string
+        else if (Enum.TryParse(arg, true, out LogLevel parsedLevel))
+            logLevel = parsedLevel;
+        else
+            return WriteOutput(output, outputSize, method,
+                $@"[""{ExtensionResultCode.ERROR}"",[""Invalid log level: {arg}""]]",
+                (int)ReturnCodes.InvalidParameters);
+
+        // Update current log level
+        CurrentLogLevel = logLevel;
+
+        return WriteOutput(output, outputSize, method,
+            $@"[""{ExtensionResultCode.SUCCESS}"",[]]",
+            (int)ReturnCodes.Success);
     }
 
     private static int ExecuteSyncMethod(string originalMethod, string[] argArray, nint output, int outputSize)

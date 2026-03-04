@@ -25,7 +25,7 @@ public static class Server
     public static bool IsRunning => _listener != null;
     private static string? ServerHash;
     public static string? ServerWorld;
-    private static string? ServerPassword;
+    private static string ServerPassword { get; set; } = "";
 
     private const int ServerID = 1;
 
@@ -237,6 +237,19 @@ public static class Server
         client.Username = data.Username;
         client.Hash = data.Hash;
 
+        // TODO
+        
+        if (!VerifyClientPassword(data.PasswordHash))
+        {
+            HandshakeMessage responseFail = new() {
+                Status = "Wrong password"
+            };
+            NetworkHelper.SendResponseMessage(client, MessageType.Handshake, ServerID, message.MessageId, responseFail);
+            RemoveConnection(client);
+            return;
+        }
+
+        /*
         if (!VerifyClientHandshake(client.Hash))
         {
             HandshakeMessage responseFail = new() {
@@ -246,6 +259,7 @@ public static class Server
             RemoveConnection(client);
             return;
         }
+        */
 
         object[] OtherClients = Clients.Select(c => new ArmaClient { Id = c.Id, Username = c.Username }).ToArray();
 
@@ -376,7 +390,10 @@ public static class Server
         }
     }
 
-
+    private static bool VerifyClientPassword(string passwordHash)
+    {
+        return NetworkHelper.HashPassword(ServerPassword) == passwordHash;
+    }
     private static bool VerifyClientHandshake(string clientHash)
     {
         return string.IsNullOrEmpty(ServerHash) || clientHash == ServerHash;

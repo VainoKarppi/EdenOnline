@@ -35,14 +35,13 @@ class CfgFunctions
             class callExtension {};
 			class callExtensionAsync {};
             class initExtensionEvents {};
-			class createAsyncId {};
 		};
 		class Functions_Objects
 		{
 			file = "\extension\functions\objects";
             class createObject {};
             class deleteObject {};
-			
+
             class updateObjectAttributes {};
 			class updateObjectPosition {};
 
@@ -55,7 +54,11 @@ class CfgFunctions
 			class connect {};
 			class disconnect {};
 		};
-		
+		class Functions_UI
+		{
+			file = "\extension\functions\ui";
+			class showServerDialog {};
+		};
 	};
 };
 
@@ -84,7 +87,7 @@ class Cfg3DEN
 class ctrlMenuStrip;
 class display3DEN
 {
-	onUnload="[1] call EOE_fnc_disconnect;[""onUnload"",_this,""Display3DEN"",'3DENDisplays'] call 	(uinamespace getvariable 'BIS_fnc_initDisplay')"
+	onUnload="[1] call EXT_fnc_disconnect;[""onUnload"",_this,""Display3DEN"",'3DENDisplays'] call (uinamespace getvariable 'BIS_fnc_initDisplay');";
 
 	class Controls
 	{
@@ -106,17 +109,87 @@ class display3DEN
 				class EXT_StartServer
 				{
 					text = "Start Server";
-					picture = "\ArmaExtension\logo.paa";
-					action = "[] spawn EXT_fnc_startServer;";
+					picture = "\a3\3DEN\Data\Controls\ctrlMenu\link_ca.paa";
+					action = "[] spawn EXT_fnc_showServerDialog;";
 				};
 
 				class EXT_Connect
 				{
 					text = "Connect Server";
-					picture = "\ArmaExtension\logo.paa";
-					action = "[] spawn EXT_fnc_connect;";
+					picture = "\a3\3DEN\Data\Controls\ctrlMenu\link_ca.paa";
+					action = "[] spawn EXT_fnc_showServerDialog;";
 				};
 			};
 		};
 	};
+};
+
+class RscText;
+class RscEdit;
+class RscButton;
+class CfgDialogs {
+
+    class EXT_ServerDialog {
+        idd = 5000;
+        movingEnable = 0;
+        enableSimulation = 1;
+
+        class controlsBackground {
+            class Background: RscText {
+                x = 0.35; y = 0.35;
+                w = 0.3;  h = 0.25;
+                colorBackground[] = {0,0,0,0.7};
+            };
+
+            class Title: RscText {
+                text = "Start Server";
+                x = 0.35; y = 0.32;
+                w = 0.3; h = 0.03;
+                colorBackground[] = {0,0,0,0};
+            };
+
+            class PortLabel: RscText {
+                text = "Port:";
+                x = 0.37; y = 0.40;
+                w = 0.1; h = 0.03;
+                colorBackground[] = {0,0,0,0};
+            };
+
+            class PasswordLabel: RscText {
+                text = "Password:";
+                x = 0.37; y = 0.45;
+                w = 0.1; h = 0.03;
+                colorBackground[] = {0,0,0,0};
+            };
+        };
+
+        class controls {
+            class PortEdit: RscEdit {
+                idc = 5001;
+                x = 0.47; y = 0.40;
+                w = 0.15; h = 0.03;
+                text = "2302";
+            };
+
+            class PasswordEdit: RscEdit {
+                idc = 5002;
+                x = 0.47; y = 0.45;
+                w = 0.15; h = 0.03;
+            };
+
+            class ConnectButton: RscButton {
+                text = "Connect";
+                x = 0.37; y = 0.52;
+                w = 0.12; h = 0.04;
+                action = "[] call EXT_fnc_onConnect;";
+            };
+
+            class CancelButton: RscButton {
+                text = "Cancel";
+                x = 0.50; y = 0.52;
+                w = 0.12; h = 0.04;
+                action = "closeDialog 0;";
+            };
+        };
+    };
 };

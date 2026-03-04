@@ -3,6 +3,12 @@
 
 params ["_object"];
 
+if !(missionNamespace getVariable ["EXT_var_Connected",false]) exitWith {
+	["CONNECT OR START SERVER FIRST!", 0,5] call BIS_fnc_3DENNotification;
+};
+
+if (_object in allGroups) exitWith {};
+
 /*
 	_object = ((get3DENSelected "")#0#0);
 	_id = call EXT_fnc_getId;
@@ -10,13 +16,13 @@ params ["_object"];
 	["CreateObject", [_id, _attributes], true] call EXT_fnc_callExtensionAsync;
 */
 // ADD ID AND REGISTER TO LIST
-_object setVariable ["EXT_var_objectID", nil];
-EXT_var_objects deleteAt _object;
+_id = _object call EXT_fnc_getId;
+
+
 
 //TODO MAKE SURE IS CONNECTED TO SERVER
 
-params [["_function","",[""]],["_arguments",[],[[]]],["_fireAndForget",false,[false]],["_timeout",1,[0]]];
 
+["RemoveObject", [_id], true] call EXT_fnc_callExtensionAsync;
 
-_attributes = (_object get3DENAttributes "");
-["CreateObject", [_id, _attributes], true] call EXT_fnc_callExtensionAsync;
+_object setVariable ["EXT_var_objectID", nil];

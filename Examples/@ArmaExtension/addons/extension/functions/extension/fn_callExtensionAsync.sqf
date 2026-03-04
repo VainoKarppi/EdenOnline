@@ -19,12 +19,20 @@ EXT_var_extensionRequests set [_requestId, _function];
 
 _function = _function + "|" + str(_requestId); // Add ASYNC key to request
 
-private _request = [_function ,_arguments];
+private _request = [_function, _arguments];
 
 // Call Extension
 diag_log formatText ["REQUEST ASYNC: %1",_request];
 private _result = EXT_var_extensionName callExtension _request;
-if (_result isEqualTo "" || _fireAndForget) exitWith { EXT_var_extensionRequests deleteAt _requestId }; // Extension not found or fire and forget.
+if (_result isEqualTo "" || _fireAndForget) exitWith {
+	EXT_var_extensionRequests deleteAt _requestId;
+
+	if (_fireAndForget) then {
+		[true,nil]
+	} else {
+		[false,"Extension not found"]
+	};
+};
 
 
 private _return = [];
@@ -40,11 +48,8 @@ _return params ["_returnMessage","_returnData"];
 if (_returnMessage == "ERROR") exitWith {
 	EXT_var_extensionRequests deleteAt _requestId;
 	diag_log formatText ["ERROR: %1", _return select 1];
+	[false, _return select 1];
 };
-
-diag_log formatText ["WAITING FOR REPSONSE FOR REQUEST: %1", _requestId];
-
-
 
 _return = nil;
 
@@ -68,8 +73,11 @@ while {(diag_tickTime - _startTime) < _timeout} do {
 //EXT_var_extensionResponses deleteAt _requestId;
 //EXT_var_extensionRequests deleteAt _requestId;
 
-if !(_success) exitWith { diag_log formatText ["ERROR: %1", _returnData]};
+if !(_success) exitWith {
+	diag_log formatText ["%1", _returnData];
+	[_success, _returnData]
+};
 
 diag_log formatText ["SUCCESS WITH DATA: %1",_returnData];
 
-_returnData
+[_success, _returnData]

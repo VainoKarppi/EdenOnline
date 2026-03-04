@@ -1,17 +1,13 @@
 params ["_object"];
 
-_position = (_object get3DENAttribute "position") select 0;
+if !(missionNamespace getVariable ["EXT_var_Connected",false]) exitWith {
+	["CONNECT OR START SERVER FIRST!", 0,5] call BIS_fnc_3DENNotification;
+};
 
-diag_log format ["UPDATING POSITION %1", _position];
+//TODO SEND ONLY AFTER FINAL POSITION && every 10 tick???
+// TODO SEND USING UDP???
 
-/*
-	_object = ((get3DENSelected "")#0#0);
-	_id = call EXT_fnc_getId;
-	_attributes = (_object get3DENAttributes ""); 
-	["CreateObject", [_id, _attributes], true] call EXT_fnc_callExtensionAsync;
-*/
-// ADD ID AND REGISTER TO LIST
-_id = call EXT_fnc_getId;
+_id = _object call EXT_fnc_getId;
 
 //TODO MAKE SURE IS CONNECTED TO SERVER
 
@@ -24,5 +20,7 @@ _id = call EXT_fnc_getId;
 // hint format ["Entity %1 is in layer %2", typeOf _entity, get3DENLayer _entity];
 
 _position = (_object get3DENAttribute "position") select 0;
-systemChat str(_position);
+if (isNil "_position") exitWith { systemChat "ERROR" };
+
+systemChat str([_id, _position]);
 //["UpdateObjectPosition", [_id, _attributes], true] call EXT_fnc_callExtensionAsync;

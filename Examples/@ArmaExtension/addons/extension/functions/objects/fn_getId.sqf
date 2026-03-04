@@ -1,7 +1,7 @@
 params ["_object"];
 
 
-if (_object in EOE_var_objects) exitWith {_object getVariable "EOE_objectID"};
+if (_object getVariable ["EXT_objectID",""] != "") exitWith {_object getVariable ["EXT_objectID",""]};
 
 /*
     Generates a random ID like: "A9F3K2ZQ"
@@ -21,6 +21,6 @@ generateRandomId = {
 };
 
 private _id = call generateRandomId;
-_object setVariable ["EOE_objectID",_id];
+_object setVariable ["EXT_objectID",_id];
 
 _id

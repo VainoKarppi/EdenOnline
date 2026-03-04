@@ -26,7 +26,7 @@ public static class Client
     public static Action<MessageType, object?>? OnMessageReceived;
     
 
-    public static async Task<int> Connect(string host, int port, string userName, string worldName, string clientHash)
+    public static async Task<int> Connect(string host, int port, string userName, string worldName, string clientHash, string password)
     {
         try
         {
@@ -47,7 +47,7 @@ public static class Client
             ClientListener.Username = userName;
             ClientListener.Hash = clientHash;
 
-            int? userId = await RequestHandshake(worldName);
+            int? userId = await RequestHandshake(worldName, password);
             if (userId == null) {
                 Disconnect();
                 throw new Exception("Unable to receive clientID");
@@ -125,7 +125,7 @@ public static class Client
         return DateTimeOffset.UtcNow.AddMilliseconds(_serverTimeOffsetMilliseconds);
     }
 
-    public static async Task<int> RequestHandshake(string worldName)
+    public static async Task<int> RequestHandshake(string worldName, string password)
     {
         if (ClientListener == null || !ClientListener.Connected) throw new InvalidOperationException("Client is not connected.");
         
@@ -136,6 +136,7 @@ public static class Client
             Username = ClientListener.Username,
             Hash = ClientListener.Hash,
             World = worldName,
+            PasswordHash = NetworkHelper.HashPassword(password),
             ClientId = -1,
             OtherClients = []
         };
@@ -218,29 +219,32 @@ public static class Client
                     continue;
                 }
 
+                if (message.Data == null) continue;
+
                 switch (message.MessageType)
                 {
                     case MessageType.ObjectCreate:
-                        if (message.Data == null) continue;
-
-                        ArmaObject? obj = NetworkSerializer.DeserializeData<ArmaObject>(message.Data);
-                        if (obj == null) continue;
-                        Extension.SendToArma("ObjectCreated", [obj.Id, obj.Attributes]);
+                        ArmaObject? objCreate = NetworkSerializer.DeserializeData<ArmaObject>(message.Data);
+                        if (objCreate == null) continue;
+                        Extension.SendToArma("ObjectCreated", [objCreate.Id, objCreate.Attributes]);
                         break;
 
                     case MessageType.ObjectUpdate:
-
+                        ArmaObject? objUpdate = NetworkSerializer.DeserializeData<ArmaObject>(message.Data);
+                        if (objUpdate == null) continue;
+                        Extension.SendToArma("ObjectUpdated", [objUpdate.Id, objUpdate.Attributes]);
                         break;
 
                     case MessageType.ObjectRemove:
-
+                        ArmaObject? objRemove = NetworkSerializer.DeserializeData<ArmaObject>(message.Data);
+                        if (objRemove == null) continue;
+                        Extension.SendToArma("ObjectRemoved", [objRemove.Id]);
                         break;
 
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(message.MessageType), "Unsupported object update type");
+                        Warning($"Unsupported object update type: {message.MessageType}");
+                        break;
                 }
-
-                if (message.MessageType == MessageType.ServerShutdown) return;
             }
         }
         catch (Exception ex)

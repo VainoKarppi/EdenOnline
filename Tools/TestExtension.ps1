@@ -20,7 +20,7 @@ Write-Host "Project Path: $projectPath" -ForegroundColor Blue
 Write-Host "Destination Path: $destinationPath" -ForegroundColor Blue
 Write-Host ""
 
-Terminate-ExistingProcess
+#Terminate-ExistingProcess
 Download-CallExtension
 
 if (Build-Project -projectPath $projectPath -destinationPath $destinationPath) {

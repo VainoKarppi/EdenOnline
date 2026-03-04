@@ -6,6 +6,8 @@ using static ArmaExtension.Logger;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace EdenOnline.Network;
 
@@ -47,6 +49,7 @@ public class HandshakeMessage
     public string Username { get; set; } = "";
     public string World { get; set; } = "";
     public string Hash { get; set; } = "";
+    public string PasswordHash { get; set; } = "";
     public int ClientId { get; set; }
     public string[] OtherClients { get; set; } = []; // Todo return IDs and Names instead of just names
 }
@@ -67,7 +70,22 @@ public class Connection : TcpClient
 
 public static class NetworkHelper
 {
+    public static string HashPassword(string password)
+    {
+        if (password == null) throw new ArgumentNullException(nameof(password));
 
+        using SHA256 sha256 = SHA256.Create();
+        byte[] bytes = Encoding.UTF8.GetBytes(password);
+        byte[] hash = sha256.ComputeHash(bytes);
+
+        // Convert to hex string
+        StringBuilder sb = new StringBuilder();
+        foreach (byte b in hash)
+            sb.Append(b.ToString("x2")); // lowercase hex
+
+        return sb.ToString();
+    }
+    
     /// <summary>
     /// List of pending requests waiting for response, keyed by requestId. The value is the callback to invoke when response is received.
     /// </summary>

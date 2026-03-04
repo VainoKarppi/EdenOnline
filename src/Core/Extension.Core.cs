@@ -52,6 +52,8 @@ public static partial class Extension {
     private static int RVExtension(nint output, int outputSize, nint function) {
         string method = Marshal.PtrToStringAnsi(function) ?? string.Empty;
 
+        Debug(@$"ARMA >> EXTENSION (No Args) >> {method}");
+
         Events.RaiseMethodCalled(method);
 
         return HandleExecuteExtensionMethod(output, outputSize, method);
@@ -78,6 +80,8 @@ public static partial class Extension {
             nint argPtr = Marshal.ReadIntPtr(args, i * nint.Size);
             argArray[i] = Marshal.PtrToStringAnsi(argPtr) ?? string.Empty;
         }
+
+        Debug(@$"ARMA >> EXTENSION (Args) >> {method} [{string.Join(",", argArray)}]");
 
         return HandleExecuteExtensionMethod(output, outputSize, method, argArray);
     }
