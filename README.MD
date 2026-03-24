@@ -47,3 +47,13 @@ The `src/Core` folder is its own project and should have minimal changes. If you
 3. Run the VSCode task `Test With Arma` to launch your scripts or integration with Arma.
 
 This workflow allows you to quickly test changes without manually copying files or launching Arma separately.
+
+### Disable Message Mirroring for Testing
+
+For testing purposes, the server currently mirrors edits back to the sender client.  
+
+In `Server.cs` (line ~330):
+
+```csharp
+// if (message.SenderId == client.Id) continue; // Don't send back to client
+```
