@@ -27,7 +27,7 @@ It allows object creation, camera movements, and other 3DEN interactions to be s
 ### Project Structure
 
 ```text
-arma3-3den-multiplayer/
+EdenOnline/
 ├── Examples/@ArmaExtension     # Mod / SQF Code
 ├── src/                        # C# extension source code
 ├── Tools/                      # .ps1 script that will run Arma 3 with the changes in C# and sqf code
