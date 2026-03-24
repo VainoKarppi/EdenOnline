@@ -14,6 +14,14 @@ It allows object creation, camera movements, and other 3DEN interactions to be s
 
 ---
 
+## Demo
+
+![Object Sync Test](Docs/ObjectSyncTest.gif)
+
+> Demonstrates object creation synchronized between multiple clients in 3DEN editor.
+
+---
+
 ## Getting Started
 
 ### Requirements
