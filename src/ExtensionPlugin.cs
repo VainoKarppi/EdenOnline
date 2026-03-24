@@ -49,9 +49,9 @@ public static class ArmaMethods {
         
         if (Server.IsRunning) {
             Server.Stop();
-        } else {
-            Client.Disconnect();
         }
+
+        Client.Disconnect();
 
         return true;
     }

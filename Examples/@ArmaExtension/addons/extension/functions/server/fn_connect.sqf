@@ -1,5 +1,5 @@
 
-params [["_port",2302,[0]], ["_password","",[""]]];
+params [["_host","127.0.0.1",[""]], ["_port",2302,[0]], ["_password","",[""]]];
 
 // TODO make sure server is not already running && !connected
 
@@ -21,7 +21,7 @@ startLoadingScreen ["Starting server..."];
 
 uiSleep 0.5;
 
-private _return = ["Connect",["127.0.0.1", _port, profileNameSteam, worldName, _gameVersion, _modHashes, _password]] call EXT_fnc_callExtensionAsync;
+private _return = ["Connect",[_host, _port, profileNameSteam, worldName, _gameVersion, _modHashes, _password]] call EXT_fnc_callExtensionAsync;
 
 
 diag_log _return;
@@ -65,6 +65,8 @@ while {EXT_var_expectedObjectSyncCount == -1 || (count (all3DENEntities # 0)) < 
 };
 
 missionNamespace setVariable ["EXT_var_Connected",true];
+
+call EXT_fnc_init3DENEvents;
 
 [("CONNECTED TO SERVER WITH ID: " + str(_id)), 0,5] call BIS_fnc_3DENNotification;
 

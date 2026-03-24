@@ -237,8 +237,7 @@ public static class Server
         client.Username = data.Username;
         client.Hash = data.Hash;
 
-        // TODO
-        
+
         if (!VerifyClientPassword(data.PasswordHash))
         {
             HandshakeMessage responseFail = new() {
@@ -249,7 +248,6 @@ public static class Server
             return;
         }
 
-        /*
         if (!VerifyClientHandshake(client.Hash))
         {
             HandshakeMessage responseFail = new() {
@@ -259,7 +257,7 @@ public static class Server
             RemoveConnection(client);
             return;
         }
-        */
+        
 
         object[] OtherClients = Clients.Select(c => new ArmaClient { Id = c.Id, Username = c.Username }).ToArray();
 

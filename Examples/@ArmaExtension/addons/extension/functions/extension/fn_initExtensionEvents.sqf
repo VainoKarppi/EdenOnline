@@ -58,12 +58,13 @@ addMissionEventHandler ["ExtensionCallback",{
 
 					{
 						private _objId = _x getVariable "EXT_objectID";
-						if (!isNil "_objId" && _objId == _id) exitWith {
+						if (!isNil "_objId" && _objId == _id) then { // TODO Replace with exitWith when release
 							private _object = _x;
+							_object setVariable ["EXT_updateRequested", true];
 							{
 								if (isNil "_x" || isNil "_y") then { continue };
-
-								_object set3DENAttribute [_x, _y];
+								_success = _object set3DENAttribute [_x, _y];
+								if !(_success) then { diag_log "ERROR: INVALID ATTRIBUTES" };
 							} forEach _map;
 						};
 					} forEach (all3DENEntities # 0);
@@ -71,16 +72,12 @@ addMissionEventHandler ["ExtensionCallback",{
 
 
 				case "ObjectRemoved": {
-					diag_log "ObjectRemoved";
 					private _id = _data select 0;
-					{
-						private _objId = _x getVariable "EXT_objectID";
-						diag_log format ["%1", _objId];
-						if (!isNil "_objId" && _objId == _id) exitWith {
-							diag_log format ["Removed entity: %1", _x];
-							delete3DENEntities [_x];
-						};
-					} forEach (all3DENEntities # 0);
+
+					private _objects = ((all3DENEntities # 0) select { _x getVariable ["EXT_objectID","-1"] == _id });
+					diag_log format ["%1", _objects];
+
+					delete3DENEntities _objects;
 				};
 
 				default {

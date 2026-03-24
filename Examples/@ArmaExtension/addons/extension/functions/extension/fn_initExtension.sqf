@@ -31,6 +31,5 @@ diag_log formatText ["VERSION: %1",_data];
 
 call EXT_fnc_initExtensionEvents;
 
-call EXT_fnc_init3DENEvents;
 
 true

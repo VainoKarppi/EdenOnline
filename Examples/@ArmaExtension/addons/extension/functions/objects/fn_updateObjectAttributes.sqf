@@ -6,13 +6,19 @@ if !(missionNamespace getVariable ["EXT_var_Connected", false]) exitWith {
 	["CONNECT OR START SERVER FIRST!", 0, 5] call BIS_fnc_3DENNotification;
 };
 
+if (_entity in allGroups) exitWith {};
+
+if (_entity getVariable ["EXT_updateRequested", false]) then {
+	diag_log "INCOMING CHANGE";
+};
+
 private _id = _entity call EXT_fnc_getId;
-if (_id == "" || isNil "_id") exitWith {};
+if (_id == "" || isNil "_id") exitWith {diag_log "1"};
 
 
 private _value = (_entity get3DENAttribute _property) select 0;
 
-if (isNil "_value") exitWith {};
+if (isNil "_value") exitWith {diag_log format ["%1 %2", _property, _value]};
 
 private _queue = EXT_var_AttributeQueues getOrDefault [_id, createHashMap, true];
 
@@ -25,7 +31,7 @@ if (!isNil "_timer" && {!scriptDone _timer}) then { terminate _timer; };
 
 _timer = [_id] spawn {
 	params ["_id"];
-	sleep 0.02; // Allow time to queue
+	sleep 0.01; // Allow time to queue
 
 	private _queue = EXT_var_AttributeQueues getOrDefault [_id, createHashMap];
 	if (count _queue == 0) exitWith {};

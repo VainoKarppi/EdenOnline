@@ -4,20 +4,34 @@ diag_log "3DEN Online Events Initialized";
 
 
 // * OBJECTS
+
 add3DENEventHandler ["OnEditableEntityAdded", {
 	params ["_entity"];
+	
+	_id = _entity getVariable "EXT_objectID";
+	if !(isNil "_id") exitWith {};
+
 	[_entity] spawn EXT_fnc_createObject;
 }];
 
 add3DENEventHandler ["OnEditableEntityRemoved", {
 	params ["_entity"];
-	[_entity] spawn EXT_fnc_deleteObject;
+
+	// FIX UNTIL THIS GETS FIXED (single object)
+	if (_entity isEqualType grpNull) exitWith {
+		{
+			[_x] call EXT_fnc_deleteObject;
+		} forEach get3DENSelected "object";
+	};
+
+	[_entity] call EXT_fnc_deleteObject;
 }];
 
 
 // TODO add to current edit list, and check for every 10 frame, track position, if last update of position 0.5 seconds ago = last position send update
 add3DENEventHandler ["OnEntityDragged", {
 	params ["_entity"];
+	
 	[_entity] spawn EXT_fnc_updateObjectPosition;
 }];
 
@@ -29,7 +43,7 @@ if (isNil "EXT_var_AttributeQueues") then {
 };
 
 add3DENEventHandler ["OnEntityAttributeChanged", {
-	_this spawn EXT_fnc_updateObjectAttributes;
+	_this call EXT_fnc_updateObjectAttributes;
 }];
 
 // * CONNECTIONS

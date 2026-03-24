@@ -23,4 +23,6 @@ _position = (_object get3DENAttribute "position") select 0;
 if (isNil "_position") exitWith { systemChat "ERROR" };
 
 systemChat str([_id, _position]);
+
+// SEND POSITION UPDATE OVER UDP. TCP = final position
 //["UpdateObjectPosition", [_id, _attributes], true] call EXT_fnc_callExtensionAsync;
