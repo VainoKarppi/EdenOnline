@@ -4,7 +4,7 @@
 This project enables multiplayer functionality for **Arma 3 3DEN editor**, converting the normally single-player editor into a synchronized multiplayer experience.  
 It allows object creation, camera movements, and other 3DEN interactions to be synced across clients via a server.
 
----
+
 
 ## Features
 
@@ -12,15 +12,14 @@ It allows object creation, camera movements, and other 3DEN interactions to be s
 - Sync camera movements for all players
 - TODO
 
----
-
 ## Demo
 
-![Object Sync Test](Docs/ObjectSyncTest.gif)
+<video src="Docs/ObjectSyncTest.mp4" autoplay loop muted controls width="800">
+  Your browser does not support the video tag.
+</video>
 
-> Demonstrates object creation synchronized between multiple clients in 3DEN editor.
-
----
+> Demonstrates object creation synchronized between multiple clients in 3DEN editor.  
+> **Note:** There are currently **two objects** shown because the second object is a mirrored copy used for testing on a single client.
 
 ## Getting Started
 
