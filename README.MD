@@ -29,6 +29,13 @@ It allows object creation, camera movements, and other 3DEN interactions to be s
 - Windows machine for development
 - .NET 10.0 or newer
 
+- **Visual Studio Build Tools**:
+    - Download the Visual Studio Installer from the following link:
+      [Visual Studio Build Tools](https://aka.ms/vs/17/release/vs_BuildTools.exe)
+    - During installation, select the following components:
+        - **MSVC v143 - VS 2022 C++ x64/x86 build tools** (or newer)
+        - **Windows 11 or 10 SDK** (latest version)
+        - **C++ CMake Tools for Windows**
 ---
 
 ### Project Structure
