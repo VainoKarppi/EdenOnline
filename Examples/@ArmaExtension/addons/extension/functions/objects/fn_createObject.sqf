@@ -25,15 +25,10 @@ if !(isNil "_id") exitWith {};
 _id = _object call EXT_fnc_getId;
 
 
-// params [["_function","",[""]],["_arguments",[],[[]]],["_fireAndForget",false,[false]],["_timeout",1,[0]]];
-
 // TODO CREW
 
 
 // hint format ["Entity %1 is in layer %2", typeOf _entity, get3DENLayer _entity];
-
-// TODO Move to extension
-//_attributes = (_object get3DENAttributes "") select { !isNil {_x#1} };
 
 private _class = (_object get3DENAttribute "ItemClass") select 0;
 private _position = (_object get3DENAttribute "Position") select 0;

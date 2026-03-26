@@ -38,8 +38,6 @@ diag_log _return;
 private _id = ((_return select 1) select 0) select 0;
 private _otherClients = ((_return select 1) select 0) select 1;
 
-diag_log _otherClients;
-
 EXT_var_OtherClients = createHashMapFromArray _otherClients;
 
 missionNamespace setVariable ["EXT_var_clientID",_id];

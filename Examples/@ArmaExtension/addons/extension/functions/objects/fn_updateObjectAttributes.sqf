@@ -8,8 +8,8 @@ if !(missionNamespace getVariable ["EXT_var_Connected", false]) exitWith {
 
 if (_entity in allGroups) exitWith {};
 
+// Event was triggered by incoming update from another client
 if (_entity getVariable ["EXT_updateRequested", false]) exitWith {
-	diag_log "INCOMING CHANGE";
 	_entity setVariable ["EXT_updateRequested", nil];
 };
 _entity setVariable ["EXT_updateRequested", nil];
@@ -38,7 +38,6 @@ _timer = [_id] spawn {
 	private _queue = EXT_var_AttributeQueues getOrDefault [_id, createHashMap];
 	if (count _queue == 0) exitWith {};
 
-	diag_log format ["Batch sending update (%1): %2", _id, _queue];
 	["UpdateObject", [_id, _queue], true] call EXT_fnc_callExtensionAsync;
 
 	EXT_var_AttributeQueues deleteAt _id;

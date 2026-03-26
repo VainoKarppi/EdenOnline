@@ -22,7 +22,12 @@ _function = _function + "|" + str(_requestId); // Add ASYNC key to request
 private _request = [_function, _arguments];
 
 // Call Extension
-diag_log formatText ["REQUEST ASYNC: %1",_request];
+
+// TODO Temp
+if (_function != "CameraUpdate|-1") then {
+	diag_log formatText ["REQUEST ASYNC: %1",_request];
+};
+
 private _result = EXT_var_extensionName callExtension _request;
 if (_result isEqualTo "" || _fireAndForget) exitWith {
 	EXT_var_extensionRequests deleteAt _requestId;

@@ -39,16 +39,9 @@ public static class Server
         if (Client.ClientListener != null) throw new InvalidOperationException("Client is already running.");
         if (_listener != null) throw new InvalidOperationException("Server is already running.");
 
-
         if (!string.IsNullOrEmpty(serverHash)) ServerHash = serverHash;
         if (!string.IsNullOrWhiteSpace(password)) ServerPassword = password;
         if (!string.IsNullOrEmpty(serverWorld)) ServerWorld = serverWorld;
-
-        var test = new Connection();
-        test.Username = "SERVER_TEST";
-        test.Id = Interlocked.Increment(ref _clientIdCounter);
-
-        Clients.Add(test);
 
         _udpServer = new UdpRelayServer(port);
         _udpServer.Start();

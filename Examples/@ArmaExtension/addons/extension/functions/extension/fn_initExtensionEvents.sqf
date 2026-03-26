@@ -15,7 +15,11 @@ addMissionEventHandler ["ExtensionCallback",{
 
 		(_function splitString "|") params ["_method",["_requestID","-1"],["_returnCode","1"]];
 
-		diag_log format ["RESPONSE > _method=%1, _requestID:%2, _returnCode:%3, _data=%4", _method, _requestID, _returnCode, _data];
+		// TODO Temp
+		if (CameraUpdate != "CameraUpdate") then {
+			diag_log format ["RESPONSE > _method=%1, _requestID:%2, _returnCode:%3, _data=%4", _method, _requestID, _returnCode, _data];
+		};
+		
 
 
 		// Is data to be returned
@@ -33,12 +37,10 @@ addMissionEventHandler ["ExtensionCallback",{
 			// IS data that we need to process (call in)
 			switch (_method) do {
 				case "ObjectSyncCount": {
-					diag_log "ObjectSyncCount";
 					EXT_var_expectedObjectSyncCount = _data select 0;
 				};
 
 				case "ObjectSync": {
-					diag_log "ObjectSync";
 					private _id = _data select 0;
 					private _map = createHashMapFromArray (_data select 1);
 					private _object = create3DENEntity ["Object", _map get "ItemClass", _map get "Position"];
@@ -73,10 +75,7 @@ addMissionEventHandler ["ExtensionCallback",{
 
 				case "ObjectRemoved": {
 					private _id = _data select 0;
-
 					private _objects = ((all3DENEntities # 0) select { _x getVariable ["EXT_objectID","-1"] == _id });
-					diag_log format ["%1", _objects];
-
 					delete3DENEntities _objects;
 				};
 
