@@ -144,7 +144,9 @@ public static class NetworkHelper
         {
             byte[] messageBytes = NetworkSerializer.PackMessage(messageId, messageType, senderId);
             client.GetStream().Write(messageBytes, 0, messageBytes.Length);
-            Console.WriteLine($"Sent network message: msgId:{messageId}, msgType:{messageType}, sender:{senderId}, data:{null}");
+
+            string mode = senderId > 1 ? "[CLIENT] " : "[SERVER]";
+            Console.WriteLine($"{mode} Sent network message: msgId:{messageId}, msgType:{messageType}, sender:{senderId}, data:{null}");
         }
         catch (Exception ex)
         {
@@ -256,8 +258,6 @@ public static class NetworkHelper
     {
         try
         {
-            Console.WriteLine($"Waiting for response to request {requestId}");
-
             using var cts = new CancellationTokenSource(timeoutMs);
 
             // Polling loop, but asynchronously

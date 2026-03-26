@@ -15,6 +15,7 @@ using System.Text.Json.Serialization.Metadata;
 using System.Xml.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Linq;
 
 namespace EdenOnline;
 
@@ -25,23 +26,26 @@ public static class ArmaMethods {
         return Extension.Version;
     }
 
-    public static async Task<int> Connect(string host, int port, string username, string worldname, string armaVersion, object[] modHashes, string password = "") {
+    public static async Task<object[]> Connect(string host, int port, string username, string worldname, string armaVersion, object[] modHashes, string password = "") {
         if (!Client.IsConnected) throw new Exception("Client is already connected!");
 
         string clientHash = GetHash(new object[] {modHashes, Extension.Version, armaVersion});
         Log($"Connect Method Called: {host}:{port}, world: {worldname}, username: {username},  modHashes: {string.Join(",", modHashes)}, clientHash: {clientHash}, password: {password}");
 
-        int clientID = await Client.Connect(host, port, username, worldname, clientHash, password);
-        return clientID;
+        (int clientID, object[] otherClients) = await Client.Connect(host, port, username, worldname, clientHash, password);
+
+
+        return [clientID, otherClients];
     }
 
-    public static async Task<int> StartServer(double port, string username, string worldname, string armaVersion, object[] modHashes, string password = "null") {
+    public static async Task<object[]> StartServer(double port, string username, string worldname, string armaVersion, object[] modHashes, string password = "null") {
         string clientHash = GetHash(new object[] {modHashes, Extension.Version, armaVersion});
 
         Server.Start((int)port, clientHash, worldname, password);
-        int clientID = await Client.Connect("127.0.0.1", (int)port, username, worldname, clientHash, password);
+        (int clientID, object[] otherClients) = await Client.Connect("127.0.0.1", (int)port, username, worldname, clientHash, password);
 
-        return clientID;
+        return [clientID, otherClients];
+    }
     }
 
     public static bool Disconnect() {

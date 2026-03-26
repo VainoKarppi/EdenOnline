@@ -15,7 +15,7 @@ addMissionEventHandler ["ExtensionCallback",{
 
 		(_function splitString "|") params ["_method",["_requestID","-1"],["_returnCode","1"]];
 
-		diag_log format ["_method=%1, _requestID:%2, _returnCode:%3, _data=%4", _method, _requestID, _returnCode, _data];
+		diag_log format ["RESPONSE > _method=%1, _requestID:%2, _returnCode:%3, _data=%4", _method, _requestID, _returnCode, _data];
 
 
 		// Is data to be returned

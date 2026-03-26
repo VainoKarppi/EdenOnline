@@ -44,6 +44,12 @@ public static class Server
         if (!string.IsNullOrWhiteSpace(password)) ServerPassword = password;
         if (!string.IsNullOrEmpty(serverWorld)) ServerWorld = serverWorld;
 
+        var test = new Connection();
+        test.Username = "SERVER_TEST";
+        test.Id = Interlocked.Increment(ref _clientIdCounter);
+
+        Clients.Add(test);
+
         _udpServer = new UdpRelayServer(port);
         _udpServer.Start();
 
@@ -258,14 +264,16 @@ public static class Server
             return;
         }
         
-
-        object[] OtherClients = Clients.Select(c => new ArmaClient { Id = c.Id, Username = c.Username }).ToArray();
+        object[] otherClients = Clients
+            .Where(c => c.Id != client.Id)
+            .Select(c => new object[] { c.Id, c.Username })
+            .ToArray();
 
 
         HandshakeMessage response = new() {
             Status = "SUCCESS",
             ClientId = client.Id,
-            OtherClients = []
+            OtherClients = otherClients
         };
         NetworkHelper.SendResponseMessage(client, MessageType.Handshake, ServerID, message.MessageId, response);
 
@@ -336,9 +344,10 @@ public static class Server
     {
         if (obj is not Connection client) return;
 
-        Console.WriteLine("STARTING CLIENT LOOP");
+        Console.WriteLine($"[SERVER] Started client loop for: {client.Username} ({client.Id})");
         // Add to client list after successful handshake
         Clients.Add(client);
+        client.NoDelay = true;
 
         try
         {
@@ -370,6 +379,10 @@ public static class Server
                     case MessageType.ObjectUpdate:
                         HandleObjectUpdate(message);
                         break;
+                    
+                    case MessageType.CameraUpdate:
+                        ForwardClientMessage(message);
+                        break;
 
                     default:
                         Log($"[SERVER] Unhandled {message.MessageType} from {client.Id}");
@@ -385,6 +398,14 @@ public static class Server
         {
             Log($"[SERVER] Client {client.Id} disconnected.");
             RemoveConnection(client);
+        }
+    }
+
+    private static void ForwardClientMessage(NetworkMessage message)
+    {
+        foreach (Connection? client in Clients) {
+            //if (message.SenderId == client.Id) continue; // Dont send back to client
+            NetworkHelper.SendMessage(client, message.MessageType, message.SenderId, message.Data);
         }
     }
 

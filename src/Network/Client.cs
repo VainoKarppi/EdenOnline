@@ -26,7 +26,7 @@ public static class Client
     public static Action<MessageType, object?>? OnMessageReceived;
     
 
-    public static async Task<int> Connect(string host, int port, string userName, string worldName, string clientHash, string password)
+    public static async Task<(int UserID, object[] OtherClients)> Connect(string host, int port, string userName, string worldName, string clientHash, string password)
     {
         try
         {
@@ -47,15 +47,13 @@ public static class Client
             ClientListener.Username = userName;
             ClientListener.Hash = clientHash;
 
-            int? userId = await RequestHandshake(worldName, password);
+            (int? userId, object[] otherClients) = await RequestHandshake(worldName, password);
             if (userId == null) {
                 Disconnect();
                 throw new Exception("Unable to receive clientID");
             }
 
-            Console.WriteLine($"UUUSEER ID: {userId}");
-
-            return (int)userId;
+            return ((int)userId, otherClients);
         }
         catch (Exception ex)
         {
@@ -125,7 +123,7 @@ public static class Client
         return DateTimeOffset.UtcNow.AddMilliseconds(_serverTimeOffsetMilliseconds);
     }
 
-    public static async Task<int> RequestHandshake(string worldName, string password)
+    public static async Task<(int UserID, object[] OtherClients)> RequestHandshake(string worldName, string password)
     {
         if (ClientListener == null || !ClientListener.Connected) throw new InvalidOperationException("Client is not connected.");
         
@@ -147,11 +145,12 @@ public static class Client
 
         if (response.Status != "SUCCESS") throw new Exception($"Handshake rejected: {response.Status}");
 
+
         ClientListener.Id = response.ClientId;
         Log($"[CLIENT] Handshake success. ClientId={ClientListener.Id}");
         await RequestObjectSync();
 
-        return response.ClientId;
+        return (response.ClientId, response.OtherClients);
     }
 
     public static async Task RequestObjectSync()

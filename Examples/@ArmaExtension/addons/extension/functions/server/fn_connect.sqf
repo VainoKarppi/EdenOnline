@@ -31,7 +31,12 @@ if !(_return#0) exitWith {
 	endLoadingScreen;
 };
 
-private _id = (_return select 1) select 0;
+private _id = ((_return select 1) select 0) select 0;
+private _otherClients = ((_return select 1) select 0) select 1;
+
+diag_log format ["%1", _otherClients];
+
+EXT_var_OtherClients = createHashMapFromArray _otherClients;
 
 missionNamespace setVariable ["EXT_var_clientID",_id];
 
