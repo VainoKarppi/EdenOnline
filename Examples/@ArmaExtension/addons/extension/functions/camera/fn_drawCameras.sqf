@@ -40,7 +40,7 @@ onEachFrame {
         _clientID = _x;
         _camData = _y; // [pos, dir]
 
-        _name = EXT_var_OtherClients get _clientID;
+        _name = EXT_var_OtherClients getOrDefault [_clientID, "Unknown"];
         _position = _camData select 0;
         _dir = _camData select 1;
 
@@ -56,24 +56,22 @@ onEachFrame {
 
         drawLine3D [_position, _end, [1,0,0,3]];
 
+        // draw 3d camera icon + name of the other client
         if (!isNil "_name") then { // Should be never nil
-            // draw 3d icon of the other client
-
             _yawDeg = (_dir select 0) atan2 (_dir select 1);
             if (_yawDeg < 0) then { _yawDeg = _yawDeg + 360 };
-
-            _iconDir = _dir getDir _end;
+            _iconDir = getDir get3DENCamera - _yawDeg;
 
             drawIcon3D [
                 "a3\3den\data\cfg3den\camera\cameraTexture_ca.paa",
                 [0, 0, 1, 1],
                 _position,
-                2,
-                2,
+                1.5,
+                1.5,
                 _iconDir,
                 _name,
                 0,
-                0.05,
+                0.03,
                 "PuristaMedium",
                 "center",
                 true
@@ -107,9 +105,76 @@ EXT_var_MAPCTRL = ((findDisplay 313) displayCtrl 51) ctrlAddEventHandler ["Draw"
             _yawDeg,
             _name,
             1,
-            0.03,
+            0.05,
             "TahomaB",
             "right"
         ];
     } forEach _cameras;
 }];
+
+
+/*
+onEachFrame { 
+    _objects = (get3DENSelected "object"); 
+    { 
+        _object = _x; 
+        if (!isNil "_object") then { 
+            _position = getPosAtl _object vectorAdd [0,0,2]; 
+            _dir = (vectorDir _object); 
+            _end = _position vectorAdd (_dir vectorMultiply 1000); 
+
+            _yawDeg = (_dir select 0) atan2 (_dir select 1); 
+            if (_yawDeg < 0) then { _yawDeg = _yawDeg + 360 }; 
+
+            _iconDir = getDir get3DENCamera - _yawDeg; 
+
+            drawIcon3D [ 
+                "a3\3den\data\cfg3den\camera\cameraTexture_ca.paa", 
+                [0, 0, 1, 1], 
+                _position, 
+                2, 
+                2, 
+                _iconDir, 
+                "test", 
+                0, 
+                0.05, 
+                "PuristaMedium", 
+                "center", 
+                true 
+            ]; 
+        }; 
+    } forEach _objects; 
+};
+*/
+/*
+onEachFrame {
+    _objects = (get3DENSelected "object");
+    {
+        _object = _x;
+        if (!isNil "_object") then {
+            _position = getPosAtl _object vectorAdd [0,0,2];
+            _dir = (vectorDir _object);
+            _end = _position vectorAdd (_dir vectorMultiply 1000);
+            _yawDeg = (_dir select 0) atan2 (_dir select 1);
+            if (_yawDeg < 0) then { _yawDeg = _yawDeg + 360 };
+            _iconDir = getDir get3DENCamera - _yawDeg;
+
+
+            drawIcon3D [
+                "a3\3den\data\cfg3den\camera\cameraTexture_ca.paa",
+                [0, 0, 1, 1],
+                _position,
+                2,
+                2,
+                _iconDir,
+                "test",
+                0,
+                0.05,
+                "PuristaMedium",
+                "center",
+                true
+            ];
+        };
+    } forEach _objects;
+};
+*/

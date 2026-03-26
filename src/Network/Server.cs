@@ -265,7 +265,7 @@ public static class Server
         }
         
         object[] otherClients = Clients
-            .Where(c => c.Id != client.Id)
+            //.Where(c => c.Id != client.Id)
             .Select(c => new object[] { c.Id, c.Username })
             .ToArray();
 
