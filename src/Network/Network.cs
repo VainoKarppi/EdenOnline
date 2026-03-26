@@ -25,6 +25,7 @@ public enum MessageType : byte
     ObjectRemove,
     ObjectUpdate,
     ClientDisconnect,
+    CameraUpdate,
     Ping,
     Custom
 }
@@ -51,7 +52,7 @@ public class HandshakeMessage
     public string Hash { get; set; } = "";
     public string PasswordHash { get; set; } = "";
     public int ClientId { get; set; }
-    public string[] OtherClients { get; set; } = []; // Todo return IDs and Names instead of just names
+    public object[] OtherClients { get; set; } = [];
 }
 
 

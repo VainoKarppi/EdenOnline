@@ -239,6 +239,12 @@ public static class Client
                         if (objRemove == null) continue;
                         Extension.SendToArma("ObjectRemoved", [objRemove.Id]);
                         break;
+                    
+                    case MessageType.CameraUpdate:
+                        ArmaCamera? camera = NetworkSerializer.DeserializeData<ArmaCamera>(message.Data);
+                        if (camera == null) continue;
+                        Extension.SendToArma("CameraUpdate", [camera.Id, camera.Position, camera.Direction]);
+                        break;
 
                     default:
                         Warning($"Unsupported object update type: {message.MessageType}");

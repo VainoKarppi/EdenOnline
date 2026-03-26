@@ -46,6 +46,19 @@ public static class ArmaMethods {
 
         return [clientID, otherClients];
     }
+
+    public static void CameraUpdate(object[] position, object[] direction) {
+        if (!Client.IsConnected || Client.ClientListener == null) throw new Exception("Client is not connected. Cannot send camera position.");
+
+
+        ArmaCamera camera = new ArmaCamera {
+            Id = Client.ClientListener.Id,
+            Position = position,
+            Direction = direction
+        };
+
+        // TODO send over UDP isntead
+        NetworkHelper.SendClientMessage(MessageType.CameraUpdate, camera);
     }
 
     public static bool Disconnect() {

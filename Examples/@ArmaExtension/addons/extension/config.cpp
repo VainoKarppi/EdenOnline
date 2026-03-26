@@ -25,7 +25,7 @@ class CfgFunctions
 		class Functions_Camera
 		{
 			file = "\extension\functions\camera";
-			class drawCamera {};
+			class drawCameras {};
 		};
 		class Functions_Extension
 		{

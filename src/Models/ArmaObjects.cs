@@ -76,5 +76,4 @@ public class ArmaCamera
     public int Id { get; set; }
     public object[]? Position { get; set; }
     public object[]? Direction { get; set; }
-    public object[]? Up { get; set; }
 }

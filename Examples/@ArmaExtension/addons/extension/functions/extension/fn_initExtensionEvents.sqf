@@ -80,6 +80,15 @@ addMissionEventHandler ["ExtensionCallback",{
 					delete3DENEntities _objects;
 				};
 
+				case "CameraUpdate": {
+					private _id = _data select 0;
+					private _position = _data select 1;
+					private _direction = _data select 2;
+					
+					_cameras = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap];
+					_cameras set [_id, [_position,_direction]];
+				};
+
 				default {
 					diag_log format ["ERROR: _method:%1, _data:%2", _method, _data];
 				};

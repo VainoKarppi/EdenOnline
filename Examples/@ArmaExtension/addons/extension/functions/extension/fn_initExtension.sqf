@@ -7,6 +7,10 @@ diag_log "Initializing Extension Test for C# .NET";
 EXT_var_extensionName = "ArmaExtension";
 EXT_var_eventsReady = false;
 
+EXT_var_DEBUG = true;
+uiNamespace setVariable ["EXT_var_cameraDrawUpdate", 3];
+
+
 private _result = EXT_var_extensionName callExtension "version";
 if (_result == "") exitWith { false }; // Extension not found. Already logged to .RPT
 

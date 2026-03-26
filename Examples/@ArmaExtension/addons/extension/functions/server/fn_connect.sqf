@@ -72,6 +72,7 @@ while {EXT_var_expectedObjectSyncCount == -1 || (count (all3DENEntities # 0)) < 
 missionNamespace setVariable ["EXT_var_Connected",true];
 
 call EXT_fnc_init3DENEvents;
+[] spawn EXT_fnc_drawCameras;
 
 [("CONNECTED TO SERVER WITH ID: " + str(_id)), 0,5] call BIS_fnc_3DENNotification;
 
