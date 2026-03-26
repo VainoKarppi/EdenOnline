@@ -5,6 +5,9 @@ diag_log "3DEN Online Events Initialized";
 
 // * OBJECTS
 
+// TODO add events for copy / cut / paste / undo / redo
+
+
 add3DENEventHandler ["OnEditableEntityAdded", {
 	params ["_entity"];
 	

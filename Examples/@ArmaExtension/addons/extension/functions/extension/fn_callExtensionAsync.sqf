@@ -75,8 +75,10 @@ while {(diag_tickTime - _startTime) < _timeout} do {
 	_loop = _loop + 1;
 };
 
-//EXT_var_extensionResponses deleteAt _requestId;
-//EXT_var_extensionRequests deleteAt _requestId;
+if !(EXT_var_DEBUG) then {
+	EXT_var_extensionResponses deleteAt _requestId;
+	EXT_var_extensionRequests deleteAt _requestId;
+};
 
 if !(_success) exitWith {
 	diag_log formatText ["%1", _returnData];

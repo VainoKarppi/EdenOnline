@@ -14,9 +14,10 @@ uiNamespace setVariable ["EXT_var_tickTime", diag_tickTime];
 
 
 
-// TODO add smooth interpolation, and read previous history of locations, and calculate "fututre" path
-// TODO replace with ctrlAddEventHandler Draw
-onEachFrame {
+// TODO add smooth interpolation, and read previous history of locations, and calculate "future" path
+// ["EXT_var_GUIDISPLAY", "onEachFrame"] call BIS_fnc_removeStackedEventHandler;
+
+_code = {
     if (isNull (findDisplay 313)) exitWith {};
     // Dont draw on while preview
     if (is3DENPreview) then {continue};
@@ -79,8 +80,11 @@ onEachFrame {
         };
     } forEach _cameras;
 };
+["EXT_var_GUIDISPLAY", "onEachFrame", _code] call BIS_fnc_addStackedEventHandler;
+
 
 // Draw map markers
+// ((findDisplay 313) displayCtrl 51) ctrlRemoveEventHandler ["Draw", EXT_var_MAPCTRL];
 EXT_var_MAPCTRL = ((findDisplay 313) displayCtrl 51) ctrlAddEventHandler ["Draw", {
     _mapCtrl = _this select 0;
     
@@ -112,40 +116,6 @@ EXT_var_MAPCTRL = ((findDisplay 313) displayCtrl 51) ctrlAddEventHandler ["Draw"
     } forEach _cameras;
 }];
 
-
-/*
-onEachFrame { 
-    _objects = (get3DENSelected "object"); 
-    { 
-        _object = _x; 
-        if (!isNil "_object") then { 
-            _position = getPosAtl _object vectorAdd [0,0,2]; 
-            _dir = (vectorDir _object); 
-            _end = _position vectorAdd (_dir vectorMultiply 1000); 
-
-            _yawDeg = (_dir select 0) atan2 (_dir select 1); 
-            if (_yawDeg < 0) then { _yawDeg = _yawDeg + 360 }; 
-
-            _iconDir = getDir get3DENCamera - _yawDeg; 
-
-            drawIcon3D [ 
-                "a3\3den\data\cfg3den\camera\cameraTexture_ca.paa", 
-                [0, 0, 1, 1], 
-                _position, 
-                2, 
-                2, 
-                _iconDir, 
-                "test", 
-                0, 
-                0.05, 
-                "PuristaMedium", 
-                "center", 
-                true 
-            ]; 
-        }; 
-    } forEach _objects; 
-};
-*/
 /*
 onEachFrame {
     _objects = (get3DENSelected "object");

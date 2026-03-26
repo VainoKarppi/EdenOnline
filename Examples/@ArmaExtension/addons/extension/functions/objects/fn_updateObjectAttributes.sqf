@@ -33,7 +33,7 @@ if (!isNil "_timer" && {!scriptDone _timer}) then { terminate _timer; };
 
 _timer = [_id] spawn {
 	params ["_id"];
-	sleep 0.01; // Allow time to queue
+	uiSleep 0.01; // Allow time to queue
 
 	private _queue = EXT_var_AttributeQueues getOrDefault [_id, createHashMap];
 	if (count _queue == 0) exitWith {};

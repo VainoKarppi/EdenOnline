@@ -74,6 +74,7 @@ addMissionEventHandler ["ExtensionCallback",{
 
 
 				case "ObjectRemoved": {
+					_object setVariable ["EXT_updateRequested", true];
 					private _id = _data select 0;
 					private _objects = ((all3DENEntities # 0) select { _x getVariable ["EXT_objectID","-1"] == _id });
 					delete3DENEntities _objects;

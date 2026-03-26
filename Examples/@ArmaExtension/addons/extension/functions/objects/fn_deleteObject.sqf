@@ -16,6 +16,12 @@ if (isNull _object || _object in allGroups) exitWith {};
 	["CreateObject", [_id, _attributes], true] call EXT_fnc_callExtensionAsync;
 */
 
+// Event was triggered by incoming update from another client
+if (_entity getVariable ["EXT_updateRequested", false]) exitWith {
+	_entity setVariable ["EXT_updateRequested", nil];
+};
+_entity setVariable ["EXT_updateRequested", nil];
+
 
 _id = _object call EXT_fnc_getId;
 

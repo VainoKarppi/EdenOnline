@@ -16,7 +16,9 @@ missionNamespace setVariable ["EXT_var_Connected",false];
 EXT_var_extensionResponse = [];
 EXT_var_extensionIDs = [];
 
-
+// Remove camera object draws
+["EXT_var_GUIDISPLAY", "onEachFrame"] call BIS_fnc_removeStackedEventHandler;
+((findDisplay 313) displayCtrl 51) ctrlRemoveEventHandler ["Draw", EXT_var_MAPCTRL];
 
 if (_type == 0) then {
 	["Server was shutdown!",0,5] call BIS_fnc_3DENNotification;

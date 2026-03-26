@@ -23,17 +23,14 @@ private _password = "";
 
 startLoadingScreen ["Starting server..."];
 
-uiSleep 0.5;
+uiSleep 0.1;
 
 private _return = ["StartServer",[_port, profileNameSteam, worldName, _gameVersion, _modHashes, _password]] call EXT_fnc_callExtensionAsync;
-
 
 if !(_return#0) exitWith {
 	[(format ["%1", _return#1]), 1, 5] call BIS_fnc_3DENNotification;
 	endLoadingScreen;
 };
-
-diag_log _return;
 
 private _id = ((_return select 1) select 0) select 0;
 private _otherClients = ((_return select 1) select 0) select 1;
@@ -51,7 +48,7 @@ missionNamespace setVariable ["EXT_var_clientID",_id];
     ["CreateObject", [_id, _attributes]] call EXT_fnc_callExtensionAsync;
 } forEach (all3DENEntities # 0);
 
-uiSleep 1;
+uiSleep 0.1;
 
 
 private _timeoutSeconds = 30;

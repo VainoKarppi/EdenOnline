@@ -38,7 +38,7 @@ EXT_var_OtherClients = createHashMapFromArray _otherClients;
 
 missionNamespace setVariable ["EXT_var_clientID",_id];
 
-// Start object synchronize
+// Wait until objects have been syncronised
 
 private _timeoutSeconds = 30;
 private _startTime = diag_tickTime;
