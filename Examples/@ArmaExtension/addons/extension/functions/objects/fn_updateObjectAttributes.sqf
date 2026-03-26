@@ -8,9 +8,11 @@ if !(missionNamespace getVariable ["EXT_var_Connected", false]) exitWith {
 
 if (_entity in allGroups) exitWith {};
 
-if (_entity getVariable ["EXT_updateRequested", false]) then {
+if (_entity getVariable ["EXT_updateRequested", false]) exitWith {
 	diag_log "INCOMING CHANGE";
+	_entity setVariable ["EXT_updateRequested", nil];
 };
+_entity setVariable ["EXT_updateRequested", nil];
 
 private _id = _entity call EXT_fnc_getId;
 if (_id == "" || isNil "_id") exitWith {diag_log "1"};

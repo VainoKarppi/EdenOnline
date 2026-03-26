@@ -20,7 +20,6 @@ class CfgFunctions
 		class Functions_Main
 		{
 			file = "\extension\functions";
-			class init {};
 			class init3DENEvents {};
 		};
 		class Functions_Camera
@@ -41,9 +40,7 @@ class CfgFunctions
 			file = "\extension\functions\objects";
             class createObject {};
             class deleteObject {};
-
             class updateObjectAttributes {};
-			class updateObjectPosition {};
 
 			class getId {};
 		};
@@ -57,7 +54,7 @@ class CfgFunctions
 		class Functions_UI
 		{
 			file = "\extension\functions\ui";
-			class showServerDialog {};
+			class showConnectDialog {};
 		};
 	};
 };
@@ -102,22 +99,9 @@ class display3DEN
 
 				class EXT_EdenOnline
 				{
-					text = "Eden Online Tools...";
-					items[] = { "EXT_StartServer", "EXT_Connect" }; // Links to items inside the folder
-				};
-
-				class EXT_StartServer
-				{
-					text = "Start Server";
-					picture = "\a3\3DEN\Data\Controls\ctrlMenu\link_ca.paa";
-					action = "[] spawn EXT_fnc_showServerDialog;";
-				};
-
-				class EXT_Connect
-				{
-					text = "Connect Server";
-					picture = "\a3\3DEN\Data\Controls\ctrlMenu\link_ca.paa";
-					action = "[] spawn EXT_fnc_showServerDialog;";
+					text = "Eden Online";
+					picture = "\a3\3DEN\Data\Controls\ctrlMenu\link_ca.paa"; // TODO
+					action = "[] spawn EXT_fnc_showConnectDialog;";
 				};
 			};
 		};
@@ -129,7 +113,7 @@ class RscEdit;
 class RscButton;
 class CfgDialogs {
 
-    class EXT_ServerDialog {
+    class EXT_ConnectDialog {
         idd = 5000;
         movingEnable = 0;
         enableSimulation = 1;

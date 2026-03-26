@@ -88,15 +88,15 @@
     _cancelBtn ctrlCommit 0; 
 
 
-    uiNamespace setVariable ["ServerDialog_HostEdit", _hostEdit];
-    uiNamespace setVariable ["ServerDialog_PortEdit", _portEdit];
-    uiNamespace setVariable ["ServerDialog_PassEdit", _passEdit];
+    uiNamespace setVariable ["EXT_ConnectDialog_HostEdit", _hostEdit];
+    uiNamespace setVariable ["EXT_ConnectDialog_PortEdit", _portEdit];
+    uiNamespace setVariable ["EXT_ConnectDialog_PassEdit", _passEdit];
 
     // Button actions 
     _connectBtn ctrlAddEventHandler ["ButtonClick", { 
-        private _hostCtrl = uiNamespace getVariable "ServerDialog_HostEdit";
-        private _portCtrl = uiNamespace getVariable "ServerDialog_PortEdit";
-        private _passCtrl = uiNamespace getVariable "ServerDialog_PassEdit";
+        private _hostCtrl = uiNamespace getVariable "EXT_ConnectDialog_HostEdit";
+        private _portCtrl = uiNamespace getVariable "EXT_ConnectDialog_PortEdit";
+        private _passCtrl = uiNamespace getVariable "EXT_ConnectDialog_PassEdit";
         
         private _host = ctrlText _hostCtrl;
         private _port = parseNumber (ctrlText _portCtrl);
@@ -115,8 +115,8 @@
     }]; 
  
     _hostBtn ctrlAddEventHandler ["ButtonClick", { 
-        private _portCtrl = uiNamespace getVariable "ServerDialog_PortEdit";
-        private _passCtrl = uiNamespace getVariable "ServerDialog_PassEdit";
+        private _portCtrl = uiNamespace getVariable "EXT_ConnectDialog_PortEdit";
+        private _passCtrl = uiNamespace getVariable "EXT_ConnectDialog_PassEdit";
         private _port = parseNumber (ctrlText _portCtrl);
         private _password = ctrlText _passCtrl;
  

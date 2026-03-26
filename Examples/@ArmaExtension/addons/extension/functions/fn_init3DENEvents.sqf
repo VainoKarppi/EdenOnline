@@ -28,18 +28,11 @@ add3DENEventHandler ["OnEditableEntityRemoved", {
 }];
 
 
-// TODO add to current edit list, and check for every 10 frame, track position, if last update of position 0.5 seconds ago = last position send update
-add3DENEventHandler ["OnEntityDragged", {
-	params ["_entity"];
-	
-	[_entity] spawn EXT_fnc_updateObjectPosition;
-}];
 
-
-// One-time setup - can be called from init.sqf or wherever your mod initializes
+// Used to queue multiple attribute changes into a single array of changes.
 if (isNil "EXT_var_AttributeQueues") then {
-    EXT_var_AttributeQueues = createHashMap;          // object → [ [property, value], ... ]
-    EXT_var_AttributeTimers  = createHashMap;         // object → scriptHandle (for terminate)
+    EXT_var_AttributeQueues = createHashMap;          // object --> [ [property, value], ... ]
+    EXT_var_AttributeTimers  = createHashMap;         // object --> scriptHandle (for terminate)
 };
 
 add3DENEventHandler ["OnEntityAttributeChanged", {
