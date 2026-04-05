@@ -28,7 +28,7 @@ _code = {
         uiNamespace setVariable ["EXT_var_tickTime", diag_tickTime];
 
         if (missionNamespace getVariable ["EXT_var_Connected", false]) then {
-            _startPos = getPosATL get3DENCamera vectorAdd [0,0,-5];
+            _startPos = getPosATL get3DENCamera; // TODO doesent work flawlessly
             _forwardVec = vectorDir get3DENCamera;
             ["CameraUpdate", [_startPos, _forwardVec], true] spawn EXT_fnc_callExtensionAsync;
         };
@@ -45,7 +45,7 @@ _code = {
         _position = _camData select 0;
         _dir = _camData select 1;
 
-        // For debug purposes draw mirrored camera from visible angle
+        // For debug purposes draw mirrored camera from self visible angle
         if (EXT_var_DEBUG) then {
             _position vectorAdd [0,0,-5];
         };

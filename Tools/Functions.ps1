@@ -185,15 +185,17 @@ function Build-Project {
     $linkerXmlPath = Join-Path $projectPath "linker.xml"
     $assemblyNameWithoutSuffix = $buildInfo.AssemblyName -replace "_x64$", ""
 
-    $linkerXmlContent = "
+    $linkerXmlContent = @"
 <!-- DO NOT MODIFY THIS FILE MANUALLY - THIS FILE UPDATES AUTOMATICALLY -->
 <linker>
-    <assembly fullname=""$($buildInfo.AssemblyName)"">
-        <type fullname=""$($assemblyNameWithoutSuffix).*"" preserve=""all"" />
-        <type fullname=""EdenOnline.*"" preserve=""all"" />
+    <assembly fullname="$($buildInfo.AssemblyName)">
+        <type fullname="$($assemblyNameWithoutSuffix).*" preserve="all" />
+        <type fullname="EdenOnline.*" preserve="all" />
+        <type fullname="DynTypeNetwork.*" preserve="all" />
+        <type fullname="DynTypeSerializer.*" preserve="all" />
     </assembly>
 </linker>
-    "
+"@
     # Write or overwrite linker.xml file in the project folder
     Set-Content -Path $linkerXmlPath -Value $linkerXmlContent -Encoding UTF8
     

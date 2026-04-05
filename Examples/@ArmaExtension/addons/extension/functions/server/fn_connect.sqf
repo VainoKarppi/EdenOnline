@@ -67,6 +67,8 @@ while {EXT_var_expectedObjectSyncCount == -1 || (count (all3DENEntities # 0)) < 
     uiSleep 0.01;
 };
 
+// TODO send extensions request mission attributes
+
 missionNamespace setVariable ["EXT_var_Connected",true];
 
 call EXT_fnc_init3DENEvents;

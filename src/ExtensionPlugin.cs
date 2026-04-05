@@ -7,8 +7,7 @@ using System.Threading.Tasks;
 using static ArmaExtension.Logger;
 using ArmaExtension;
 
-using EdenOnline.Models;
-using EdenOnline.Network;
+using EdenOnline;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -16,8 +15,41 @@ using System.Xml.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Linq;
+using DynTypeNetwork;
+using System.Reflection;
 
 namespace EdenOnline;
+
+public class ServerMethods {
+    public static string GetServerTime() {
+        return DateTime.UtcNow.ToString("o");
+    }
+}
+
+public class ClientMethods {
+    public static void UpdateCamera(ArmaCamera camera) {
+        Log($"Received camera update from client {camera.Id}: Position: {string.Join(",", camera.Position)}, Direction: {string.Join(",", camera.Direction)}");
+        Extension.SendToArma("CameraUpdate", [camera.Id, camera.Position, camera.Direction]);
+    }
+
+    public static void CreateObject(ArmaObject createdObj) {
+        Log($"Received CreateObject for object {createdObj.Id} with attributes: {JsonSerializer.Serialize(createdObj.Attributes)}");
+        Extension.SendToArma("ObjectCreated", [createdObj.Id, createdObj.Attributes]);
+    }
+    public static void UpdateObject(ArmaObject updatedObj) {
+        Log($"Received UpdateObject for object {updatedObj.Id} with attributes: {JsonSerializer.Serialize(updatedObj.Attributes)}");
+        Extension.SendToArma("ObjectUpdated", [updatedObj.Id, updatedObj.Attributes]);
+    }
+    public static void RemoveObject(ArmaObject removedObj) {
+        Log($"Received RemoveObject for object {removedObj.Id}");
+        Extension.SendToArma("ObjectRemoved", [removedObj.Id]);
+    }
+
+    public static void SetMissionAttribute(string section, string property, object value) {
+        Log($"Received SetMissionAttribute for section: {section}, property: {property}, value: {value}");
+        Extension.SendToArma("MissionAttributeUpdated", [section, property, value]);
+    }
+}
 
 
 [ArmaExtensionPlugin]
@@ -27,75 +59,97 @@ public static class ArmaMethods {
     }
 
     public static async Task<object[]> Connect(string host, int port, string username, string worldname, string armaVersion, object[] modHashes, string password = "") {
-        if (!Client.IsConnected) throw new Exception("Client is already connected!");
+        if (!Client.IsTcpConnected()) throw new Exception("Client is already connected!");
 
         string clientHash = GetHash(new object[] {modHashes, Extension.Version, armaVersion});
         Log($"Connect Method Called: {host}:{port}, world: {worldname}, username: {username},  modHashes: {string.Join(",", modHashes)}, clientHash: {clientHash}, password: {password}");
 
-        (int clientID, object[] otherClients) = await Client.Connect(host, port, username, worldname, clientHash, password);
+        int clientID = await Client.ConnectAsync(host, port, username, true, clientHash);
+        var otherClients = Client.GetOtherClients();
 
+
+        // TODO SYNC objects, mission attributes, etc here before returning from connect method, so that client has the latest data when they receive the "Connected" event in Arma.
 
         return [clientID, otherClients];
     }
 
     public static async Task<object[]> StartServer(double port, string username, string worldname, string armaVersion, object[] modHashes, string password = "null") {
-        string clientHash = GetHash(new object[] {modHashes, Extension.Version, armaVersion});
+        try {
+            string clientHash = GetHash(new object[] {modHashes, Extension.Version, armaVersion, worldname, password});
 
-        Server.Start((int)port, clientHash, worldname, password);
-        (int clientID, object[] otherClients) = await Client.Connect("127.0.0.1", (int)port, username, worldname, clientHash, password);
+            MethodBuilder.RegisterServerMethods(new ServerMethods());
 
-        return [clientID, otherClients];
+            await Server.StartAsync((int)port, true);
+
+            int clientId = await Client.ConnectAsync("127.0.0.1", (int)port, username, true, clientHash);
+
+            var otherClients = Client.GetOtherClients();
+
+            // TODO otherClients data needs to be in format: [[playerId, playerName], [...]]
+
+            return [clientId, otherClients.ToArray()];
+        } catch (Exception ex) {
+            Log($"Error starting server: {ex.Message}");
+            Console.WriteLine(ex);
+            return [-1, Array.Empty<object>()];
+        }
     }
 
-    public static void CameraUpdate(object[] position, object[] direction) {
-        if (!Client.IsConnected || Client.ClientListener == null) throw new Exception("Client is not connected. Cannot send camera position.");
+    public static async Task CameraUpdate(object[] position, object[] direction) {
+        if (!Client.IsUdpConnected()) throw new Exception("Client is not connected. Cannot send camera position.");
 
 
-        ArmaCamera camera = new ArmaCamera {
-            Id = Client.ClientListener.Id,
+        ArmaCamera camera = new() {
+            Id = Client.ClientID,
             Position = position,
             Direction = direction
         };
 
-        // TODO send over UDP isntead
-        NetworkHelper.SendClientMessage(MessageType.CameraUpdate, camera);
+        await Client.SendUdpMessageAsync(0, "UpdateCamera", camera);
+    }
+    
+    public static async Task SetMissionAttribute(string section, string property, object value) {
+        if (!Client.IsTcpConnected()) throw new Exception("Client is not connected. Cannot send mission attributes.");
+
+        await Client.SendTcpMessageAsync(0, "SetMissionAttribute", section, property, value);
     }
 
-    public static bool Disconnect() {
+    public static async Task<bool> Disconnect() {
         Log("Disconnect Method Called");
         
-        if (Server.IsRunning) {
-            Server.Stop();
+        if (Server.IsTcpServerRunning()) {
+            await Server.StopAsync();
         }
 
-        Client.Disconnect();
+        await Client.DisconnectAsync();
 
         return true;
     }
 
-    public static string CreateObject(string objectID, Dictionary<string, object?> metadata) {
-        if (!Client.IsConnected) throw new Exception("Client is not connected. Cannot create object.");
+    public static async Task<string> CreateObject(string objectID, Dictionary<string, object?> metadata) {
+        if (!Client.IsTcpConnected()) throw new Exception("Client is not connected. Cannot create object.");
 
         ArmaObject obj = new(objectID, metadata);
 
-        NetworkHelper.SendClientMessage(MessageType.ObjectCreate, obj);
+        await Client.SendTcpMessageAsync(0, "CreateObject", obj);
 
         return obj.Id;
     }
 
-    public static void UpdateObject(string objectID, Dictionary<string, object?> metadata) {
-        if (!Client.IsConnected) throw new Exception("Client is not connected. Cannot update object.");
+    public static async Task UpdateObject(string objectID, Dictionary<string, object?> metadata) {
+        if (!Client.IsTcpConnected()) throw new Exception("Client is not connected. Cannot update object.");
         
         ArmaObject obj = new(objectID, metadata);
         
-        NetworkHelper.SendClientMessage(MessageType.ObjectUpdate, obj);
+        await Client.SendTcpMessageAsync(0, "UpdateObject", obj);
     }
 
-    public static bool RemoveObject(string objectID) {
-        if (!Client.IsConnected) throw new Exception("Client is not connected. Cannot remove object.");
+    public static async Task<bool> RemoveObject(string objectID) {
+        if (!Client.IsTcpConnected()) throw new Exception("Client is not connected. Cannot remove object.");
 
         ArmaObject obj = new(objectID);
-        NetworkHelper.SendClientMessage(MessageType.ObjectRemove, obj);
+        await Client.SendTcpMessageAsync(0, "RemoveObject", obj);
+
         return true;
     }
 
@@ -114,8 +168,50 @@ public static class ArmaMethods {
     {
         Log("Called EdenOnline Main method");
         CurrentLogLevel = LogLevel.Debug;
+        MessageBuilder.DEBUG = false;
 
         MethodSystem.RegisterMethods(typeof(ArmaMethods)); // Always register your methods
+
+        Log("=== Custom Methods ===");
+
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies()) {
+            var asmName = asm.GetName().Name;
+ 
+            // Filter ONLY your assemblies
+            if (asmName is null) continue;
+
+            if (!asmName.StartsWith("ArmaExtension") &&
+                !asmName.StartsWith("EdenOnline") &&
+                !asmName.StartsWith("DynType")) continue;
+
+            try {
+                foreach (var type in asm.GetTypes()) {
+                    // Skip compiler/system noise
+                    if (!type.IsClass || type.IsAbstract && type.IsSealed) continue;
+
+                    var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Static);
+
+                    foreach (var method in methods) {
+                        if (method.IsSpecialName) continue;
+
+                        var parameters = method.GetParameters();
+                        var paramString = string.Join(", ",
+                            parameters.Select(p => $"{p.ParameterType.Name} {p.Name}")
+                        );
+
+                        Log($"[{asmName}] {type.FullName}.{method.Name}({paramString}) : {method.ReturnType.Name}");
+                    }
+                }
+            }
+            catch (Exception ex) {
+                Log($"Failed to inspect assembly {asmName}: {ex.Message}");
+            }
+        }
+
+        Log("=== End Custom Methods ===");
+
+        
+        MethodBuilder.RegisterClientMethods(new ClientMethods());
         
         
         // Subscribe to events

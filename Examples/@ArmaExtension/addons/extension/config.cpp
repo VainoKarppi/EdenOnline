@@ -44,6 +44,11 @@ class CfgFunctions
 
 			class getId {};
 		};
+        class Functions_Mission
+		{
+			file = "\extension\functions\mission";
+            class updateMissionAttributes {};
+		};
 		class Functions_Server
 		{
 			file = "\extension\functions\server";
@@ -70,13 +75,13 @@ class Cfg3DEN
         class EXT
         {
             init = "call EXT_fnc_initExtension";
-            onTerrainNew = "call ENH_fnc_EH_onTerrainNew";
-            onMissionPreviewEnd = "call ENH_fnc_EH_onMissionPreviewEnd";
-            onMissionLoad = "call ENH_fnc_EH_onMissionLoad";
-            onMissionNew = "call ENH_fnc_EH_onMissionNew";
-            onMissionPreview = "call ENH_fnc_EH_onMissionPreview";
-            onMissionSave = "call ENH_fnc_createBackupMissionSQM";
-            onMissionAutoSave = "call ENH_fnc_createBackupMissionSQM";
+            onTerrainNew = "diag_log str([1])";
+            onMissionPreviewEnd = "diag_log str([2])";
+            onMissionLoad = "diag_log str([3])";
+            onMissionNew = "call EXT_fnc_initExtension";
+            onMissionPreview = "diag_log str([5])";
+            onMissionSave = "diag_log str([6])";
+            onMissionAutoSave = "diag_log str([7])";
         };
     };
 };

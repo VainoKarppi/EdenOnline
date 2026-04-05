@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 
-namespace EdenOnline.Models;
+namespace EdenOnline;
 
 
 /*  ["OBJECTID",[
@@ -74,6 +74,22 @@ public class ArmaObject
 public class ArmaCamera
 {
     public int Id { get; set; }
-    public object[]? Position { get; set; }
-    public object[]? Direction { get; set; }
+    public object[] Position { get; set; } = [0,0,0];
+    public object[] Direction { get; set; } = [0,0,0];
+}
+
+public class MissionAttribute
+{
+    public string? Property { get; set; }
+    public string? Section { get; set; }
+    public object? Value { get; set; }
+
+    public MissionAttribute() { }
+    
+    public MissionAttribute(string property, string section, object value)
+    {
+        Property = property;
+        Section = section;
+        Value = value;
+    }
 }

@@ -89,6 +89,14 @@ addMissionEventHandler ["ExtensionCallback",{
 					_cameras set [_id, [_position,_direction]];
 				};
 
+				case "SetMissionAttribute": {
+					private _section = _data select 0;
+					private _property = _data select 1;
+					private _value = _data select 2;
+					
+					systemChat str([_section,_property,_value]);
+				};
+
 				default {
 					diag_log format ["ERROR: _method:%1, _data:%2", _method, _data];
 				};

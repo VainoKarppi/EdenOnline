@@ -1,0 +1,35 @@
+using System;
+using System.Collections.Concurrent;
+using System.Linq.Expressions;
+using System.Net;
+using System.Net.Sockets;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+using DynTypeSerializer;
+
+namespace DynTypeNetwork;
+
+
+
+
+
+
+public static partial class Server
+{
+    /// <summary>
+    /// True if intentional / false if not
+    /// </summary>
+    public static event Action? OnServerShutdown;
+
+    public static event Action<HandshakeFailureReason, string>? OnHandshakeFailed;
+
+    public static event Action<int>? OnClientConnected;
+    public static event Action<int, bool>? OnClientDisconnected;
+
+    public static event Action<NetworkMessage>? OnTcpMessageSent;
+    public static event Action<NetworkMessage>? OnTcpMessageReceived;
+
+    public static event Action<NetworkMessage>? OnUdpMessageSent;
+    public static event Action<NetworkMessage>? OnUdpMessageReceived;
+}

@@ -1,4 +1,6 @@
-﻿using System;
+﻿/*
+
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,14 +10,12 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using ArmaExtension;
-using EdenOnline.Models;
-using EdenOnline.Network;
 using static ArmaExtension.Logger;
 
 namespace EdenOnline;
 
 
-public static class Client
+public static class ClientOld
 {
     public static Connection? ClientListener { get; set; }
     private static NetworkStream? _stream;
@@ -245,6 +245,14 @@ public static class Client
                         if (camera == null) continue;
                         Extension.SendToArma("CameraUpdate", [camera.Id, camera.Position, camera.Direction]);
                         break;
+                    
+                    case MessageType.SetMissionAttribute:
+                        Console.WriteLine($"CLIENT: {message.DataType}");
+                        Console.WriteLine($"CLIENT: {message.Data}");
+                        MissionAttribute? attribute = NetworkSerializer.DeserializeData<MissionAttribute>(message.Data);
+                        if (attribute == null) continue;
+                        Extension.SendToArma("SetMissionAttribute", [attribute.Property, attribute.Section, attribute.Value]);
+                        break;
 
                     default:
                         Warning($"Unsupported object update type: {message.MessageType}");
@@ -262,3 +270,6 @@ public static class Client
         }
     }
 }
+
+
+*/

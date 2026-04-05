@@ -3,6 +3,10 @@
 
 params ["_object"];
 
+// When object is removed via UNDO, this event will only run twice. once for group, once for unit
+diag_log "OBJECT REMOVED";
+diag_log _object;
+
 if !(missionNamespace getVariable ["EXT_var_Connected",false]) exitWith {
 	["CONNECT OR START SERVER FIRST!", 0,5] call BIS_fnc_3DENNotification;
 };

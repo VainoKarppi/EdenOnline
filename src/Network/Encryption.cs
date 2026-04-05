@@ -4,8 +4,8 @@ using System.Security.Cryptography;
 
 using static ArmaExtension.Logger;
 
-using EdenOnline.Network;
 
+/*
 
 namespace EdenOnline;
 
@@ -200,3 +200,5 @@ public static class Encryption
 
     #endregion
 }
+
+*/

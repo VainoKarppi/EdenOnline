@@ -1,6 +1,10 @@
 
 params ["_object"];
 
+// When object is copied, this event will only run for the created unit group (not twice)
+diag_log "OBJECT CREATED";
+diag_log _object; // GROUP 
+
 if !(missionNamespace getVariable ["EXT_var_Connected",false]) exitWith {
 	["CONNECT OR START SERVER FIRST!", 0,5] call BIS_fnc_3DENNotification;
 };

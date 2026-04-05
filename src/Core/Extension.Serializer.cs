@@ -230,28 +230,41 @@ internal static class Serializer
     #endregion
 
     #region C# TO ARMA
-    /// <summary>
-    /// Convert object array into Arma-style array string.
-    /// Supports nested arrays.
-    /// </summary>
     internal static string PrintArray(object?[]? array)
     {
         if (array == null) return "[]";
         return "[" + string.Join(",", array.Select(PrintItem)) + "]";
     }
 
-    private static string PrintItem(object? item) => item switch
+    private static string PrintItem(object? item)
     {
-        null => "nil",
-        bool b => b.ToString().ToLower(),
-        string s => $"\"{s}\"",
-        object[] arr => PrintArray(arr),
-        IDictionary<string, object?> dict => PrintDictionary(dict),
-        IEnumerable<object?> list => PrintArray(list.ToArray()),
-        _ => Convert.ToString(item, CultureInfo.InvariantCulture)!
-    };
+        switch (item)
+        {
+            case null:
+                return "nil";
+            case bool b:
+                return b.ToString().ToLower();
+            case string s:
+                return $"\"{s}\"";
+            case object[] arr:
+                return PrintArray(arr);
+            case Array arr when arr.GetType().GetElementType()?.IsPrimitive == true:
+                return PrintPrimitiveArray(arr);
+            case IDictionary<string, object?> dict:
+                return PrintDictionary(dict);
+            default:
+                return Convert.ToString(item, CultureInfo.InvariantCulture)!;
+        }
+    }
 
-    // Converts Dictionary<string, object?> to Arma array format
+    private static string PrintPrimitiveArray(Array arr)
+    {
+        var items = new List<string>(arr.Length);
+        foreach (var val in arr)
+            items.Add(PrintItem(val));
+        return "[" + string.Join(",", items) + "]";
+    }
+
     private static string PrintDictionary(IDictionary<string, object?> dict)
     {
         if (dict.Count == 0) return "[]";
