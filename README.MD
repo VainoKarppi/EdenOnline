@@ -21,21 +21,91 @@ It allows object creation, camera movements, and other 3DEN interactions to be s
 > Demonstrates object creation synchronized between multiple clients in 3DEN editor.  
 > **Note:** There are currently **two objects** shown because the second object is a mirrored copy used for testing on a single client.
 
-## Getting Started
+## Build from source
 
 ### Requirements
 
-- **Arma 3** installed
-- Windows machine for development
-- .NET 10.0 or newer
+- .NET SDK version specified in `global.json`
+- Arma 3, required for 3DEN integration testing
+- Windows 10/11 x64, required for publishing the extension DLL
+- Visual Studio 2022 Build Tools with the Desktop development with C++ workload, required for NativeAOT publish
 
-- **Visual Studio Build Tools**:
-    - Download the Visual Studio Installer from the following link:
-      [Visual Studio Build Tools](https://aka.ms/vs/17/release/vs_BuildTools.exe)
-    - During installation, select the following components:
-        - **MSVC v143 - VS 2022 C++ x64/x86 build tools** (or newer)
-        - **Windows 11 or 10 SDK** (latest version)
-        - **C++ CMake Tools for Windows**
+Linux is supported for restore, build, and smoke tests. Mono is not used.
+
+| Distribution | Package |
+| --- | --- |
+| Gentoo | `virtual/dotnet-sdk` |
+| Debian/Ubuntu | `dotnet-sdk-10.0` |
+
+Debian may require the Microsoft package repository if the SDK is not available from the default repositories:
+
+```bash
+. /etc/os-release
+wget "https://packages.microsoft.com/config/debian/$VERSION_ID/packages-microsoft-prod.deb" -O packages-microsoft-prod.deb
+sudo dpkg -i packages-microsoft-prod.deb
+rm packages-microsoft-prod.deb
+sudo apt update
+sudo apt install dotnet-sdk-10.0
+```
+
+Use the matching Debian version from `https://packages.microsoft.com/config/debian/`.
+
+Ubuntu 24.04 and newer should use the Ubuntu feed or Ubuntu .NET backports for .NET 10. Microsoft repository packages for older supported Ubuntu versions are listed at `https://packages.microsoft.com/config/ubuntu/`.
+
+### Build
+
+```bash
+dotnet build ArmaExtension.csproj --configuration Debug
+```
+
+### Smoke tests
+
+```bash
+dotnet run --project tests/EdenOnline.SmokeTests/EdenOnline.SmokeTests.csproj --configuration Debug
+```
+
+### Cleanup
+
+```bash
+dotnet clean ArmaExtension.csproj --configuration Debug
+```
+
+### Container build
+
+Build and smoke tests can also be run with the official .NET SDK container image:
+
+```bash
+docker run --rm \
+  --user "$(id -u):$(id -g)" \
+  -e HOME=/tmp \
+  -v "$PWD:/workspace" \
+  -w /workspace \
+  mcr.microsoft.com/dotnet/sdk:10.0 \
+  dotnet build ArmaExtension.csproj --configuration Debug
+
+docker run --rm \
+  --user "$(id -u):$(id -g)" \
+  -e HOME=/tmp \
+  -v "$PWD:/workspace" \
+  -w /workspace \
+  mcr.microsoft.com/dotnet/sdk:10.0 \
+  dotnet run --project tests/EdenOnline.SmokeTests/EdenOnline.SmokeTests.csproj --configuration Debug
+```
+
+Use `podman` instead of `docker` for Podman. On SELinux systems, append `:Z` to the bind mount, for example `-v "$PWD:/workspace:Z"`.
+
+The container workflow does not publish the Windows NativeAOT DLL.
+
+### Publish Windows DLL
+
+The Windows NativeAOT settings are defined in `ArmaExtension.csproj`:
+
+```bash
+dotnet publish ArmaExtension.csproj
+```
+
+Shared Rider run configurations are available in `.run/`. VS Code tasks are available in `.vscode/tasks.json`.
+
 ---
 
 ### Project Structure

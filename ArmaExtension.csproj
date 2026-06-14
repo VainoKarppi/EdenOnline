@@ -20,6 +20,7 @@
     <Optimization>true</Optimization>
     <IsTrimmable>false</IsTrimmable>
     <NativeLib>Shared</NativeLib>
+    <DefaultItemExcludes>$(DefaultItemExcludes);tests/**</DefaultItemExcludes>
 
     <NoWarn>IL3002;IL2026;IL2065;IL3050;IL2069;IL3053;IDE0270;IDE0019;IL2062;IL3050;IL2026;IL2067;IL2070;IL2057;IL2075</NoWarn>
     
