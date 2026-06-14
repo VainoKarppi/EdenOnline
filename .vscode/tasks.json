@@ -52,8 +52,7 @@
                 "Debug"
             ],
             "group": {
-                "kind": "test",
-                "isDefault": true
+                "kind": "test"
             },
             "problemMatcher": "$msCompile"
         },
@@ -89,7 +88,9 @@
             "args": [
                 "${workspaceFolder}\\Tools\\TestExtension.ps1"
             ],
-            "group": "test",
+            "group": {
+                "kind": "test"
+            },
             "problemMatcher": [],
             "presentation": {
                 "echo": true,

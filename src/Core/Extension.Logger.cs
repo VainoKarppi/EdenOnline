@@ -61,7 +61,7 @@ public static class Logger {
     /// </summary>
     /// <param name="text">A text to be logged</param>
     /// <param name="forcePrintConsole">Print the message directly in to the Console</param>
-    public static void Log(object? text, LogLevel level = LogLevel.Info, bool forcePrintConsole = false) {
+    public static void Log(object? text = null, LogLevel level = LogLevel.Info, bool forcePrintConsole = false) {
         if (text == null || !Enabled) return;
 
         // Check log level

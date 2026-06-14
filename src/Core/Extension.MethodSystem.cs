@@ -229,6 +229,17 @@ public static partial class MethodSystem {
     private static void PrintMethodInfo() {
         Debug("================ METHOD LIST ================");
 
+        string FormatType(Type t)
+        {
+            if (!t.IsGenericType)
+                return t.Name;
+
+            var genericName = t.Name[..t.Name.IndexOf('`')];
+            var args = string.Join(", ", t.GetGenericArguments().Select(FormatType));
+
+            return $"{genericName}<{args}>";
+        }
+
         foreach (AnnotatedType? container in MethodContainers) {
             if (container?.Type == null) continue;
 
@@ -238,7 +249,8 @@ public static partial class MethodSystem {
                 if (method.Name == "Main") continue;
 
                 string parameters = string.Join(", ", method.GetParameters()
-                    .Select(p => $"{p.ParameterType.Name} {p.Name}{(p.IsOptional ? " (optional)" : "")}"));
+                    .Select(p => $"{FormatType(p.ParameterType)} {p.Name}{(p.IsOptional ? " (optional)" : "")}"));
+
 
                 string returnType;
                 bool isAsync = false;

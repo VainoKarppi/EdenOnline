@@ -326,13 +326,28 @@ public static class ArmaMethods {
 
     private static void PrintAvailableMethods(string name, RpcMethodInfo[] methods)
     {
-        Console.WriteLine($"\n=== {name} Methods ===");
+        string FormatType(Type t)
+        {
+            if (t.IsArray)
+                return $"{FormatType(t.GetElementType()!)}[]";
+
+            if (!t.IsGenericType)
+                return t.Name;
+
+            var genericName = t.Name[..t.Name.IndexOf('`')];
+            var args = string.Join(", ", t.GetGenericArguments().Select(FormatType));
+
+            return $"{genericName}<{args}>";
+        }
+
+        Log();
+        Log($"======================== Registered {name} Network Methods ========================");
         foreach (var method in methods)
         {
-            string parameters = string.Join(", ", method.Parameters.Select(p => $"{p.Type.Name} {p.Name}"));
+            string parameters = string.Join(", ", method.Parameters.Select(p => $"{FormatType(p.Type)} {p.Name}"));
             string returnType = method.ReturnType?.Name ?? "void";
-            Console.WriteLine($"{method.Name}({parameters}) : {returnType}");
+            Log($"{method.Name}({parameters}) : {returnType}");
         }
-        Console.WriteLine("=====================\n");
+        Log("====================================================================================\n");
     }
 }
