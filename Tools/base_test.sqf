@@ -15,9 +15,15 @@ sleep 1;
 
 //"XXXX" callExtension "TestNetwork";
 
+sleep 1;
 
+"XXXX" callExtension ["CreateObject|1",["OBJECTID",[["ItemClass","B_Truck_01_mover_F"],["Name",""],["Presence",1]]]];
 
-//"XXXX" callExtension ["SetMissionAttribute|-1",["Scenario","Briefing",false]];
+sleep 1;
+
+"XXXX" callExtension ["SetMissionAttribute|-1",["Scenario","Briefing",false]];
+
+//["CreateObject", [_id, _attributes]] call EXT_fnc_callExtensionAsync;
 
 
 //"XXXX" callExtension "Disconnect|-1";

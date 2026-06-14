@@ -41,13 +41,40 @@ public static class ObjectManager
     }
 
     /// <summary>Update object properties safely if it exists.</summary>
-    public static bool UpdateObject(string id, Action<ArmaObject> updater)
+    public static bool UpdateObject(string id, ArmaObject armaObject)
     {
-        if (Objects.TryGetValue(id, out var obj))
+        if (Objects.ContainsKey(id))
         {
-            updater(obj);
+            Objects[id] = armaObject;
             return true;
         }
         return false;
+    }
+}
+
+
+public static class MissionAttributeManager
+{
+    // [["Property", "Section"], Value] - Value can be anything
+    public static ConcurrentDictionary<string[], object?> Attributes { get; set; } = new();
+
+    public static void SetAttribute(string[] data, object? value)
+    {
+        Attributes[data] = value;
+    }
+
+    public static bool TryGetAttribute(string[] data, out object? value)
+    {
+        return Attributes.TryGetValue(data, out value);
+    }
+
+    public static Dictionary<string[], object?> GetAllAttributes()
+    {
+        return new Dictionary<string[], object?>(Attributes);
+    }
+
+    public static void Clear()
+    {
+        Attributes.Clear();
     }
 }

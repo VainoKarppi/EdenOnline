@@ -14,15 +14,15 @@ public static partial class Server
     public const int SERVER_ID = 1;
     private static int _clientIdCounter = 1;
 
-    private class Connection : TcpClient
+    public class Connection : TcpClient
     {
-        internal int Id { get; set; } = Interlocked.Increment(ref _clientIdCounter);
-        internal bool HandshakeDone { get; set; } = false;
-        internal string? Username { get; set; }
-        internal IPEndPoint? UdpEndpoint { get; set; }
+        public int Id { get; set; } = Interlocked.Increment(ref _clientIdCounter);
+        public bool HandshakeDone { get; set; } = false;
+        public string Username { get; set; } = "Unknown";
+        public IPEndPoint? UdpEndpoint { get; set; }
     }
 
-    private readonly static Dictionary<int, Connection> Clients = [];
+    public readonly static Dictionary<int, Connection> Clients = [];
 
     public static List<int> GetClients() {
         if (!IsTcpServerRunning()) throw new Exception("Server is not running");
@@ -112,7 +112,7 @@ public static partial class Server
 
             Clients.Add(client.Id, client);
             client.HandshakeDone = true;
-            client.Username = payload.Username;
+            client.Username = payload.Username ?? "Unknown";
 
             OnClientConnected?.Invoke(client.Id);
 

@@ -13,6 +13,24 @@ addMissionEventHandler ["ExtensionCallback",{
 
 		_data = parseSimpleArray _data;
 
+		// Extension is requesting for data from arma
+		if (_function select [0,8] == "REQUEST|") exitWith {
+			(_function splitString "|") params ["_request", "_method",["_requestID","-1"]];
+			diag_log format ["EXTENSION REQUESTING DATA > _method=%1, _requestID:%2, _data=%3", _method, _requestID, _data];
+
+			// TODO if method does not contain _fnc_, then its a raw code to be executed getVariable _method;
+			_code = missionNamespace getVariable _method;
+			if (!isNil "_method") then {
+				_response = _data call _code;
+				EXT_var_extensionName callExtension [format ["ARMA_RESPONSE|%1", _requestID], _response];
+			} else {
+				_response = _data call compile _method;
+				EXT_var_extensionName callExtension [format ["ARMA_RESPONSE|%1", _requestID], _response];
+			}
+
+			
+		};
+
 		(_function splitString "|") params ["_method",["_requestID","-1"],["_returnCode","1"]];
 
 		// TODO Temp
@@ -36,11 +54,25 @@ addMissionEventHandler ["ExtensionCallback",{
 		} else {
 			// IS data that we need to process (call in)
 			switch (_method) do {
+				case "LoadingScreen": {
+					_enable = _data select 0;
+					_progress = _data select 1;
+					if (_enable) then {
+						if (isNil "EXT_var_loadingScreen") then {
+							startLoadingScreen ["New client connecting..."];
+						};
+						EXT_var_loadingScreen = true;
+						progressLoadingScreen _progress;
+					} else {
+						endLoadingScreen;
+						EXT_var_loadingScreen = nil;
+					};
+				};
 				case "ObjectSyncCount": {
 					EXT_var_expectedObjectSyncCount = _data select 0;
 				};
 
-				case "ObjectSync": {
+				case "ObjectSyncData": {
 					private _id = _data select 0;
 					private _map = createHashMapFromArray (_data select 1);
 					private _object = create3DENEntity ["Object", _map get "ItemClass", _map get "Position"];

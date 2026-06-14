@@ -40,6 +40,15 @@ EXT_var_OtherClients = createHashMapFromArray _otherClients;
 missionNamespace setVariable ["EXT_var_clientID",_id];
 
 
+// Send mission attributes to server
+// TODO Read from configClass for modded attributes
+/*
+{   
+    _value = (_section get3DENMissionAttribute _property);
+    ["SetMissionAttribute", [_section, _property, _value]] call EXT_fnc_callExtensionAsync;
+} forEach ("Multiplayer" get3DENMissionAttribute "respawn");
+*/
+
 // Send current world edits to server
 {
     _attributes = (_x get3DENAttributes "");

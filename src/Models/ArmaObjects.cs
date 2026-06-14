@@ -61,12 +61,15 @@ public class ArmaObject
     public Dictionary<string, object?>? Attributes { get; set; }
     public double Timestamp { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-    public ArmaObject() { }
+    public ArmaObject() {
+        ObjectManager.AddObject(this);
+    }
     
     public ArmaObject(string id, Dictionary<string, object?>? attributes = null)
     {
         Id = id;
         Attributes = attributes;
+        ObjectManager.AddObject(this);
     }
 }
 
@@ -84,12 +87,19 @@ public class MissionAttribute
     public string? Section { get; set; }
     public object? Value { get; set; }
 
-    public MissionAttribute() { }
+    public MissionAttribute()
+    {
+        if (Property != null && Section != null) {
+            MissionAttributeManager.SetAttribute([Property, Section], Value);
+        }
+    }
     
-    public MissionAttribute(string property, string section, object value)
+    public MissionAttribute(string property, string section, object? value)
     {
         Property = property;
         Section = section;
         Value = value;
+
+        MissionAttributeManager.SetAttribute([Property, Section], Value);
     }
 }

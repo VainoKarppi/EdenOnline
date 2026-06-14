@@ -27,7 +27,17 @@ public static partial class Server {
     // TODO Validate for errors: Throw error, or just add event?
     public static Task<T?> RequestDataAsync<T>(int targetId, string methodName, params object?[] args) {
         if (!IsTcpServerRunning()) throw new InvalidOperationException("TCP not initialized.");
-        if (targetId == SERVER_ID) throw new InvalidOperationException("Server cannot send request to itself.");
+
+        if (targetId == SERVER_ID) {
+            //
+            NetworkMessage msg = new() { SenderId = SERVER_ID, TargetId = SERVER_ID, MessageId = 0, MessageType = MessageType.Custom };
+            object[] safeArgs = args is null ? []: Array.ConvertAll(args, static a => a!);
+
+
+            T? result = MethodBuilder.CallServerMethod<T>(methodName, msg, args: safeArgs);
+            
+            return Task.FromResult(result);
+        }
 
         // Make sure client method exists before sending request
         var methods = MethodBuilder.GetAvailableClientMethods();

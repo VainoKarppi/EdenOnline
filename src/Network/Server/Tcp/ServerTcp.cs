@@ -112,6 +112,14 @@ public static partial class Server
     {
         var tasks = new List<Task<object?>>();
 
+        // Run on server if target id == 0. if target id == -1, then everyone expect server.
+        // TODO add to broadcast responses array which is sent back to sender once all responses are received or timeout occurs
+        if (message.TargetId == 0) {
+            Console.WriteLine($"[NETWORK] Handling broadcast message FOR SERVER {message.MessageId} from client {message.SenderId}");
+            MethodRequest? request = MessageBuilder.UnpackPayload<MethodRequest>(message.Payload);
+            _ = Task.Run(() => MethodBuilder.CallServerMethod<object>(message.Payload!, message, request?.Args!));
+        }
+
         // TODO FIX: This still sends the message back to sender?
         foreach (var client in Clients.Values.Where(c => c.Connected && c.Id != sender.Id))
         {
