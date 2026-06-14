@@ -6,9 +6,24 @@ obj/
 
 **/ArmaExtension_Logs
 
-*.sln
 *.dll
 *.pbo
 *.log
 
 **/hash.txt
+
+# JetBrains Rider local project state. Shared run configurations live in .run/.
+.idea/
+
+# Python cache, test output, and local environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.venv/
+venv/

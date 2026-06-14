@@ -2,16 +2,94 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "dotnet: build Debug",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "ArmaExtension.csproj",
+                "--configuration",
+                "Debug"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "dotnet: restore",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "restore",
+                "tests/EdenOnline.SmokeTests/EdenOnline.SmokeTests.csproj"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "dotnet: build Release",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "ArmaExtension.csproj",
+                "--configuration",
+                "Release"
+            ],
+            "group": "build",
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "dotnet: smoke tests",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "run",
+                "--project",
+                "tests/EdenOnline.SmokeTests/EdenOnline.SmokeTests.csproj",
+                "--configuration",
+                "Debug"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "dotnet: clean Debug",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "clean",
+                "ArmaExtension.csproj",
+                "--configuration",
+                "Debug"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "dotnet: publish Windows NativeAOT",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "publish",
+                "ArmaExtension.csproj"
+            ],
+            "windows": {
+                "command": "dotnet"
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
             "label": "Test Extension",
             "type": "shell",
             "command": "powershell",
             "args": [
                 "${workspaceFolder}\\Tools\\TestExtension.ps1"
             ],
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            },
+            "group": "test",
             "problemMatcher": [],
             "presentation": {
                 "echo": true,
@@ -27,10 +105,7 @@
             "args": [
                 "${workspaceFolder}\\Tools\\TestWithArma.ps1"
             ],
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            },
+            "group": "test",
             "problemMatcher": [],
             "presentation": {
                 "echo": true,
@@ -46,10 +121,7 @@
             "args": [
                 "${workspaceFolder}\\Tools\\BuildExtension.ps1"
             ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
+            "group": "build",
             "problemMatcher": [],
             "presentation": {
                 "echo": true,

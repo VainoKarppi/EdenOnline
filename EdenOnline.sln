@@ -1,0 +1,27 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F75556}") = "ArmaExtension", "ArmaExtension.csproj", "{B8E82054-F3D7-4D0E-8F97-0BDB5FB84CF9}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F75556}") = "EdenOnline.SmokeTests", "tests\EdenOnline.SmokeTests\EdenOnline.SmokeTests.csproj", "{5D90ACB5-A26F-48D5-AE53-7A8A299421A7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B8E82054-F3D7-4D0E-8F97-0BDB5FB84CF9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8E82054-F3D7-4D0E-8F97-0BDB5FB84CF9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8E82054-F3D7-4D0E-8F97-0BDB5FB84CF9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8E82054-F3D7-4D0E-8F97-0BDB5FB84CF9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D90ACB5-A26F-48D5-AE53-7A8A299421A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D90ACB5-A26F-48D5-AE53-7A8A299421A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D90ACB5-A26F-48D5-AE53-7A8A299421A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D90ACB5-A26F-48D5-AE53-7A8A299421A7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
