@@ -17,6 +17,7 @@ using System.Text;
 using System.Linq;
 using DynTypeNetwork;
 using System.Reflection;
+using static DynTypeNetwork.MethodBuilder;
 
 namespace EdenOnline;
 
@@ -37,7 +38,7 @@ public class ServerMethods {
     {
         var clients = Server.Clients.Values
             .Where(c => c.Id != message.SenderId && c.HandshakeDone)
-            .Select(c => new object[] { c.Id, c.Username })
+            .Select(c => new object[] { c.Id, "TEMP" })
             .ToArray<object>();
 
         return clients.Cast<object>().ToArray();
@@ -45,8 +46,6 @@ public class ServerMethods {
 
     public static void SetMissionAttribute(string section, string property, object? value) {
         Log($"SERVER: Received SetMissionAttribute for section: {section}, property: {property}, value: {value}");
-
-
         // Store to server memory, so that new clients can get the latest mission attributes when they connect
         MissionAttributeManager.SetAttribute([property, section], value!);
     }
@@ -61,7 +60,7 @@ public class ServerEvents {
 
         var clients = Server.Clients.Values
             .Where(c => c.HandshakeDone)
-            .Select(c => new object[] { c.Id, c.Username })
+            .Select(c => new object[] { c.Id, "TEMP" })
             .ToArray<object>();
         
         await Server.SendTcpMessageAsync(-1, "UpdateClientList", clients);
@@ -76,7 +75,7 @@ public class ServerEvents {
 
         var clients = Server.Clients.Values
             .Where(c => c.HandshakeDone)
-            .Select(c => new object[] { c.Id, c.Username })
+            .Select(c => new object[] { c.Id, "TEMP" })
             .ToArray<object>();
         
         await Server.SendTcpMessageAsync(0, "UpdateClientList", clients);
@@ -178,7 +177,10 @@ public static class ArmaMethods {
         string clientHash = GetHash(new object[] {modHashes, Extension.Version, armaVersion});
         Log($"Connect Method Called: {host}:{port}, world: {worldname}, username: {username},  modHashes: {string.Join(",", modHashes)}, clientHash: {clientHash}, password: {password}");
 
-        int clientID = await Client.ConnectAsync(host, port, username, true, clientHash);
+        RegisterClientMethods(new ClientMethods());
+        PrintAvailableMethods("Client", GetAvailableClientMethods());
+
+        int clientID = await Client.ConnectAsync(host, port, startUdp: true, clientHash);
 
         // subscribe events
         Client.OnClientConnected += ClientEvents.OnConnected;
@@ -195,7 +197,8 @@ public static class ArmaMethods {
         try {
             string clientHash = GetHash(new object[] {modHashes, Extension.Version, armaVersion, worldname, password});
 
-            MethodBuilder.RegisterServerMethods(new ServerMethods());
+            RegisterServerMethods(new ServerMethods());
+            PrintAvailableMethods("Server", GetAvailableServerMethods());
 
             await Server.StartAsync((int)port, true);
 
@@ -287,11 +290,9 @@ public static class ArmaMethods {
     {
         Log("Called EdenOnline Main method");
         CurrentLogLevel = LogLevel.Debug;
-        MessageBuilder.DEBUG = false;
+        MessageBuilder.DEBUG = true;
 
         MethodSystem.RegisterMethods(typeof(ArmaMethods)); // Always register your methods
-
-        MethodBuilder.RegisterClientMethods(new ClientMethods());
         
         
         // Subscribe to events
@@ -319,5 +320,19 @@ public static class ArmaMethods {
         };
 
         Log("EdenOnline Extension Initialized");
+    }
+
+
+
+    private static void PrintAvailableMethods(string name, RpcMethodInfo[] methods)
+    {
+        Console.WriteLine($"\n=== {name} Methods ===");
+        foreach (var method in methods)
+        {
+            string parameters = string.Join(", ", method.Parameters.Select(p => $"{p.Type.Name} {p.Name}"));
+            string returnType = method.ReturnType?.Name ?? "void";
+            Console.WriteLine($"{method.Name}({parameters}) : {returnType}");
+        }
+        Console.WriteLine("=====================\n");
     }
 }

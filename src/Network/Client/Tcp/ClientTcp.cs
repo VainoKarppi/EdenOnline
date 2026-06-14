@@ -5,6 +5,7 @@ using System.Linq.Expressions;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using DynTypeSerializer;
@@ -26,31 +27,37 @@ public static partial class Client
 
 
     // ── Connect TCP ──────────────────────────
-    private static async Task<int> ConnectTcp(string host, int port, string? username, string? customHash = null)
+    private static async Task<int> ConnectTcp(string host, int port, string? customHash = null)
     {
         _tcpClient = new TcpClient();
         await _tcpClient.ConnectAsync(host, port);
         _tcpStream = _tcpClient.GetStream();
         StartTcpReceiveLoop(_tcpStream);
 
-        string assemblyHash = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "";
+        KeyExchange.InitializeClientKeyExchange();
+
+        //string assemblyHash = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "";
+
+        string buildId = Assembly.GetExecutingAssembly().ManifestModule.ModuleVersionId.ToString();
 
         // Combine with customHash if provided
         var availableMethods = MethodBuilder.GetAvailableClientMethods();
         string methodsHash = MethodBuilder.ComputeMethodsHash(availableMethods);
 
         HandshakeMessage handshake = new() {
-            Hash = $"{assemblyHash}-{methodsHash}-{customHash ?? ""}",
+            Hash = $"{buildId}|{customHash ?? ""}|{methodsHash}",
             AvailableMethods = availableMethods,
-            Username = username
+            ClientPublicKey = Convert.ToBase64String(KeyExchange.ClientPublicKey!)
         };
         
-        Console.WriteLine($"[CLIENT] Sending handshake to server with hash: {handshake.Hash}");
         HandshakeMessage? response = await RequestDataInternalAsync(Server.SERVER_ID, MessageType.Handshake, handshake);
         if (response == null) throw new Exception("Handshake failed (Connection lost)");
 
         if (!response.Success) throw new Exception(response.Message ?? "Handshake failed (Unknown reason)");
-        
+        if (string.IsNullOrEmpty(response.ServerPublicKey)) throw new Exception("Handshake failed (Missing server public key)");
+
+        KeyExchange.ComputeClientSharedSecret(response.ServerPublicKey);
+
         ClientID = response.ClientId;
         Clients.AddRange(response.OtherConnectedClients);
 

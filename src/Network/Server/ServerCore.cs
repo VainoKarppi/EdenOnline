@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using DynTypeSerializer;
@@ -12,14 +13,14 @@ namespace DynTypeNetwork;
 public static partial class Server
 {
     public const int SERVER_ID = 1;
+    public  static string CustomHash { get; set; } = "";
     private static int _clientIdCounter = 1;
 
     public class Connection : TcpClient
     {
-        public int Id { get; set; } = Interlocked.Increment(ref _clientIdCounter);
-        public bool HandshakeDone { get; set; } = false;
-        public string Username { get; set; } = "Unknown";
-        public IPEndPoint? UdpEndpoint { get; set; }
+        internal int Id { get; set; } = Interlocked.Increment(ref _clientIdCounter);
+        internal bool HandshakeDone { get; set; } = false;
+        internal IPEndPoint? UdpEndpoint { get; set; }
     }
 
     public readonly static Dictionary<int, Connection> Clients = [];
@@ -36,8 +37,9 @@ public static partial class Server
     public static bool IsRunning() => IsTcpServerRunning() || IsUdpServerRunning();
 
     // ── Start TCP server ──────────────────────
-    public static async Task StartAsync(int port, bool startUdp = false)
+    public static async Task StartAsync(int port, bool startUdp = false, string? customHash = null)
     {
+        CustomHash = customHash ?? "";
         StartTcp(port);
         if (startUdp) StartUdp(port);
     }
@@ -69,6 +71,7 @@ public static partial class Server
     }
 
     private static async Task ClientDisconnected(Connection client, bool success) {
+        KeyExchange.RemoveServerKeyExchange(client.Id);
         Clients.Remove(client.Id);
         if (!client.HandshakeDone) return;
 
@@ -86,6 +89,13 @@ public static partial class Server
 
     private static async Task HandleClientHandshake(Connection client, NetworkMessage message)
     {
+        NetworkMessage response = new() {
+            SenderId = SERVER_ID,
+            TargetId = client.Id,
+            MessageId = message.MessageId,
+            MessageType = MessageType.Handshake
+        };
+
         try {
             HandshakeMessage? payload = MessageBuilder.UnpackPayload<HandshakeMessage>(message.Payload);
 
@@ -95,24 +105,44 @@ public static partial class Server
                 return;
             }
 
-            // TODO validate hash etc
-
-            // Register client methods from handshake, if not already registered (eg. from previous client handshakes)
-            if (MethodBuilder.GetAvailableClientMethods().Length == 0) {
-                MethodBuilder.RegisterFromHandshake(payload.AvailableMethods, isServer: true);
+            if (string.IsNullOrEmpty(payload.ClientPublicKey)) {
+                Console.WriteLine($"[SERVER] Missing client public key for handshake from {client.Id}");
+                client.Close();
+                return;
             }
 
-            HandshakeMessage handshake = new() {
-                Success = true,
-                Message = "SUCCESS",
-                ClientId = client.Id,
-                OtherConnectedClients = Clients.Keys.Where(id => id != client.Id).ToList(),
-                AvailableMethods = MethodBuilder.GetAvailableServerMethods()
-            };
+
+            string buildId = Assembly.GetExecutingAssembly().ManifestModule.ModuleVersionId.ToString();
+
+            var parts = payload.Hash.Split('|');
+
+            if (parts.Length != 3) throw new Exception($"Invalid handshake format: {payload.Hash}");
+
+            string clientBuild = parts[0];
+            string clientCustomHash = parts[1];
+            string clientMethodsHash = parts[2];
+
+            if (!string.IsNullOrEmpty(CustomHash)) {
+                if (string.IsNullOrEmpty(clientCustomHash)) throw new Exception($"Client custom hash is empty, but server requires custom hash"); 
+                if (!CustomHash.Equals(clientCustomHash, StringComparison.OrdinalIgnoreCase)) throw new Exception($"Client custom hash mismatch");
+            }
+    
+            if (buildId != clientBuild) throw new Exception($"Client build ID mismatch. Server: {buildId}, Client: {clientBuild}");
+
+            // Register client methods from handshake, if not already registered (eg. from previous client handshakes)
+            // TODO maybe actually already register the clientMethods on server start?
+            if (MethodBuilder.GetAvailableClientMethods().Length == 0) {
+                MethodBuilder.RegisterFromHandshake(payload.AvailableMethods, isServer: true);
+            } else {
+                if (!MethodBuilder.ComputeMethodsHash(MethodBuilder.GetAvailableClientMethods()) .Equals(clientMethodsHash, StringComparison.OrdinalIgnoreCase)) {
+                    throw new Exception($"Client methods hash mismatch. Server: {MethodBuilder.ComputeMethodsHash(MethodBuilder.GetAvailableClientMethods())}, Client: {clientMethodsHash}");
+                }
+            }
+
+            KeyExchange.InitializeServerKeyExchange(client.Id, payload.ClientPublicKey);
 
             Clients.Add(client.Id, client);
             client.HandshakeDone = true;
-            client.Username = payload.Username ?? "Unknown";
 
             OnClientConnected?.Invoke(client.Id);
 
@@ -122,19 +152,32 @@ public static partial class Server
                 await SendMessageAsync(otherClient, otherClient.Id, MessageType.ClientConnected, client.Id);
             }
 
-
-            NetworkMessage response = new()
-            {
-                SenderId = SERVER_ID,
-                TargetId = client.Id,
-                MessageId = message.MessageId,
-                MessageType = MessageType.Handshake
+            HandshakeMessage handshakeResponse = new() {
+                Success = true,
+                Message = "SUCCESS",
+                ClientId = client.Id,
+                OtherConnectedClients = Clients.Keys.Where(id => id != client.Id).ToList(),
+                AvailableMethods = MethodBuilder.GetAvailableServerMethods(),
+                ServerPublicKey = KeyExchange.GetServerPublicKey(client.Id)
             };
-            var handshakeResult = MessageBuilder.CreatePacket(response, handshake);
+
+            
+            var handshakeResult = MessageBuilder.CreatePacket(response, handshakeResponse);
 
             await client.GetStream().WriteAsync(handshakeResult);
-        } catch (Exception ex)
-        {
+        } catch (Exception ex) {
+
+            // Send handshake failure response to client, before closing connection and removing from clients list
+            HandshakeMessage handshakeResponse = new() {
+                Success = false,
+                Message = ex.Message
+            };
+
+            var handshakeResult = MessageBuilder.CreatePacket(response, handshakeResponse);
+
+            await client.GetStream().WriteAsync(handshakeResult);
+
+            KeyExchange.RemoveServerKeyExchange(client.Id);
             Clients.Remove(client.Id);
 
             if (client.HandshakeDone) {
@@ -142,7 +185,7 @@ public static partial class Server
             }
             Console.WriteLine($"[SERVER] Handshake failed for client {client.Id}: {ex.Message}");
 
-            Console.WriteLine(ex);
+            Thread.Sleep(100); // Give client some time to receive handshake failure message before closing connection
             client.Close();
         }
     }

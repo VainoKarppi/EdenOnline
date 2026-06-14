@@ -55,9 +55,8 @@ public static partial class Server
             return;
         }
 
-        // Broadcast to all clients (unless targetId is negative, then exclude that client)
+        // Broadcast to all clients
         foreach (var client in Clients.Values) {
-            if (targetId < 0 && -client.Id == targetId) continue; // Skip excluded client
             await SendToClient(client);
         }
     }

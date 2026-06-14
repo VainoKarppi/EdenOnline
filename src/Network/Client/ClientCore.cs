@@ -22,11 +22,9 @@ public static partial class Client
     public static int ClientID;
     private static CancellationTokenSource _cts = new();
 
-    public static async Task<int> ConnectAsync(string host, int port, string? username, bool startUdp = false, string? customHash = null)
+    public static async Task<int> ConnectAsync(string host, int port, bool startUdp = false, string? customHash = null)
     {
-        if (IsTcpConnected()) throw new Exception("Client is already connected!");
-
-        int userId = await ConnectTcp(host, port, username, customHash);
+        int userId = await ConnectTcp(host, port, customHash);
         if (startUdp) await ConnectUdp(host, port);
 
         return userId;

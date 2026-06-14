@@ -139,35 +139,28 @@ public static class MethodBuilder {
     // Helper for both server and client
     private static T? CallWithNetworkMessage<T>(Dictionary<string, Delegate> delegates, string methodName, NetworkMessage message, object[] args)
     {
-        try {
-            Console.WriteLine($"[NETWORK] Invoking method '{methodName}' with args: {string.Join(", ", args.Select(a => a?.ToString() ?? "null"))} and message: {message}");
-            if (!delegates.TryGetValue(methodName, out var del))
-                throw new InvalidOperationException($"{methodName} not registered.");
-            
-            MethodInfo method = del.Method;
-            ParameterInfo[] parameters = method.GetParameters();
+        if (!delegates.TryGetValue(methodName, out var del))
+            throw new InvalidOperationException($"{methodName} not registered.");
+        
+        MethodInfo method = del.Method;
+        ParameterInfo[] parameters = method.GetParameters();
 
-            object?[] finalArgs;
+        object?[] finalArgs;
 
-            if (FirstParameterIsNetworkMessage(method, out _)) {
-                finalArgs = new object?[parameters.Length];
+        if (FirstParameterIsNetworkMessage(method, out _)) {
+            finalArgs = new object?[parameters.Length];
 
-                // Inject message as first parameter
-                finalArgs[0] = message;
+            // Inject message as first parameter
+            finalArgs[0] = message;
 
-                // Shift args right
-                for (int i = 0; i < args.Length && i + 1 < finalArgs.Length; i++)
-                    finalArgs[i + 1] = args[i];
-            } else {
-                finalArgs = args;
-            }
-
-            Console.WriteLine($"[NETWORK] Final arguments for method '{methodName}': {string.Join(", ", finalArgs.Select(a => a?.ToString() ?? "null"))}");
-            return (T?)del.DynamicInvoke(finalArgs);
-        } catch (Exception ex) {
-            Console.WriteLine($"[NETWORK] Error invoking method '{methodName}': {ex}");
-            throw;
+            // Shift args right
+            for (int i = 0; i < args.Length && i + 1 < finalArgs.Length; i++)
+                finalArgs[i + 1] = args[i];
+        } else {
+            finalArgs = args;
         }
+
+        return (T?)del.DynamicInvoke(finalArgs);
     }
 
     private static bool FirstParameterIsNetworkMessage(MethodInfo method, out bool isOptional) {
