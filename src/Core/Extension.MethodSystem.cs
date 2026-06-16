@@ -227,7 +227,7 @@ public static partial class MethodSystem {
     #region Helpers
 
     private static void PrintMethodInfo() {
-        Debug("================ METHOD LIST ================");
+        Log("================ METHOD LIST ================");
 
         string FormatType(Type t)
         {
@@ -265,11 +265,11 @@ public static partial class MethodSystem {
                     returnType = method.ReturnType.Name;
                 }
 
-                Debug($"Registered Method: {method.Name}({parameters}) --> {returnType}{(isAsync ? " [Async Only]" : "")}");
+                Log($"Registered Method: {method.Name}({parameters}) --> {returnType}{(isAsync ? " [Async Only]" : "")}");
             }
         }
 
-        Debug("=============================================");
+        Log("=============================================");
     }
 
 

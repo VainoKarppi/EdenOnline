@@ -122,7 +122,7 @@ public static partial class Extension {
 
         string returnData = Serializer.PrintArray(data);
 
-        Debug(@$"EXTENSION CALLBACK >> ARMA >> [""{ExtensionName}"", ""{method}"", ""{returnData}""]");
+        Log(@$"EXTENSION CALLBACK >> ARMA >> [""{ExtensionName}"", ""{method}"", ""{returnData}""]");
 
         try {
             unsafe { Callback(ExtensionName, method, returnData); }

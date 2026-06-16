@@ -110,8 +110,12 @@ public static partial class Server
     private static async Task BroadcastTcp(Connection sender, NetworkMessage message)
     {
         var tasks = new List<Task<object?>>();
+        
+        // TODO Use the commented version on release! (Mirror actions for now!)
+        //var clientsToSend = Clients.Values.Where(c => c.Connected && c.Id != sender.Id);
+        var clientsToSend = Clients.Values.Where(c => c.Connected);
 
-        foreach (var client in Clients.Values.Where(c => c.Connected && c.Id != sender.Id))
+        foreach (var client in clientsToSend)
         {
             // If MessageId == 0, we treat it as a fire-and-forget broadcast, where we don't expect any response from the clients. We just send the message to all clients and return immediately.
             if (message.MessageId == 0) {

@@ -304,22 +304,59 @@ function Prepare-TestScript {
         return $false
     }
 }
-
 function Run-CallExtension {
-    param ($destinationPath, $testScriptPath)
+    param (
+        $destinationPath,
+        $testScriptPath,
+        [bool]$noNewWindow = $true
+    )
 
-    Set-Location -Path $destinationPath
-    
-    $exePath = "$destinationPath\callExtension_x64.exe"
-    if (Test-Path -Path $exePath) {
-        Write-Host "Running callExtension_x64.exe..." -ForegroundColor Blue
-        Start-Process -FilePath $exePath -ArgumentList $testScriptPath
-        Start-Sleep -Seconds 1
-    } else {
-        Write-Host "Executable not found: $exePath" -ForegroundColor Red
+    Push-Location $destinationPath
+
+    try {
+        $exePath = Join-Path $destinationPath "callExtension_x64.exe"
+
+        if (-not (Test-Path $exePath)) {
+            Write-Host "Executable not found: $exePath" -ForegroundColor Red
+            return
+        }
+
+        if ($noNewWindow) {
+
+            Write-Host "`n=== Running in CURRENT SHELL ===" -ForegroundColor Cyan
+
+            & $exePath $testScriptPath 2>&1 | ForEach-Object {
+                Write-Host $_
+            }
+        }
+        else {
+
+            Write-Host "`n=== Running via START-PROCESS (no new window) ===" -ForegroundColor Cyan
+
+            $stdout = "stdout.txt"
+            $stderr = "stderr.txt"
+
+            Start-Process -FilePath $exePath `
+                          -ArgumentList $testScriptPath `
+                          -NoNewWindow `
+                          -RedirectStandardOutput $stdout `
+                          -RedirectStandardError $stderr `
+                          -Wait
+
+            if (Test-Path $stdout) {
+                Write-Host "`n[STDOUT]" -ForegroundColor Green
+                Get-Content $stdout | ForEach-Object { Write-Host $_ }
+            }
+
+            if (Test-Path $stderr) {
+                Write-Host "`n[STDERR]" -ForegroundColor Red
+                Get-Content $stderr | ForEach-Object { Write-Host $_ }
+            }
+        }
     }
-
-    cd $PSScriptRoot
+    finally {
+        Pop-Location
+    }
 }
 
 function Pack-Addons {
