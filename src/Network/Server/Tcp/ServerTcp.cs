@@ -111,9 +111,7 @@ public static partial class Server
     {
         var tasks = new List<Task<object?>>();
         
-        // TODO Use the commented version on release! (Mirror actions for now!)
-        //var clientsToSend = Clients.Values.Where(c => c.Connected && c.Id != sender.Id);
-        var clientsToSend = Clients.Values.Where(c => c.Connected);
+        var clientsToSend = Clients.Values.Where(c => c.Connected && (EdenOnline.Constants.MIRROR || c.Id != sender.Id));
 
         foreach (var client in clientsToSend)
         {

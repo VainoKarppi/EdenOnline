@@ -21,6 +21,10 @@ using static DynTypeNetwork.MethodBuilder;
 
 namespace EdenOnline;
 
+public static class Constants {
+    // Development-only flag for solo testing. Enables mirror mode so the sender also receives its own messages
+    public const bool MIRROR = true;
+}
 
 
 [ArmaExtensionPlugin]
