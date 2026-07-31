@@ -21,14 +21,22 @@ public enum HandshakeFailureReason
     RejectedByServer
 }
 
+public enum ServerDisconnectReason
+{
+    ServerShutdown,
+    ConnectionLost,
+    ConnectionTimeout,
+    ConnectionError
+}
+
 public static partial class Client
 {
     /// <summary>
     /// True if intentional / false if not
     /// </summary>
-    public static event Action<bool>? OnServerShutdown;
+    public static event Func<ServerDisconnectReason, Task>? OnServerShutdown;
 
-    public static event Action<HandshakeFailureReason, string>? OnHandshakeFailed;
+    public static event Func<HandshakeFailureReason, string, Task>? OnHandshakeFailed;
 
     public static event Action<int>? OnClientConnected;
     public static event Action<bool>? OnClientDisconnected;

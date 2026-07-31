@@ -7,12 +7,11 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using DynTypeSerializer;
+using static DynTypeNetwork.Settings.Logging;
+
+
 
 namespace DynTypeNetwork;
-
-
-
-
 
 
 public static partial class Client
@@ -44,8 +43,6 @@ public static partial class Client
 
         var packet = MessageBuilder.CreateUdpMessage(registerMsg);
         await _udpClient.SendAsync(packet.AsMemory(), _udpEndpoint, _cts.Token);
-
-        Console.WriteLine("[CLIENT] UDP connection established");
     }
 
     private static async Task StartUdpReceiveLoop(UdpClient client, CancellationToken token, int port)
@@ -63,12 +60,14 @@ public static partial class Client
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[CLIENT UDP] Invalid packet: {ex.Message}");
+                    if (LogItem(LogLevel.Info)) Console.WriteLine($"[CLIENT UDP] Invalid packet: {ex.Message}");
                     continue; // ignore bad packets
                 }
 
-                if (msg.MessageType != MessageType.Custom || msg.TargetId != ClientID)
+                // TODO Block message, if it appeared to this client, without it being ment for it
+                if (msg.MessageType != MessageType.Custom /*|| msg.TargetId != ClientID*/)
                     continue;
+                
 
                 _ = Task.Run(() => OnUdpMessageReceived?.Invoke(msg), token);
 
@@ -83,7 +82,7 @@ public static partial class Client
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"[CLIENT UDP] Method execution failed: {ex}");
+                        if (LogItem(LogLevel.Info)) Console.WriteLine($"[CLIENT UDP] Method execution failed: {ex}");
                     }
                 }, token);
             }
@@ -94,7 +93,7 @@ public static partial class Client
             }
             catch (SocketException ex) when (ex.SocketErrorCode == SocketError.InvalidArgument)
             {
-                Console.WriteLine("[CLIENT UDP] Socket invalid, recreating socket in 1s...");
+                if (LogItem(LogLevel.Info))  Console.WriteLine("[CLIENT UDP] Socket invalid, recreating socket in 1s...");
                 client.Dispose();
 
                 try
@@ -110,13 +109,12 @@ public static partial class Client
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[CLIENT UDP] Receive loop crashed: {ex}");
+                if (LogItem(LogLevel.Info)) Console.WriteLine($"[CLIENT UDP] Receive loop crashed: {ex}");
                 await Task.Delay(1000, token);
             }
         }
 
         client?.Dispose();
-        Console.WriteLine("[CLIENT UDP] Receive loop stopped.");
     }
     
 }

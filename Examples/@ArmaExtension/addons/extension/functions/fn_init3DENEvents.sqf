@@ -55,6 +55,8 @@ add3DENEventHandler ["OnPaste", {
 	systemChat str(_this);
 }];
 */
+
+// TODO keeps spamming the message to server sometimes, and cosntantly sending the object update again and again... This might only happen, because of the mirror?
 add3DENEventHandler ["OnEditableEntityAdded", {
 	params ["_entity"];
 	
@@ -79,7 +81,7 @@ add3DENEventHandler ["OnEditableEntityRemoved", {
 
 
 add3DENEventHandler ["OnEntityAttributeChanged", {
-	_this call EXT_fnc_updateObjectAttributes;
+	_this spawn EXT_fnc_updateObjectAttributes;
 }];
 
 // * CONNECTIONS
@@ -88,12 +90,17 @@ add3DENEventHandler ["OnConnectingEnd", {
 }];
 
 // * MISSION SETTINGS
-removeAll3DENEventHandlers "OnMissionAttributeChanged";
-add3DENEventHandler ["OnMissionAttributeChanged", {
-	params ["_section", "_property"];
-	_value = (_section get3DENMissionAttribute _property);
+remove3DENEventHandler ["OnMissionAttributeChanged", uiNamespace getVariable ["EXT_var_OnMissionAttributeChangedId", -1]];
 
-	[_section,_property,_value] call EXT_fnc_updateMissionAttributes;
+if (missionNamespace getVariable ["EXT_var_syncMissionAttributes", false]) then {
 	
-}];
+	private _id = add3DENEventHandler ["OnMissionAttributeChanged", {
+		params ["_section", "_property"];
+		_value = (_section get3DENMissionAttribute _property);
 
+		[_section,_property,_value] call EXT_fnc_updateMissionAttributes;
+		
+	}];
+
+	uiNamespace setVariable ["EXT_var_OnMissionAttributeChangedId", _id];
+};

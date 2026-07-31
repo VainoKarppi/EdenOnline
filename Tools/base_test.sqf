@@ -7,26 +7,34 @@
 
 "XXXX" callExtension "version";
 
-sleep 1;
-
-//"XXXX" callExtension ["StartServer|1",[5000,"Razer","Altis", "2.00.146773",["3db741e9","7a3fd23a","46981d1a","322ac721","9f4e6826","32cfcb0d","eb442c52","8b4af371","82d83132","8152a08e","6a67d97a","f9bd46ab","640e771a"], ""]];
-
 "XXXX" callExtension ["StartServer|1",[5000,"Razer","Altis", "2.00.146773",["3db741e9"], ""]];
+
+//"XXXX" callExtension ["StartServer|1",[5000,"Razer","Altis", "2.00.146773",["3db741e9"], ""]];
 
 //"XXXX" callExtension "TestNetwork";
 
 sleep 1;
 
-"XXXX" callExtension ["CreateObject|1",["OBJECTID",[["ItemClass","B_Truck_01_mover_F"],["Name",""],["Presence",1]]]];
+"XXXX" callExtension ["SetInitialMissionAttributes",[[["Scenario","Briefing",false],["NilValue","Test",nil], ["Multiplayer","Respawn",2]]]];
 
-sleep 1;
 
-"XXXX" callExtension ["SetMissionAttribute|-1",["Scenario","Briefing",false]];
+"XXXX" callExtension ["CameraUpdate",[[0,0,0], [0,0,0]]];
+
+"XXXX" callExtension ["CameraUpdate|-1",[[4593.98,5088.45,10],[0.704759,0.687867,-0.173648]]];
+
 
 //["CreateObject", [_id, _attributes]] call EXT_fnc_callExtensionAsync;
 
+//sleep 1;
 
-//"XXXX" callExtension "Disconnect|-1";
+//"XXXX" callExtension ["Disconnect|222",[]];
+
+"XXXX" callExtension ["Connect|1",["127.0.0.1",5000,"Razer2","Altis", "2.00.146773",["3db741e9"], ""]];
+
+sleep 1;
+
+
+"XXXX" callExtension ["CameraUpdate|-1",[[4593.98,5088.45,10],[0.704759,0.687867,-0.173648]]];
 
 sleep 1;
 

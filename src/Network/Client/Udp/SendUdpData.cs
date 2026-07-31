@@ -21,18 +21,32 @@ public static partial class Client
     public static async Task SendUdpMessageAsync(int targetId, string methodName, params object?[] args)
     {
         if (_udpClient == null || _udpEndpoint == null) throw new InvalidOperationException("UDP client not connected.");
+        if (targetId == ClientID) throw new InvalidOperationException("Cannot send UDP message to self.");
+
+
+        // Validate method, and make sure it is registered in both server and client methods if sending to server (targetId == 0)
+        if (targetId == 0)
+        {
+            var serverMethod = MethodBuilder.GetAvailableServerMethods().FirstOrDefault(m => m.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase));
+            var clientMethod = MethodBuilder.GetAvailableClientMethods().FirstOrDefault(m => m.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase));
+
+            if (serverMethod == null || clientMethod == null) throw new InvalidOperationException($"Method '{methodName}' must be registered in both server and client methods.");
+        } else {
+            var methods = targetId == Server.SERVER_ID
+                ? MethodBuilder.GetAvailableServerMethods()
+                : MethodBuilder.GetAvailableClientMethods();
+
+            var method = methods.FirstOrDefault(m => m.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase));
+
+            if (method == null) {
+                var scope = targetId == Server.SERVER_ID ? "server" : "client";
+
+                throw new InvalidOperationException($"Method '{methodName}' not registered in {scope} methods.");
+            }
+        }
         
-        var methods = targetId == Server.SERVER_ID
-            ? MethodBuilder.GetAvailableServerMethods()
-            : MethodBuilder.GetAvailableClientMethods();
 
-        var method = methods.FirstOrDefault(m => m.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase));
-
-        if (method == null)
-            throw new InvalidOperationException($"Method '{methodName}' not registered in {(targetId == Server.SERVER_ID ? "server" : "client")} methods.");
-
-
-        // Make sure client is connected to server before sending message
+        // Make sure client is connected to server before sending message, when using specified target
         if (targetId > 1 && !Clients.Contains(targetId)) {
             throw new InvalidOperationException($"Cannot send UDP message to client {targetId} because it is not connected to the server.");
         }
@@ -44,7 +58,7 @@ public static partial class Client
             SenderId = ClientID,
             TargetId = targetId,
             MessageType = MessageType.Custom,
-            Payload = Serializer.Serialize(payload)
+            Payload = DynTypeSerializer.Serializer.Serialize(payload)
         };
 
         var packet = MessageBuilder.CreateUdpMessage(msg);

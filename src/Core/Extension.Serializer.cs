@@ -1,24 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Text.Json.Nodes;
+using static ArmaExtension.Logger;
 
 namespace ArmaExtension;
 
 internal static class Serializer
 {
-
-    // TODO
-    /*
-        0:49:42.746 | [Debug] ARMA >> EXTENSION (Args) >> 2245589715904 "OI5AZBN9",[["ItemClass","B_support_Mort_F"],["Name",""],["Init",""],["Pylons",<null>],["Position",[647.483,2341.57,0]],["Rotation",[0,0,0]],["Size3",[0,0,0]],["IsRectangle",false],["PlacementRadius",0],["ControlSP",true],["ControlMP",false],["Description",""],["Lock",1],["Skill",0.5],["Health",1],["Fuel",1],["Ammo",1],["Rank","PRIVATE"],["UnitPos",3],["DynamicSimulation",false],["AddToDynSimGrid",true],["EnableSimulation",true],["ObjectIsSimple",false],["IsLocalOnly",false],["allowDamage",true],["DoorStates",[0,0,0]],["EnableRevive",false],["hideObject",false],["enableStamina",true],["NameSound",""],["speaker","male01eng"],["pitch",0.960855],["unitName","Alfie Hall"],["unitInsignia",""],["face","GreekHead_A3_07"],["Presence",1],["PresenceCondition","true"],["ammoBox","[[[[],[]],[[],[]],[[],[]],[[],[]]],false]"],["VehicleCustomization",[[],[]]],["ReportRemoteTargets",false],["ReceiveRemoteTargets",false],["ReportOwnPosition",false],["RadarUsageAI",<null>]]
-        20:49:42.746 | [Debug] EXTENSION >> ARMA >> (CreateObject) >> ["ASYNC_SENT",[]]
-        20:49:42.748 | [Debug] EXTENSION CALLBACK >> ARMA >> ["ArmaExtension", "ASYNC_SENT_FAILED|83656|1", "["'<' is an invalid start of a value. LineNumber: 0 | BytePositionInLine: 68."]"]
-        20:49:42.748 | [Debug] AsyncTaskCompleted event triggered with method: CreateObject, asyncKey: 83656, success: False, response count: 1
-    */
     #region ARMA TO C#
-    internal static object?[] DeserializeJsonArray(MethodInfo method, string[] armaString, int? asyncKey = null) {
+    internal static object?[] DeserializeArmaArray(MethodInfo method, string[] armaString, int? asyncKey = null) {
         var parameters = method.GetParameters();
         int requiredCount = parameters.Count(p => !p.IsOptional);
 
@@ -36,11 +31,12 @@ internal static class Serializer
 
             bool isArrayInput = raw.StartsWith("[");
             bool expectsArray = expectedType.IsArray || expectedType == typeof(Dictionary<string, object?>);
+            bool acceptsObjectPayload = expectedType == typeof(object);
 
-            if (isArrayInput && !expectsArray)
+            if (isArrayInput && !expectsArray && !acceptsObjectPayload)
                 ThrowTypeMismatch(method, param, i, "array", expectedType.Name, asyncKey);
 
-            if (!isArrayInput && expectsArray)
+            if (!isArrayInput && expectsArray && !acceptsObjectPayload)
                 ThrowTypeMismatch(method, param, i, "scalar", expectedType.Name, asyncKey);
 
             result[i] = DeserializeToType(raw, expectedType);
@@ -53,44 +49,98 @@ internal static class Serializer
     }
 
 
-    private static string NormalizeArmaJson(string input) {
-
+    private static string NormalizeArmaJson(string input)
+    {
         if (string.IsNullOrWhiteSpace(input))
             return input;
 
-        var span = input.AsSpan();
+        var sb = new StringBuilder(input.Length);
+        bool inString = false;
 
-        if (!span.Contains("nil", StringComparison.OrdinalIgnoreCase) &&
-            !span.Contains("any", StringComparison.OrdinalIgnoreCase) &&
-            !span.Contains("nan", StringComparison.OrdinalIgnoreCase) &&
-            !span.Contains("objnull", StringComparison.OrdinalIgnoreCase) &&
-            !span.Contains("<null", StringComparison.OrdinalIgnoreCase))
-            return input;
+        for (int i = 0; i < input.Length;)
+        {
+            char c = input[i];
 
-        string result = input;
+            if (c == '"')
+            {
+                inString = !inString;
+                sb.Append(c);
+                i++;
+                continue;
+            }
 
-        result = result.Replace("nil", "null", StringComparison.OrdinalIgnoreCase);
-        result = result.Replace("any", "null", StringComparison.OrdinalIgnoreCase);
-        result = result.Replace("nan", "null", StringComparison.OrdinalIgnoreCase);
-        result = result.Replace("objnull", "null", StringComparison.OrdinalIgnoreCase);
+            if (!inString)
+            {
+                if (input.AsSpan(i).StartsWith("nil", StringComparison.OrdinalIgnoreCase) &&
+                    IsTokenBoundary(input, i, 3))
+                {
+                    sb.Append("null");
+                    i += 3;
+                    continue;
+                }
 
-        while (true) {
-            int start = result.IndexOf("<null", StringComparison.OrdinalIgnoreCase);
-            if (start == -1) break;
+                if (input.AsSpan(i).StartsWith("any", StringComparison.OrdinalIgnoreCase) &&
+                    IsTokenBoundary(input, i, 3))
+                {
+                    sb.Append("null");
+                    i += 3;
+                    continue;
+                }
 
-            int end = result.IndexOf('>', start);
-            if (end == -1) break;
+                if (input.AsSpan(i).StartsWith("nan", StringComparison.OrdinalIgnoreCase) &&
+                    IsTokenBoundary(input, i, 3))
+                {
+                    sb.Append("null");
+                    i += 3;
+                    continue;
+                }
 
-            result = result.Remove(start, end - start + 1)
-                        .Insert(start, "null");
+                if (input.AsSpan(i).StartsWith("objnull", StringComparison.OrdinalIgnoreCase) &&
+                    IsTokenBoundary(input, i, 7))
+                {
+                    sb.Append("null");
+                    i += 7;
+                    continue;
+                }
+
+                if (input.AsSpan(i).StartsWith("<null", StringComparison.OrdinalIgnoreCase))
+                {
+                    int end = input.IndexOf('>', i);
+
+                    if (end != -1)
+                    {
+                        sb.Append("null");
+                        i = end + 1;
+                        continue;
+                    }
+                }
+            }
+
+            sb.Append(c);
+            i++;
         }
 
-        return result;
+        return sb.ToString();
+
+        static bool IsTokenBoundary(string value, int start, int length)
+        {
+            bool startBoundary =
+                start == 0 ||
+                !char.IsLetterOrDigit(value[start - 1]) &&
+                value[start - 1] != '_';
+
+            int end = start + length;
+
+            bool endBoundary =
+                end >= value.Length ||
+                !char.IsLetterOrDigit(value[end]) &&
+                value[end] != '_';
+
+            return startBoundary && endBoundary;
+        }
     }
     private static object? DeserializeToType(string input, Type targetType) {
-
-        if (input == "")
-            return targetType == typeof(string) ? "" : null;
+        if (input == "") return targetType == typeof(string) ? "" : null;
 
         var trimmed = input.Trim();
 
@@ -116,6 +166,9 @@ internal static class Serializer
 
             return null;
         }
+
+        if (targetType == typeof(object) && trimmed.ToLowerInvariant() == "false" || trimmed.ToLowerInvariant() == "true")
+            return bool.Parse(trimmed);
 
         if (targetType == typeof(string) || targetType == typeof(object)) {
             if (trimmed.Length >= 2 && trimmed[0] == '"' && trimmed[^1] == '"')
@@ -146,7 +199,7 @@ internal static class Serializer
     }
 
     private static object? ConvertArray(JsonArray array, Type targetType) {
-
+        // Todo make support key
         if (targetType == typeof(Dictionary<string, object?>)) {
             var dict = new Dictionary<string, object?>();
 

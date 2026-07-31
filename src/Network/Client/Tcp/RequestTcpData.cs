@@ -35,8 +35,12 @@ public static partial class Client {
 
     // ── STRING METHOD ──────────────────────────
     // TODO Validate for errors: Throw error, or just add event?
-    public static Task<T?> RequestDataAsync<T>(int targetId, string methodName, params object?[] args)
+    public static Task<T?> RequestTcpDataAsync<T>(int targetId, string methodName, params object?[] args)
     {
+        if (_tcpStream == null) throw new InvalidOperationException("TCP not initialized.");
+        if (targetId == ClientID) throw new InvalidOperationException("Cannot send TCP message to self.");
+        if (targetId < 1) throw new NotSupportedException("Broadcast requests (targetId == 0) are not implemented. RequestDataAsync currently supports only a single target (client or server).");
+        
         bool isVoid = IsVoidMethod(targetId, methodName);
 
         ushort requestId = isVoid ? (ushort)0 : MessageBuilder.GenerateRequestId(ref _requestId);
@@ -96,7 +100,7 @@ public static partial class Client {
     }
 
     // ── HELPER OVERLOAD FOR SIMPLE CASE ───────
-    internal static Task<T?> RequestDataInternalAsync<T>(int targetId, MessageType type, T payload)
+    private static Task<T?> RequestDataInternalAsync<T>(int targetId, MessageType type, T payload)
     {
         ushort requestId = MessageBuilder.GenerateRequestId(ref _requestId);
 

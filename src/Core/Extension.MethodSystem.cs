@@ -136,7 +136,7 @@ public static partial class MethodSystem {
             throw new Exception($"Method {methodToInvoke.Name} can only be called using async key!");
         }
 
-        object?[] unserializedData = Serializer.DeserializeJsonArray(methodToInvoke, argArray);
+        object?[] unserializedData = Serializer.DeserializeArmaArray(methodToInvoke, argArray);
 
         bool isVoid = IsVoidMethod(methodToInvoke);
 
@@ -177,11 +177,7 @@ public static partial class MethodSystem {
                 (int)ReturnCodes.Error);
         }
 
-        bool isVoid = IsVoidMethod(methodToInvoke);
-
-        string outputPayload = isVoid
-            ? $@"[""{ExtensionResultCode.ASYNC_SENT_VOID}"",[]]"
-            : $@"[""{ExtensionResultCode.ASYNC_SENT}"",[]]";
+        string outputPayload = $@"[""{ExtensionResultCode.ASYNC_SENT}"",[]]";
 
         return WriteOutput(output, outputSize, originalMethod, outputPayload, (int)ReturnCodes.Success);
     }
@@ -227,7 +223,7 @@ public static partial class MethodSystem {
     #region Helpers
 
     private static void PrintMethodInfo() {
-        Log("================ METHOD LIST ================");
+        Log("================================= ARMA 3 METHOD LIST =================================");
 
         string FormatType(Type t)
         {
@@ -243,9 +239,16 @@ public static partial class MethodSystem {
         foreach (AnnotatedType? container in MethodContainers) {
             if (container?.Type == null) continue;
 
-            foreach (var method in container.Type.GetMethods(
-                        BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)) {
+            
 
+            MethodInfo[]? methods = container.Type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
+
+            foreach (var method in methods) {
+                //Log(method.Name); // TODO FOR WHATEVER REASON CameraUpdate WONT GET PRINTED!!! Still works??? NOT SHOWN EVEN WITH THIS LOG
+                // TODO WORKS WHEN USING KK's CALL EXTENSION????????
+                // Skip compiler/runtime special methods (property/event accessors, operators, etc.)
+                if (method.IsSpecialName) continue;
+                
                 if (method.Name == "Main") continue;
 
                 string parameters = string.Join(", ", method.GetParameters()
@@ -269,7 +272,7 @@ public static partial class MethodSystem {
             }
         }
 
-        Log("=============================================");
+        Log("====================================================================================");
     }
 
 

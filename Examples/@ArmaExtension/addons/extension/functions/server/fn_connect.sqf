@@ -7,9 +7,40 @@ if (missionNamespace getVariable ["EXT_var_Connected",false]) exitWith {
 	["YOU ARE ALREADY CONNECTED", 1, 5] call BIS_fnc_3DENNotification;
 };
 
-if !((all3DENEntities) isEqualto [[],[],[],[],[],[],[],[-999]]) exitWith {
-	["World must be empty first!", 1, 5] call BIS_fnc_3DENNotification;
+
+private _continue = true;
+if !((all3DENEntities) isEqualTo [[],[],[],[],[],[],[],[-999]]) then {
+    uiNamespace setVariable ["EXT_var_ButtonConfirmed", nil];
+
+    [
+        "<t align='center'>Connecting to a server will delete your current world.</t><br/><br/><t align='center' font='PuristaMedium'>Do you want to continue?</t>",
+        "Warning",
+        [
+            "Yes",
+            { uiNamespace setVariable ["EXT_var_ButtonConfirmed", true] }
+        ],
+        [
+            "No",
+            { uiNamespace setVariable ["EXT_var_ButtonConfirmed", false] }
+        ],
+        "\A3\ui_f\data\igui\cfg\simpleTasks\types\danger_ca.paa",
+        findDisplay 313
+    ] call BIS_fnc_3DENShowMessage;
+
+    waitUntil { !isNil { uiNamespace getVariable "EXT_var_ButtonConfirmed" } };
+
+    _continue = uiNamespace getVariable ["EXT_var_ButtonConfirmed", false];
+    if !(_continue) exitWith {};
+    
+    // OK was pressed, so delete all progress and entities
+    // ["_objects", "_groups", "_triggers", "_systems", "_waypoints", "_markers", "_layers", "_comments"];
+    for "_i" from 0 to 7 do {
+        delete3DENEntities (all3DENEntities select _i);
+    };
 };
+
+if !(_continue) exitWith {};
+
 
 EXT_var_expectedObjectSyncCount = -1;
 
@@ -21,20 +52,19 @@ startLoadingScreen ["Starting server..."];
 
 uiSleep 0.5;
 
-private _return = ["Connect",[_host, _port, profileNameSteam, worldName, _gameVersion, _modHashes, _password]] call EXT_fnc_callExtensionAsync;
-
+private _return = ["Connect",[_host, _port, profileNameSteam, worldName, _gameVersion, _modHashes, _password], false, 4] call EXT_fnc_callExtensionAsync;
 
 diag_log _return;
 
 if !(_return#0) exitWith {
-	[(format ["%1", _return#1]), 1, 5] call BIS_fnc_3DENNotification;
+	[(format ["%1", _return#1#0]), 1, 5] call BIS_fnc_3DENNotification;
 	endLoadingScreen;
 };
 
-private _id = ((_return select 1) select 0) select 0;
-private _otherClients = ((_return select 1) select 0) select 1;
+private _id = ((_return select 1) select 0);
 
-EXT_var_OtherClients = createHashMapFromArray _otherClients;
+//private _otherClients = ((_return select 1) select 0) select 1;
+//EXT_var_OtherClients = createHashMapFromArray _otherClients;
 
 missionNamespace setVariable ["EXT_var_clientID",_id];
 
@@ -69,12 +99,21 @@ while {EXT_var_expectedObjectSyncCount == -1 || (count (all3DENEntities # 0)) < 
 
 // TODO send extensions request mission attributes
 
-missionNamespace setVariable ["EXT_var_Connected",true];
+
+
+// (findDisplay 313 displayCtrl 1023) ctrlEnable true
 
 call EXT_fnc_init3DENEvents;
 [] spawn EXT_fnc_drawCameras;
+[] spawn EXT_fnc_showPlayersDialog;
 
 [("CONNECTED TO SERVER WITH ID: " + str(_id)), 0,5] call BIS_fnc_3DENNotification;
+
+missionNamespace setVariable ["EXT_var_Connected", true];
+
+
+// disable ability to preview the mission
+(findDisplay 313 displayCtrl 1023) ctrlEnable false;
 
 endLoadingScreen;
 

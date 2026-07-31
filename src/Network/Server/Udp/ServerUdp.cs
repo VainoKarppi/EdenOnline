@@ -5,6 +5,8 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using DynTypeSerializer;
+using static DynTypeNetwork.Settings.Logging;
+
 
 namespace DynTypeNetwork;
 
@@ -19,16 +21,13 @@ public static partial class Server
     // ── Start UDP server ──────────────────────
     private static void StartUdp(int port) {
         _udpListener = new UdpClient(port);
-        _cts = new CancellationTokenSource();
-        StartUdpServerReceiveLoop(port, _cts.Token);
-        Console.WriteLine("[SERVER] UDP Server started");
+        StartUdpServerReceiveLoop(port);
+        if (LogItem(LogLevel.Info)) Console.WriteLine("[SERVER] UDP Server started");
     }
 
-    private static void StartUdpServerReceiveLoop(int port, CancellationToken token) {
-        _cts ??= new CancellationTokenSource();
-
+    private static void StartUdpServerReceiveLoop(int port) {
         _ = Task.Run(async () => {
-            while (!token.IsCancellationRequested) {
+            while (!_cts.IsCancellationRequested) {
                 try {
                     // --- Ensure listener exists ---
                     if (_udpListener == null || !_udpListener.Client.IsBound) {
@@ -40,7 +39,7 @@ public static partial class Server
                     }
 
                     // --- Receive ---
-                    var result = await _udpListener.ReceiveAsync(token);
+                    var result = await _udpListener.ReceiveAsync(_cts.Token);
 
                     int? senderId = Clients.Values.FirstOrDefault(c => c.UdpEndpoint != null && c.UdpEndpoint.Equals(result.RemoteEndPoint))?.Id;
                     NetworkMessage msg = MessageBuilder.ReadUdpMessage(result.Buffer, includeData: true, senderId: senderId);
@@ -61,7 +60,8 @@ public static partial class Server
                     if (msg.MessageType != MessageType.Custom) continue;
 
                     // --- Handle server-bound message ---
-                    if (msg.TargetId == SERVER_ID) {
+                    // TODO Fix if -1 is used (only forward)
+                    if (msg.TargetId == SERVER_ID || msg.TargetId == 0) {
                         _ = Task.Run(() => OnUdpMessageReceived?.Invoke(msg));
 
                         _ = Task.Run(() =>
@@ -75,14 +75,14 @@ public static partial class Server
                             }
                             catch (Exception ex)
                             {
-                                Console.WriteLine($"[SERVER UDP] Method execution failed: {ex}");
+                                if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER UDP] Method execution failed: {ex}");
                             }
-                        }, token);
+                        }, _cts.Token);
                     }
 
                     if (msg.TargetId > 0) {
                         if (!Clients.TryGetValue(msg.TargetId, out var targetClient) || targetClient.UdpEndpoint == null) {
-                            Console.WriteLine($"[SERVER UDP] Cannot forward, target {msg.TargetId} not available.");
+                            if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER UDP] Cannot forward, target {msg.TargetId} not available.");
                             continue;
                         }
 
@@ -92,28 +92,28 @@ public static partial class Server
 
                         // TODO recalculate crc32 if payload is modified (maskSender)
 
-                        await _udpListener.SendAsync(result.Buffer.AsMemory(), targetClient.UdpEndpoint, token);
+                        await _udpListener.SendAsync(result.Buffer.AsMemory(), targetClient.UdpEndpoint, _cts.Token);
                         continue;
                     }
 
                     // --- Broadcast to all clients ---
-                    await BroadcastUdp(senderClient, msg);
+                    if (msg.TargetId < 1) await BroadcastUdp(senderClient, msg);
                     
                 }
                 catch (OperationCanceledException)
                 {
-                    // ✅ ONLY exit condition
+                    // ONLY succesful exit condition using TOKEN
                     break;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[SERVER UDP] Receive loop error: {ex.Message}");
+                    if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER UDP] Receive loop error: {ex.Message}");
                 }
 
                 // --- Always retry ---
                 try
                 {
-                    await Task.Delay(1000, token);
+                    await Task.Delay(1000, _cts.Token);
                 }
                 catch (OperationCanceledException)
                 {
@@ -121,8 +121,8 @@ public static partial class Server
                 }
             }
 
-            Console.WriteLine("[SERVER UDP] Receive loop stopped.");
-        }, token);
+            if (LogItem(LogLevel.Info)) Console.WriteLine("[SERVER UDP] Receive loop stopped.");
+        }, _cts.Token);
     }
 
 
@@ -134,6 +134,11 @@ public static partial class Server
         foreach (var client in Clients.Values)
         {
             if (!client.Connected || client.Id == sender.Id || client.UdpEndpoint == null) continue;
+
+            // TODO Add support for multiple excluded clients?
+            if (message.TargetId < 0 && Math.Abs(message.TargetId) == client.Id) continue; // Remove excluded clients from list. -3 e.g --> Sends to everyone except client id 3
+
+            Console.WriteLine($"BroadcastUdp FROM: {message.SenderId} TO:{client.Id}");
 
             NetworkMessage udpMsg = new()
             {

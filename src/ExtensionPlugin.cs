@@ -21,15 +21,17 @@ using static DynTypeNetwork.MethodBuilder;
 
 namespace EdenOnline;
 
-public static class Constants {
+public static class Settings {
     // Development-only flag for solo testing. Enables mirror mode so the sender also receives its own messages
     public const bool MIRROR = true;
+    public const bool ALLOW_DUAL_CONNECTIONS = true; // Allow the same client to connect to both server and client at the same time, for testing purposes
 }
 
 
 [ArmaExtensionPlugin]
 public static partial class ArmaMethods {
- 
+    public static ObjectManager ClientObjectManager { get; } = new ObjectManager();
+    public static MissionAttributeManager ClientMissionAttributeManager { get; } = new MissionAttributeManager();
 
     // ! INITIALIZED WHEN FIRST EXTENSION CALL IS MADE
     // If just public static void is used in Main(), it will block the Arma 3 until this method is finished
@@ -38,9 +40,12 @@ public static partial class ArmaMethods {
     {
         Log("Called EdenOnline Main method");
         CurrentLogLevel = LogLevel.Debug;
-        MessageBuilder.DEBUG = false;
+        DynTypeNetwork.Settings.Logging.CurrentLogLevel = DynTypeNetwork.Settings.Logging.LogLevel.Info;
 
         MethodSystem.RegisterMethods(typeof(ArmaMethods)); // Always register your methods
+
+        RegisterClientMethods(new ClientNetworkMethods());
+        PrintAvailableMethods("Client", GetAvailableClientMethods());
         
         
         // Subscribe to events
@@ -64,7 +69,7 @@ public static partial class ArmaMethods {
         Events.OnErrorOccurred += ex => Debug($"ErrorOccurred event triggered: {ex.Message}");
 
         UIEvents.OnLButtonUp += (obj, x, y) => {
-            Console.WriteLine($"LButtonUp triggered at {x}, {y}");
+            Log($"LButtonUp triggered at {x}, {y}");
         };
 
         Log("EdenOnline Extension Initialized");

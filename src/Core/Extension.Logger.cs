@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.IO;
+using System.Linq;
 using System.Threading;
 
 namespace ArmaExtension;
@@ -15,44 +16,61 @@ public static class Logger {
     /// <summary>Toggle writing to console. (Default is False)</summary>
     public static bool LogToConsole { get; set; } = true;
 
-
-    private static readonly Lock lockObject = new();
     private static Thread? writerThread;
     private static readonly ConcurrentQueue<string> Texts = new();
     private static string? logFile;
 
-    private static void WriterThread() {
-        try {
-            Debug("Starting WriterThread...");
-            string dir = Extension.AssemblyDirectory;
-            string logFolder = Path.Combine(Path.GetDirectoryName(dir) ?? string.Empty, $"{Extension.ExtensionName}_Logs");
+    private static readonly AutoResetEvent LogEvent = new(false);
+    private static volatile bool running;
 
-            if (!Directory.Exists(logFolder)) Directory.CreateDirectory(logFolder);
+    public static string[] BlacklistedWords { get; set; } = ["CameraUpdate"];
+
+    private static void WriterThread()
+    {
+        try
+        {
+            Debug("Starting WriterThread...");
+
+            string logFolder = Path.Combine(Path.GetDirectoryName(Extension.AssemblyDirectory) ?? string.Empty, $"{Extension.ExtensionName}_Logs");
+
+            Directory.CreateDirectory(logFolder);
 
             logFile ??= Path.Combine(logFolder, $"Log_{DateTime.Now:yyyy-MM-dd-HH_mm_ss}.log");
 
-            while (writerThread != null) {
-                if (!Texts.IsEmpty) {
-                    try {
-                        using StreamWriter writer = new(logFile, true);
-                        while (Texts.TryDequeue(out string? text)) {
-                            writer.WriteLine(text);
-                        }
-                        writer.Flush();
-                    } catch (Exception ex) {
-                        Texts.Enqueue(ex.Message);
-                    }
+            running = true;
+
+            using var writer = new StreamWriter(logFile, append: true) { AutoFlush = false };
+
+            while (running) {
+                // Wait until there is something to write.
+                LogEvent.WaitOne();
+
+                while (Texts.TryDequeue(out var text)) {
+                    // Skip blacklisted words
+                    if (BlacklistedWords.Any(word => text.Contains(word, StringComparison.OrdinalIgnoreCase))) continue;
+                    writer.WriteLine(text);
                 }
 
-                Thread.Sleep(5);
+                writer.Flush();
             }
+
+            // Flush any remaining entries before exiting.
+            while (Texts.TryDequeue(out var text)) {
+                writer.WriteLine(text);
+            }
+
+            writer.Flush();
         } catch (Exception ex) {
-            Error($"WriterThread: {ex.Message}");
+            Console.Error.WriteLine($"Logger WriterThread: {ex}");
         }
     }
 
     /// <summary>Closes writer thread</summary>
-    public static void CloseWriter() {
+    public static void CloseWriter()
+    {
+        running = false;
+        LogEvent.Set(); // Wake the thread so it can exit.
+        writerThread?.Join();
         writerThread = null;
     }
 
@@ -72,7 +90,8 @@ public static class Logger {
 
         if (forcePrintConsole || LogToConsole) Console.WriteLine(logText);
         
-        lock (lockObject) Texts.Enqueue(logText);
+        Texts.Enqueue(logText);
+        LogEvent.Set();
 
         if (writerThread == null) {
             writerThread = new Thread(WriterThread) { IsBackground = true };

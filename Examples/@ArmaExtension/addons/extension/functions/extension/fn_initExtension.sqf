@@ -6,9 +6,10 @@ diag_log "Initializing Extension Test for C# .NET";
 // Init variables
 EXT_var_extensionName = "ArmaExtension";
 EXT_var_eventsReady = false;
+EXT_var_syncMissionAttributes = true;
 
 EXT_var_DEBUG = true;
-uiNamespace setVariable ["EXT_var_cameraDrawUpdate", 0.5];
+uiNamespace setVariable ["EXT_var_cameraDrawUpdate", 2];
 
 
 private _result = EXT_var_extensionName callExtension "version";

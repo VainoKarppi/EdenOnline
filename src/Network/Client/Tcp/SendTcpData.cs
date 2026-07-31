@@ -18,8 +18,10 @@ namespace DynTypeNetwork;
 public static partial class Client
 {
     // ── Send messages ─────────────────────────
+    // Does not return a response, use SendTcpMessageAsync for sending messages that require a response
     public static async Task SendTcpMessageAsync(int targetId, string methodName, params object?[] args) {
         if (_tcpStream == null) throw new InvalidOperationException("TCP not initialized.");
+        if (targetId == ClientID) throw new InvalidOperationException("Cannot send TCP message to self.");
 
         NetworkMessage msg = new()
         {
@@ -27,15 +29,28 @@ public static partial class Client
             TargetId = targetId,
             MessageType = MessageType.Custom
         };
+        
 
-        var methods = targetId == Server.SERVER_ID
-            ? MethodBuilder.GetAvailableServerMethods()
-            : MethodBuilder.GetAvailableClientMethods();
-            
-        var method = methods.FirstOrDefault(m => m.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase));
+        // Validate method, and make sure it is registered in both server and client methods if sending to server (targetId == 0)
+        if (targetId == 0)
+        {
+            var serverMethod = MethodBuilder.GetAvailableServerMethods().FirstOrDefault(m => m.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase));
+            var clientMethod = MethodBuilder.GetAvailableClientMethods().FirstOrDefault(m => m.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase));
 
-        if (method == null)
-            throw new InvalidOperationException($"Method '{methodName}' not registered in {(targetId == Server.SERVER_ID ? "server" : "client")} methods.");
+            if (serverMethod == null || clientMethod == null) throw new InvalidOperationException($"Method '{methodName}' must be registered in both server and client methods.");
+        } else {
+            var methods = targetId == Server.SERVER_ID
+                ? MethodBuilder.GetAvailableServerMethods()
+                : MethodBuilder.GetAvailableClientMethods();
+
+            var method = methods.FirstOrDefault(m => m.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase));
+
+            if (method == null) {
+                var scope = targetId == Server.SERVER_ID ? "server" : "client";
+
+                throw new InvalidOperationException($"Method '{methodName}' not registered in {scope} methods.");
+            }
+        }
 
         // Make sure client is connected to server before sending message
         if (targetId > 1 && !Clients.Contains(targetId)) {

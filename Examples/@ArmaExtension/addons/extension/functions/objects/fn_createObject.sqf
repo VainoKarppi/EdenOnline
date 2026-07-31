@@ -5,9 +5,7 @@ params ["_object"];
 diag_log "OBJECT CREATED";
 diag_log _object; // GROUP 
 
-if !(missionNamespace getVariable ["EXT_var_Connected",false]) exitWith {
-	["CONNECT OR START SERVER FIRST!", 0,5] call BIS_fnc_3DENNotification;
-};
+if !(missionNamespace getVariable ["EXT_var_Connected",false]) exitWith {};
 
 if (_object in allGroups) exitWith {}; // Dont sync groups for now...
 

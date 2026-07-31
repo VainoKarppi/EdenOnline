@@ -6,42 +6,54 @@ using System.Collections.Generic;
 namespace EdenOnline;
 
 
-public static class ObjectManager
+public class ObjectManager
 {
-    public static ConcurrentDictionary<string, ArmaObject> Objects { get; set; } = new();
+    public ConcurrentDictionary<string, ArmaObject> Objects { get; set; } = new();
 
-    /// <summary>Adds a new object or overwrites existing with same Id.</summary>
-    public static void AddObject(ArmaObject obj)
-    {
+    /// <summary>Adds a new object or merges incoming attributes into an existing object while preserving the other attributes.</summary>
+    public void AddOrUpdateObject(ArmaObject obj) {
+        if (obj is null) return;
+
+        if (Objects.TryGetValue(obj.Id, out var existing) && existing is not null) {
+            foreach (var kvp in obj.Attributes) {
+                existing.Attributes[kvp.Key] = kvp.Value;
+            }
+
+            if (obj.Timestamp != 0) existing.Timestamp = obj.Timestamp;
+
+            Objects[obj.Id] = existing;
+            return;
+        }
+
         Objects[obj.Id] = obj;
     }
 
     /// <summary>Remove object by Id.</summary>
-    public static bool RemoveObject(string id)
+    public bool RemoveObject(string id)
     {
         return Objects.TryRemove(id, out _);
     }
 
     /// <summary>Get object by Id.</summary>
-    public static bool TryGetObject(string id, out ArmaObject? obj)
+    public bool TryGetObject(string id, out ArmaObject? obj)
     {
         return Objects.TryGetValue(id, out obj);
     }
 
     /// <summary>Get a snapshot of all objects (for broadcasting to clients).</summary>
-    public static List<ArmaObject> GetAllObjects()
+    public List<ArmaObject> GetAllObjects()
     {
         return [.. Objects.Values];
     }
 
     /// <summary>Clear all objects (e.g., when mission ends).</summary>
-    public static void Clear()
+    public void Clear()
     {
         Objects.Clear();
     }
 
     /// <summary>Update object properties safely if it exists.</summary>
-    public static bool UpdateObject(string id, ArmaObject armaObject)
+    public bool UpdateObject(string id, ArmaObject armaObject)
     {
         if (Objects.ContainsKey(id))
         {
@@ -53,27 +65,27 @@ public static class ObjectManager
 }
 
 
-public static class MissionAttributeManager
+public class MissionAttributeManager
 {
     // [["Property", "Section"], Value] - Value can be anything
-    public static ConcurrentDictionary<string[], object?> Attributes { get; set; } = new();
+    public ConcurrentDictionary<string[], object?> Attributes { get; set; } = new();
 
-    public static void SetAttribute(string[] data, object? value)
+    public void SetAttribute(string[] data, object? value)
     {
         Attributes[data] = value;
     }
 
-    public static bool TryGetAttribute(string[] data, out object? value)
+    public bool TryGetAttribute(string[] data, out object? value)
     {
         return Attributes.TryGetValue(data, out value);
     }
 
-    public static Dictionary<string[], object?> GetAllAttributes()
+    public Dictionary<string[], object?> GetAllAttributes()
     {
         return new Dictionary<string[], object?>(Attributes);
     }
 
-    public static void Clear()
+    public void Clear()
     {
         Attributes.Clear();
     }

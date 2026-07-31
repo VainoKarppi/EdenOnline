@@ -79,7 +79,7 @@ public static partial class Serializer
             return ReadPrimitive(el, innerType);
  
         // ── Dictionary ──────────────────────────────────────────────────────
-        if (el.ValueKind == JsonValueKind.Object && typeof(IDictionary).IsAssignableFrom(innerType))
+        if (typeof(IDictionary).IsAssignableFrom(innerType))
             return ReadDict(el, innerType);
  
         // ── Object with properties ──────────────────────────────────────────
@@ -139,14 +139,35 @@ public static partial class Serializer
  
         var dict = (IDictionary)Activator.CreateInstance(concrete)!;
  
-        foreach (var prop in el.EnumerateObject())
+        if (el.ValueKind == JsonValueKind.Object)
         {
-            object key = keyType == typeof(string)
-                ? prop.Name
-                : Convert.ChangeType(prop.Name, keyType);
-            dict[key] = ReadNode(prop.Value, valueType);
+            foreach (var prop in el.EnumerateObject())
+            {
+                object key = keyType == typeof(string)
+                    ? prop.Name
+                    : Convert.ChangeType(prop.Name, keyType);
+                dict[key] = ReadNode(prop.Value, valueType);
+            }
+            return dict;
         }
-        return dict;
+
+        if (el.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in el.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object)
+                    throw new InvalidOperationException("Dictionary array entries must be objects with '$k' and '$v'.");
+
+                if (!item.TryGetProperty("$k", out var keyEl) || !item.TryGetProperty("$v", out var valueEl))
+                    throw new InvalidOperationException("Dictionary array entries must contain '$k' and '$v'.");
+
+                object? key = ReadNode(keyEl, keyType);
+                dict[key!] = ReadNode(valueEl, valueType);
+            }
+            return dict;
+        }
+
+        throw new InvalidOperationException($"Cannot deserialize dictionary from JSON token {el.ValueKind}.");
     }
  
     private static object ReadObject(JsonElement el, Type targetType)

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Net;
 using System.Net.Sockets;
@@ -36,24 +37,45 @@ public static partial class Client
         return Clients;
     }
 
-    private static async Task HandleServerShutdown(bool intentional)
+    private static async Task InvokeEventAsync(Func<Task?>? eventHandler, int timeoutMs = 100)
     {
-        // Invoke event
-        _ = Task.Run(() => OnServerShutdown?.Invoke(intentional));
+        if (eventHandler == null)
+            return;
+
+        var timer = TimeSpan.FromMilliseconds(timeoutMs);
+
+        var tasks = eventHandler
+            .GetInvocationList()
+            .Cast<Func<Task?>>()
+            .Select(handler => handler())
+            .Where(task => task != null)
+            .Cast<Task>()
+            .ToArray();
+
+        if (tasks.Length == 0)
+            return;
+
+        await Task.WhenAny(
+            Task.WhenAll(tasks),
+            Task.Delay(timeoutMs)
+        );
+    }
+    
+    private static async Task HandleServerShutdown(ServerDisconnectReason reason)
+    {
+        // Invoke the shutdown event asynchronously and wait up to 100 ms for it to complete.
+        // The event handler may continue running in the background if it exceeds the timeout.
+        await InvokeEventAsync(() => OnServerShutdown?.Invoke(reason), 100);
 
         // Clean up connections
         await DisconnectAsync();
     }
 
-    public static async Task DisconnectAsync()
+    public static async Task ResetConnectionStatusAsync()
     {
         try
         {
-            await SendMessageAsync(Server.SERVER_ID, MessageType.ClientDisconnected, null);
-
             _cts?.Cancel();
-
-            OnClientDisconnected?.Invoke(true);
 
             ClientID = 0;
 
@@ -67,7 +89,18 @@ public static partial class Client
             _udpClient?.Dispose();
             _udpClient = null;
             _udpEndpoint = null;
-        }
-        catch {}
+        } catch {}
+    }
+
+    public static async Task DisconnectAsync()
+    {
+        try
+        {
+            await SendMessageAsync(Server.SERVER_ID, MessageType.ClientDisconnected, null);
+
+            OnClientDisconnected?.Invoke(true);
+
+            await ResetConnectionStatusAsync();
+        } catch {}
     }
 }

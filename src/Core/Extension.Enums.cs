@@ -10,11 +10,9 @@ internal static partial class Enums {
 
     internal enum ExtensionResultCode {
         SUCCESS,
-        SUCCESS_VOID,
         ERROR,
         ASYNC_RESPONSE,
         ASYNC_SENT,
-        ASYNC_SENT_VOID,
         ASYNC_SENT_FAILED,
         ASYNC_CANCEL,
         ASYNC_CANCEL_SUCCESS,

@@ -29,6 +29,10 @@ if (Build-Project -projectPath $projectPath -destinationPath $modFolder) {
         if (Start-Arma) {
             # Combine Watch-ExtensionLog and Watch-RPTLog in the same console
             # E:\SteamLibrary\steamapps\common\Arma 3\ArmaExtension_Logs
+
+            $armaPath = Get-ArmaPath
+            
+
             # TODO FIX WHERE ONLY RPT IS LOGGED
             Start-Job -ScriptBlock {
                 . "$using:functionsScript"

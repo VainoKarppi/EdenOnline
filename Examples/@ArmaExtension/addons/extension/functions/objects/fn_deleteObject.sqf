@@ -7,9 +7,7 @@ params ["_object"];
 diag_log "OBJECT REMOVED";
 diag_log _object;
 
-if !(missionNamespace getVariable ["EXT_var_Connected",false]) exitWith {
-	["CONNECT OR START SERVER FIRST!", 0,5] call BIS_fnc_3DENNotification;
-};
+if !(missionNamespace getVariable ["EXT_var_Connected",false]) exitWith {};
 
 if (isNull _object || _object in allGroups) exitWith {};
 

@@ -145,19 +145,33 @@ public static partial class Serializer
         return JsonValue.Create(obj)!;
     }
  
-    private static JsonObject DictToNode(IDictionary dict, Type actualType, Options options)
+    private static JsonNode DictToNode(IDictionary dict, Type actualType, Options options)
     {
-        Type valueType = actualType.IsGenericType
-            ? actualType.GetGenericArguments()[1]
-            : typeof(object);
+        Type keyType   = actualType.IsGenericType ? actualType.GetGenericArguments()[0] : typeof(string);
+        Type valueType = actualType.IsGenericType ? actualType.GetGenericArguments()[1] : typeof(object);
 
-        var obj = new JsonObject();
+        if (keyType == typeof(string))
+        {
+            var obj = new JsonObject();
+            foreach (DictionaryEntry kv in dict)
+            {
+                string key  = kv.Key?.ToString() ?? "null";
+                obj[key] = BuildNode(kv.Value, valueType, options);
+            }
+            return obj;
+        }
+
+        var array = new JsonArray();
         foreach (DictionaryEntry kv in dict)
         {
-            string key  = kv.Key?.ToString() ?? "null";
-            obj[key] = BuildNode(kv.Value, valueType, options);
+            var entry = new JsonObject
+            {
+                ["$k"] = BuildNode(kv.Key, keyType, options),
+                ["$v"] = BuildNode(kv.Value, valueType, options)
+            };
+            array.Add(entry);
         }
-        return obj;
+        return array;
     }
  
     private static JsonArray EnumerableToNode(IEnumerable enumerable, Type actualType, Options options)

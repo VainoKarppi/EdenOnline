@@ -2,9 +2,7 @@
 
 params ["_entity", "_property"];
 
-if !(missionNamespace getVariable ["EXT_var_Connected", false]) exitWith {
-	["CONNECT OR START SERVER FIRST!", 0, 5] call BIS_fnc_3DENNotification;
-};
+if !(missionNamespace getVariable ["EXT_var_Connected",false]) exitWith {};
 
 if (_entity in allGroups) exitWith {};
 
@@ -15,12 +13,12 @@ if (_entity getVariable ["EXT_updateRequested", false]) exitWith {
 _entity setVariable ["EXT_updateRequested", nil];
 
 private _id = _entity call EXT_fnc_getId;
-if (_id == "" || isNil "_id") exitWith {diag_log "1"};
+if (_id == "" || isNil "_id") exitWith {};
 
 
 private _value = (_entity get3DENAttribute _property) select 0;
 
-if (isNil "_value") exitWith {diag_log format ["%1 %2", _property, _value]};
+if (isNil "_value") exitWith {};
 
 private _queue = EXT_var_AttributeQueues getOrDefault [_id, createHashMap, true];
 

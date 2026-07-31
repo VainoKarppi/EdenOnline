@@ -58,18 +58,15 @@ namespace EdenOnline;
 public class ArmaObject
 {
     public string Id { get; set; } = "";
-    public Dictionary<string, object?>? Attributes { get; set; }
+    public Dictionary<string, object?> Attributes { get; set; } = [];
     public double Timestamp { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-    public ArmaObject() {
-        ObjectManager.AddObject(this);
-    }
+    public ArmaObject() {}
     
     public ArmaObject(string id, Dictionary<string, object?>? attributes = null)
     {
         Id = id;
-        Attributes = attributes;
-        ObjectManager.AddObject(this);
+        Attributes = attributes ?? [];
     }
 }
 
@@ -81,25 +78,18 @@ public class ArmaCamera
     public object[] Direction { get; set; } = [0,0,0];
 }
 
-public class MissionAttribute
-{
-    public string? Property { get; set; }
-    public string? Section { get; set; }
-    public object? Value { get; set; }
-
-    public MissionAttribute()
+    public class MissionAttribute
     {
-        if (Property != null && Section != null) {
-            MissionAttributeManager.SetAttribute([Property, Section], Value);
+        public string? Property { get; set; }
+        public string? Section { get; set; }
+        public object? Value { get; set; }
+
+        public MissionAttribute() {}
+        
+        public MissionAttribute(string section, string property, object? value)
+        {
+            Section = section;
+            Property = property;
+            Value = value;
         }
     }
-    
-    public MissionAttribute(string property, string section, object? value)
-    {
-        Property = property;
-        Section = section;
-        Value = value;
-
-        MissionAttributeManager.SetAttribute([Property, Section], Value);
-    }
-}

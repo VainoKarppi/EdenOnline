@@ -17,12 +17,14 @@ namespace DynTypeNetwork;
 
 public static partial class Server
 {
+
+    public static event Func<Task>? OnServerStart;
     /// <summary>
     /// True if intentional / false if not
     /// </summary>
     public static event Action? OnServerShutdown;
 
-    public static event Action<HandshakeFailureReason, string>? OnHandshakeFailed;
+    public static event Func<HandshakeFailureReason, string, Task>? OnHandshakeFailed;
 
     public static event Action<int>? OnClientConnected;
     public static event Action<int, bool>? OnClientDisconnected;

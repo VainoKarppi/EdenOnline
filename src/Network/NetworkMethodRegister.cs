@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using static DynTypeNetwork.Settings.Logging;
 
 namespace DynTypeNetwork;
 
@@ -93,7 +94,8 @@ public static class MethodBuilder {
     }
 
     private static void RegisterMethodsFromType(Type type, bool isServer) {
-        var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Static);
+        MethodInfo[]? methods = type.GetMethods(BindingFlags.Public | BindingFlags.Static);
+        
         foreach (var method in methods) {
             if (method.IsSpecialName) continue;
 
@@ -103,11 +105,11 @@ public static class MethodBuilder {
                 var paramTypes = method.GetParameters().Select(p => p.ParameterType).ToArray();
                 Type delegateType = method.ReturnType == typeof(void)
                     ? Expression.GetActionType(paramTypes)
-                    : Expression.GetFuncType(paramTypes.Concat(new[] { method.ReturnType }).ToArray());
+                    : Expression.GetFuncType(paramTypes.Concat([method.ReturnType]).ToArray());
 
                 del = Delegate.CreateDelegate(delegateType, method);
-            } catch (ArgumentException) {
-                // Fallback: use DynamicInvoke wrapper
+            } catch (Exception ex) when (ex is ArgumentException || ex is NotSupportedException) {
+                // Fallback: use DynamicInvoke wrapper when native delegate creation is not supported in AOT/trimming builds.
                 del = new Func<object?[], object?>(args => method.Invoke(null, args));
             }
 
@@ -159,6 +161,15 @@ public static class MethodBuilder {
         } else {
             finalArgs = args;
         }
+        
+        bool isReflectionWrapper = !method.IsStatic
+            && parameters.Length == 1
+            && parameters[0].ParameterType == typeof(object[]);
+
+        if (LogItem(LogLevel.Info)) Console.WriteLine($"Invoking:{methodName} with args: [{string.Join(", ", finalArgs.Select(a => a?.ToString() ?? "null"))}] ({finalArgs.Length})");
+        
+        if (isReflectionWrapper)
+            return (T?)del.DynamicInvoke([finalArgs]);
 
         return (T?)del.DynamicInvoke(finalArgs);
     }

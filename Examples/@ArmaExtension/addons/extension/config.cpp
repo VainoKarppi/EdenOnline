@@ -60,6 +60,7 @@ class CfgFunctions
 		{
 			file = "\extension\functions\ui";
 			class showConnectDialog {};
+            class showPlayersDialog {};
 		};
 	};
 };
@@ -74,6 +75,8 @@ class Cfg3DEN
     {
         class EXT
         {
+            // TODO Set these
+            // TODO Run disconnect when exiting from 3DEN
             init = "call EXT_fnc_initExtension";
             onTerrainNew = "diag_log str([1])";
             onMissionPreviewEnd = "diag_log str([2])";

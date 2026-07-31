@@ -7,6 +7,8 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using DynTypeSerializer;
+using static DynTypeNetwork.Settings.Logging;
+
 
 namespace DynTypeNetwork;
 
@@ -31,26 +33,53 @@ public static partial class Server
     }
 
     
-    private static CancellationTokenSource? _cts;
+    private static CancellationTokenSource _cts = new();
 
 
-    public static bool IsRunning() => IsTcpServerRunning() || IsUdpServerRunning();
+    public static bool IsRunning => IsTcpServerRunning() || IsUdpServerRunning();
 
     // ── Start TCP server ──────────────────────
     public static async Task StartAsync(int port, bool startUdp = false, string? customHash = null)
     {
+        // Reset cancellation token on server start
+        _cts.Dispose();
+        _cts = new CancellationTokenSource();
+
         CustomHash = customHash ?? "";
         StartTcp(port);
         if (startUdp) StartUdp(port);
     }
 
     
-    
+    private static async Task InvokeEventAsync(Func<Task?>? eventHandler, int timeoutMs = 100)
+    {
+        if (eventHandler == null)
+            return;
+
+        var timer = TimeSpan.FromMilliseconds(timeoutMs);
+
+        var tasks = eventHandler
+            .GetInvocationList()
+            .Cast<Func<Task?>>()
+            .Select(handler => handler())
+            .Where(task => task != null)
+            .Cast<Task>()
+            .ToArray();
+
+        if (tasks.Length == 0)
+            return;
+
+        await Task.WhenAny(
+            Task.WhenAll(tasks),
+            Task.Delay(timeoutMs)
+        );
+    }
     
 
     // ── Stop server ───────────────────────────
     public static async Task StopAsync()
     {
+        if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Server shutdown requested");
         OnServerShutdown?.Invoke();
 
         // Send disconnect message to clients, before clearing list and closing connections
@@ -60,12 +89,13 @@ public static partial class Server
             await SendMessageAsync(client, client.Id, MessageType.ServerShutdown, null);
         }
 
-        _cts?.Cancel();
+        _cts.Cancel();
+        
+        _tcpListener?.Stop();
+        _udpListener?.Close();
 
         Clients.Clear();
 
-        _tcpListener?.Stop();
-        _udpListener?.Close();
         _tcpListener = null;
         _udpListener = null;
     }
@@ -76,8 +106,6 @@ public static partial class Server
         if (!client.HandshakeDone) return;
 
         OnClientDisconnected?.Invoke(client.Id, success);
-
-        Console.WriteLine($"[SERVER] Client {client.Id} disconnected. Success: {success}");
 
         foreach (var otherClient in Clients.Values) {
             await SendMessageAsync(otherClient, otherClient.Id, MessageType.ClientDisconnected, new object[] { client.Id, success });
@@ -100,13 +128,13 @@ public static partial class Server
             HandshakeMessage? payload = MessageBuilder.UnpackPayload<HandshakeMessage>(message.Payload);
 
             if (payload == null) {
-                Console.WriteLine($"[SERVER] Invalid handshake from client {client.Id}");
+                if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Invalid handshake from client {client.Id}");
                 client.Close();
                 return;
             }
 
             if (string.IsNullOrEmpty(payload.ClientPublicKey)) {
-                Console.WriteLine($"[SERVER] Missing client public key for handshake from {client.Id}");
+                if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Missing client public key for handshake from {client.Id}");
                 client.Close();
                 return;
             }
@@ -130,7 +158,7 @@ public static partial class Server
             if (buildId != clientBuild) throw new Exception($"Client build ID mismatch. Server: {buildId}, Client: {clientBuild}");
 
             // Register client methods from handshake, if not already registered (eg. from previous client handshakes)
-            // TODO maybe actually already register the clientMethods on server start?
+            // TODO maybe actually already register the clientMethods on server start? Or atleast add as option
             if (MethodBuilder.GetAvailableClientMethods().Length == 0) {
                 MethodBuilder.RegisterFromHandshake(payload.AvailableMethods, isServer: true);
             } else {
@@ -183,9 +211,13 @@ public static partial class Server
             if (client.HandshakeDone) {
                 OnClientDisconnected?.Invoke(client.Id, false);
             }
-            Console.WriteLine($"[SERVER] Handshake failed for client {client.Id}: {ex.Message}");
+            if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Handshake failed for client {client.Id}: {ex.Message}");
 
             Thread.Sleep(100); // Give client some time to receive handshake failure message before closing connection
+
+            // TODO get HandshakeFailureReason
+            await InvokeEventAsync(() => OnHandshakeFailed?.Invoke(HandshakeFailureReason.Unknown, ex.Message));
+
             client.Close();
         }
     }

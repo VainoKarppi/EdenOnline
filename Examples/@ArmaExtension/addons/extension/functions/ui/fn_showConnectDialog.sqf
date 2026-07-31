@@ -102,12 +102,8 @@
             private _host = ctrlText _hostCtrl;
             private _port = parseNumber (ctrlText _portCtrl);
             private _password = ctrlText _passCtrl;
-            
-    
-            systemChat format ["Connecting to server... Host: %1, Port: %2, Password: %3", _host, _port, _password]; 
 
             [_host, _port, _password] spawn EXT_fnc_connect;
-    
     
             _display = (if (is3DEN) then {findDisplay 313} else {[] call BIS_fnc_displayMission}) createDisplay "RscDisplayEmpty"; 
     
@@ -119,8 +115,6 @@
             private _passCtrl = uiNamespace getVariable "EXT_ConnectDialog_PassEdit";
             private _port = parseNumber (ctrlText _portCtrl);
             private _password = ctrlText _passCtrl;
-    
-            systemChat format ["Hosting server...Port: %1 Password: %2", _port, _password];
 
             [_port, _password] spawn EXT_fnc_startServer;
     

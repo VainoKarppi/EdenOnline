@@ -326,10 +326,20 @@ function Run-CallExtension {
             Write-Host "`n=== Running in CURRENT SHELL ===" -ForegroundColor Cyan
 
             & $exePath $testScriptPath 2>&1 | ForEach-Object {
-                Write-Host $_
+
+                $line = $_.ToString()
+
+                $color = switch -Regex ($line) {
+                    '\[Error\]'   { 'Red'; break }
+                    '\[Warning\]' { 'Yellow'; break }
+                    '\[Info\]'    { 'Cyan'; break }
+                    '\[Debug\]'   { 'DarkGray'; break }
+                    default        { 'Gray' }
+                }
+
+                Write-Host $line -ForegroundColor $color
             }
-        }
-        else {
+        } else {
 
             Write-Host "`n=== Running via START-PROCESS (no new window) ===" -ForegroundColor Cyan
 

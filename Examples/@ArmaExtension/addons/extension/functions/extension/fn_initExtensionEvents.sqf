@@ -30,6 +30,14 @@ addMissionEventHandler ["ExtensionCallback",{
 
 			
 		};
+		
+
+		if (_function != "CameraUpdate") then {
+			diag_log "=========================================================================================";
+			diag_log _function;
+			diag_log _data;
+			diag_log "=========================================================================================";
+		};
 
 		(_function splitString "|") params ["_method",["_requestID","-1"],["_returnCode","1"]];
 
@@ -104,7 +112,6 @@ addMissionEventHandler ["ExtensionCallback",{
 					} forEach (all3DENEntities # 0);
 				};
 
-
 				case "ObjectRemoved": {
 					_object setVariable ["EXT_updateRequested", true];
 					private _id = _data select 0;
@@ -121,12 +128,30 @@ addMissionEventHandler ["ExtensionCallback",{
 					_cameras set [_id, [_position,_direction]];
 				};
 
+				case "UpdateClientList": {
+					// Updates player list and their names.
+					// TODO remove items from EXT_var_networkCameras if clients no longer exist on this list
+					// [[id,"name1"],[id,"name2"]]
+					private _otherClients = _data select 0;
+					EXT_var_OtherClients = createHashMapFromArray _otherClients;
+
+					[] spawn EXT_fnc_showPlayersDialog;
+				};
+
+				case "SetInitialMissionAttributes": {
+					private _data = _data select 0;
+
+					diag_log format ["SetInitialMissionAttributes: Connected: %1", missionNamespace getVariable ["EXT_var_Connected",false]];
+					// TODO block this script to execute add3DENEventHandler ["OnEntityAttributeChanged", {}];
+					set3DENMissionAttributes _data;
+				};
+
 				case "SetMissionAttribute": {
 					private _section = _data select 0;
 					private _property = _data select 1;
 					private _value = _data select 2;
-					
-					systemChat str([_section,_property,_value]);
+
+					_section set3DENMissionAttribute [_property, _value];
 				};
 
 				default {

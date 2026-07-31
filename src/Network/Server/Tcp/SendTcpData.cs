@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Net;
@@ -20,8 +21,8 @@ public static partial class Server
     // ── Send messages ─────────────────────────
     public static async Task SendTcpMessageAsync(int targetId, string methodName, params object?[] args)
     {
-        if (!IsTcpServerRunning()) 
-            throw new InvalidOperationException("TCP not initialized.");
+        if (!IsTcpServerRunning()) throw new InvalidOperationException("TCP not initialized.");
+        if (targetId == SERVER_ID) throw new InvalidOperationException("Cannot send TCP message to server itself.");
 
         var methods = MethodBuilder.GetAvailableClientMethods();
         var method = methods.FirstOrDefault(m => m.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase));
@@ -56,8 +57,14 @@ public static partial class Server
         }
 
         // Broadcast to all clients
-        foreach (var client in Clients.Values) {
-            await SendToClient(client);
+        List<Task> tasks = [];
+
+        foreach (var client in Clients.Values)
+        {
+            if (targetId < 0 && Math.Abs(targetId) == client.Id) continue; // Using -2 = Everyone except client 2
+            tasks.Add(SendToClient(client));
         }
+
+        await Task.WhenAll(tasks);
     }
 }

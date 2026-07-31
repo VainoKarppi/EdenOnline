@@ -4,14 +4,8 @@ if (isNil "EXT_var_networkCameras") then {
     uiNamespace setVariable ["EXT_var_networkCameras", createHashMap]; // keys = player UID, values = [pos, dir]
 };
 
-
-
-
+diag_log "Starting EXT_fnc_drawCameras";
 uiNamespace setVariable ["EXT_var_tickTime", diag_tickTime];
-
-
-
-
 
 
 // TODO add smooth interpolation, and read previous history of locations, and calculate "future" path
@@ -22,7 +16,7 @@ _code = {
     // Dont draw on while preview
     if (is3DENPreview) then {continue};
 
-    // Send this client camera position to other clients via UDP
+    // Sends this client camera position to other clients via UDP
     _time = uiNamespace getVariable ["EXT_var_tickTime", diag_tickTime];
     if (diag_tickTime - _time > uiNamespace getVariable ["EXT_var_cameraDrawUpdate", 0.1]) then {
         uiNamespace setVariable ["EXT_var_tickTime", diag_tickTime];
@@ -33,7 +27,7 @@ _code = {
             ["CameraUpdate", [_startPos, _forwardVec], true] spawn EXT_fnc_callExtensionAsync;
         };
     };
-
+ 
     // Draw other client cameras
     _drawDistance = 2000;
     _cameras = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap];

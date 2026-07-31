@@ -6,6 +6,8 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using DynTypeSerializer;
+using static DynTypeNetwork.Settings.Logging;
+
 
 namespace DynTypeNetwork;
 
@@ -19,30 +21,37 @@ public static partial class Server
     {
         _tcpListener = new TcpListener(IPAddress.Any, port);
         _tcpListener.Start();
-        _cts = new CancellationTokenSource();
-        _ = AcceptTcpClientsAsync(_cts.Token);
-        Console.WriteLine("[SERVER] TCP Server started");
+        _ = AcceptTcpClientsAsync();
+        if (LogItem(LogLevel.Info)) Console.WriteLine("[SERVER] TCP Server started");
     }
 
-    private static async Task AcceptTcpClientsAsync(CancellationToken token)
+    private static async Task AcceptTcpClientsAsync()
     {
-        while (!token.IsCancellationRequested)
-        {
-            var tcpClient = await _tcpListener!.AcceptTcpClientAsync(token);
-            var client = new Connection { Client = tcpClient.Client };
+        // Run OnServerStart, and give subsribed events 1 second timer, before force continue
+        await InvokeEventAsync(OnServerStart);
 
-            ThreadPool.QueueUserWorkItem(async _ =>
-            {
-                try
+        while (!_cts.IsCancellationRequested)
+        { 
+            try {
+                TcpClient tcpClient = await _tcpListener!.AcceptTcpClientAsync(_cts.Token);
+
+                var client = new Connection { Client = tcpClient.Client };
+
+                ThreadPool.QueueUserWorkItem(async _ =>
                 {
-                    await HandleTcpClientAsync(client, token);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[SERVER] Client {client.Id} thread exception: {ex}");
-                }
-            }, null);
+                    try
+                    {
+                        await HandleTcpClientAsync(client, _cts.Token);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Client {client.Id} thread exception: {ex}");
+                    }
+                }, null);
+            } catch {}
         }
+
+        if (LogItem(LogLevel.Info)) Console.WriteLine("[SERVER TCP] Receive loop stopped.");
     }
 
     private static async Task HandleTcpClientAsync(Connection client, CancellationToken token)
@@ -69,16 +78,23 @@ public static partial class Server
                         continue;
 
                     case MessageType.Custom:
-                        if (msg.TargetId == SERVER_ID) _ = Task.Run(() => OnTcpMessageReceived?.Invoke(msg));
+                        // Handle custom message that is sent to the server itself
                         if (msg.TargetId == SERVER_ID) {
+                            _ = Task.Run(() => OnTcpMessageReceived?.Invoke(msg));
                             await MessageBuilder.HandleCustomMessage(client.GetStream(), msg, token);
-                        } else {
-                            _ = msg.TargetId == 0 ? BroadcastTcp(client, msg) : ForwardTcpMessageToTarget(client, msg);
                         }
+
+                        // Forward to all clients (maybe even server if targetId == 0)
+                        if (msg.TargetId == -1 || msg.TargetId == 0) _ = BroadcastTcp(client, msg);
+                        
+                        
+                        // Forward to specific target
+                        if (msg.TargetId > 1) _ = ForwardTcpMessageToTarget(client, msg);
+                        
                         continue;
 
                     default:
-                        Console.WriteLine($"[SERVER] Unknown message type from client {client.Id}: {msg.MessageType}");
+                        if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Unknown message type from client {client.Id}: {msg.MessageType}");
                         continue;
                 }
 
@@ -110,8 +126,16 @@ public static partial class Server
     private static async Task BroadcastTcp(Connection sender, NetworkMessage message)
     {
         var tasks = new List<Task<object?>>();
+        object?[] broadcastResponses = [];
+
+        // Run on server if targetId == 0, otherwise forward to all clients except the sender
+        if (message.TargetId == 0) {
+            _ = Task.Run(() => OnTcpMessageReceived?.Invoke(message));
+            _ = await MessageBuilder.HandleBroadcastMessageOnServer(message, CancellationToken.None);
+        }
+
         
-        var clientsToSend = Clients.Values.Where(c => c.Connected && (EdenOnline.Constants.MIRROR || c.Id != sender.Id));
+        var clientsToSend = Clients.Values.Where(c => c.Connected && (EdenOnline.Settings.MIRROR || c.Id != sender.Id));
 
         foreach (var client in clientsToSend)
         {
@@ -135,7 +159,7 @@ public static partial class Server
             
             // If MessageId > 0, we expect a response from each client, which we will aggregate and send back to the sender once all responses are received or timeout occurs.
 
-            Console.WriteLine($"[NETWORK] Broadcasting message {message.MessageId} from {message.SenderId} to client {client.Id} and waiting for response");
+            if (LogItem(LogLevel.Info)) Console.WriteLine($"[NETWORK] Broadcasting message {message.MessageId} from {message.SenderId} to client {client.Id} and waiting for response");
 
             tasks.Add(Task.Run(async () =>
             {
@@ -156,14 +180,17 @@ public static partial class Server
 
                 NetworkMessage? returnMessage = await WaitWithTimeout(requestId);
 
-                Console.WriteLine($"[NETWORK] Received response for broadcast message {message.MessageId} from client {client.Id}");
+                if (LogItem(LogLevel.Info)) Console.WriteLine($"[NETWORK] Received response for broadcast message {message.MessageId} from client {client.Id}");
                 if (returnMessage == null || returnMessage.Payload == null) return null;
 
                 return MessageBuilder.UnpackPayload<object>(returnMessage.Payload);
             }));
         }
+        
 
-        object?[] broadcastResponses = [];
+        // Gather responses from all clients, with a timeout
+        // Dont wait for responses, if the message is fire and forget
+        if (message.MessageId < 1) return;
 
         if (tasks.Count > 0)
         {
@@ -201,24 +228,24 @@ public static partial class Server
     /// </summary>
     private static async Task ForwardTcpMessageToTarget(Connection sender, NetworkMessage message)
     {
-        Console.WriteLine($"[NETWORK] Forwarding message {message.MessageId} from {message.SenderId} to {message.TargetId}");
+        if (LogItem(LogLevel.Info)) Console.WriteLine($"[NETWORK] Forwarding message {message.MessageId} from {message.SenderId} to {message.TargetId}");
 
         Connection? target = Clients[message.TargetId];
         if (target == null) {
-            // TODO send error response back to sender, if needed
+            // TODO send error response back to sender, if needed. Is already checked by the sender client, but maybe the client disconnected in the meantime.
             return;
         }
         
         // Request data from target, and send response back to sender (if MessageId > 0)
         MethodRequest? request = MessageBuilder.UnpackPayload<MethodRequest>(message.Payload);
         if (request == null || string.IsNullOrEmpty(request.MethodName)) {
-            // TODO send error response back to sender, if needed
+            // TODO send error response back to sender, if needed. Is already checked by the sender client, but maybe the client sent invalid data.
             return;
         }
 
         object? result = await ForwardRequestDataAsync<object>(target.Id, request.MethodName!, request.Args);
 
-        bool maskSender = false; // TODO set as a setting
+        bool maskSender = false; // TODO set as a setting. If enabled, we need to add additional id to track the original sender, so that when server recieves the response, it can forward it back to the original sender. This feature is not really needed, since the sender client still has to know the target exists.
         NetworkMessage response = new()
         {
             SenderId = maskSender ? SERVER_ID : message.SenderId,

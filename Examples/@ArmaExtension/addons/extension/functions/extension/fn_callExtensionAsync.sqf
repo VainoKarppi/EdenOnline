@@ -17,18 +17,22 @@ private _requestId = if (_fireAndForget) then {-1} else {ceil(random 99999)};
 
 EXT_var_extensionRequests set [_requestId, _function];
 
-_function = _function + "|" + str(_requestId); // Add ASYNC key to request
+private _request = _function + "|" + str(_requestId); // Add ASYNC key to request
 
-private _request = [_function, _arguments];
 
 // Call Extension
 
 // TODO Temp
-if (_function != "CameraUpdate|-1") then {
-	diag_log formatText ["REQUEST ASYNC: %1",_request];
+/*
+if (_function != "CameraUpdate" && _function != "SetMissionAttribute") then {
+	diag_log formatText ["REQUEST ASYNC: (%1|%2) WITH ARGS: %3", _function, _requestId, _arguments];
 };
+*/
 
-private _result = EXT_var_extensionName callExtension _request;
+diag_log [_request, _arguments];
+private _result = EXT_var_extensionName callExtension [_request, _arguments];
+
+
 if (_result isEqualTo "" || _fireAndForget) exitWith {
 	EXT_var_extensionRequests deleteAt _requestId;
 
@@ -52,15 +56,15 @@ _return params ["_returnMessage","_returnData"];
 
 if (_returnMessage == "ERROR") exitWith {
 	EXT_var_extensionRequests deleteAt _requestId;
-	diag_log formatText ["ERROR: %1", _return select 1];
-	[false, _return select 1];
+	diag_log formatText ["ERROR: (%1|%2): %3", _function, _requestId, _returnData];
+	[false, _returnData];
 };
 
 _return = nil;
 
 private _success = false;
 private _startTime = diag_tickTime;
-_returnData = format ["ERROR: Request (%1) timed out!",_function];
+_returnData = format ["ERROR: (%1|%2): Request timed out!", _function, _requestId];
 
 private _loop = 1;
 while {(diag_tickTime - _startTime) < _timeout} do {
@@ -81,10 +85,12 @@ if !(EXT_var_DEBUG) then {
 };
 
 if !(_success) exitWith {
-	diag_log formatText ["%1", _returnData];
+	diag_log formatText ["ERROR: (%1|%2): %3", _function, _requestId, _returnData];
 	[_success, _returnData]
 };
 
-diag_log formatText ["SUCCESS WITH DATA: %1",_returnData];
+if (_function != "SetMissionAttribute") then {
+	diag_log formatText ["SUCCESS: (%1|%2): WITH DATA: %3", _function, _requestId, _returnData];
+};
 
 [_success, _returnData]

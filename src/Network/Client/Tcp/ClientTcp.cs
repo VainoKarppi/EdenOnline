@@ -9,11 +9,11 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using DynTypeSerializer;
+using static DynTypeNetwork.Settings.Logging;
+
+
 
 namespace DynTypeNetwork;
-
-
-
 
 
 
@@ -29,44 +29,50 @@ public static partial class Client
     // ── Connect TCP ──────────────────────────
     private static async Task<int> ConnectTcp(string host, int port, string? customHash = null)
     {
-        _tcpClient = new TcpClient();
-        await _tcpClient.ConnectAsync(host, port);
-        _tcpStream = _tcpClient.GetStream();
-        StartTcpReceiveLoop(_tcpStream);
+        try {
+            _tcpClient = new TcpClient();
+            await _tcpClient.ConnectAsync(host, port);
+            _tcpStream = _tcpClient.GetStream();
+            StartTcpReceiveLoop(_tcpStream);
 
-        KeyExchange.InitializeClientKeyExchange();
+            KeyExchange.InitializeClientKeyExchange();
 
-        //string assemblyHash = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "";
+            //string assemblyHash = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "";
 
-        string buildId = Assembly.GetExecutingAssembly().ManifestModule.ModuleVersionId.ToString();
+            string buildId = Assembly.GetExecutingAssembly().ManifestModule.ModuleVersionId.ToString();
 
-        // Combine with customHash if provided
-        var availableMethods = MethodBuilder.GetAvailableClientMethods();
-        string methodsHash = MethodBuilder.ComputeMethodsHash(availableMethods);
+            // Combine with customHash if provided
+            var availableMethods = MethodBuilder.GetAvailableClientMethods();
+            string methodsHash = MethodBuilder.ComputeMethodsHash(availableMethods);
 
-        HandshakeMessage handshake = new() {
-            Hash = $"{buildId}|{customHash ?? ""}|{methodsHash}",
-            AvailableMethods = availableMethods,
-            ClientPublicKey = Convert.ToBase64String(KeyExchange.ClientPublicKey!)
-        };
-        
-        HandshakeMessage? response = await RequestDataInternalAsync(Server.SERVER_ID, MessageType.Handshake, handshake);
-        if (response == null) throw new Exception("Handshake failed (Connection lost)");
+            HandshakeMessage handshake = new() {
+                Hash = $"{buildId}|{customHash ?? ""}|{methodsHash}",
+                AvailableMethods = availableMethods,
+                ClientPublicKey = Convert.ToBase64String(KeyExchange.ClientPublicKey!)
+            };
+            
+            HandshakeMessage? response = await RequestDataInternalAsync(Server.SERVER_ID, MessageType.Handshake, handshake);
+            if (response == null) throw new Exception("Handshake failed (Connection lost)");
 
-        if (!response.Success) throw new Exception(response.Message ?? "Handshake failed (Unknown reason)");
-        if (string.IsNullOrEmpty(response.ServerPublicKey)) throw new Exception("Handshake failed (Missing server public key)");
+            if (!response.Success) throw new Exception(response.Message ?? "Handshake failed (Unknown reason)");
+            if (string.IsNullOrEmpty(response.ServerPublicKey)) throw new Exception("Handshake failed (Missing server public key)");
 
-        KeyExchange.ComputeClientSharedSecret(response.ServerPublicKey);
+            KeyExchange.ComputeClientSharedSecret(response.ServerPublicKey);
 
-        ClientID = response.ClientId;
-        Clients.AddRange(response.OtherConnectedClients);
+            ClientID = response.ClientId;
+            Clients.AddRange(response.OtherConnectedClients);
 
-        int count = MethodBuilder.RegisterFromHandshake(response.AvailableMethods, isServer: false);
+            int count = MethodBuilder.RegisterFromHandshake(response.AvailableMethods, isServer: false);
 
-        // Allow API user to request custom data from server, before connect success (eg. other clients etc)
-        OnClientConnected?.Invoke(response.ClientId);
+            // Allow API user to request custom data from server, before connect success (eg. other clients etc)
+            OnClientConnected?.Invoke(response.ClientId);
 
-        return ClientID;
+            return ClientID;
+        } catch (Exception ex) {
+            // TODO get real HandshakeFailureReason
+            await InvokeEventAsync(() => OnHandshakeFailed?.Invoke(HandshakeFailureReason.Unknown, ex.Message));
+            throw; // Pass to "front end"
+        }
     }
 
     
@@ -88,8 +94,7 @@ public static partial class Client
 
                     if (msg == null) {
                         // Connection lost or stream closed
-                        // TODO send client disconnect instead?
-                        await HandleServerShutdown(false);
+                        await HandleServerShutdown(ServerDisconnectReason.ConnectionError);
                         break;
                     }
 
@@ -129,7 +134,7 @@ public static partial class Client
                     }
 
                     if (msg.MessageType == MessageType.ServerShutdown) {
-                        await HandleServerShutdown(true);
+                        await HandleServerShutdown(ServerDisconnectReason.ServerShutdown);
                         break;
                     }
 
@@ -147,18 +152,18 @@ public static partial class Client
             catch (OperationCanceledException)
             {
                 // normal shutdown
-                Console.WriteLine("[CLIENT] TCP receive loop cancelled.");
+                if (LogItem(LogLevel.Info)) Console.WriteLine("[CLIENT] TCP receive loop cancelled.");
             }
             catch (Exception ex) when (ex is ObjectDisposedException || ex is IOException)
             {
                 // Connection was forcibly closed
-                Console.WriteLine($"[CLIENT] Connection lost: {ex.Message}");
-                await HandleServerShutdown(false);
+                if (LogItem(LogLevel.Info)) Console.WriteLine($"[CLIENT] Connection lost: {ex.Message}");
+                await HandleServerShutdown(ServerDisconnectReason.ConnectionLost);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[CLIENT] Receive loop exception: {ex}");
-                await HandleServerShutdown(false);
+                if (LogItem(LogLevel.Info)) Console.WriteLine($"[CLIENT] Receive loop exception: {ex}");
+                await HandleServerShutdown(ServerDisconnectReason.ConnectionError);
             }
         });
     }

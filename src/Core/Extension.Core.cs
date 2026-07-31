@@ -1,8 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
+using Microsoft.Win32;
 using static ArmaExtension.Logger;
 using static ArmaExtension.MethodSystem;
 using static ArmaExtension.PluginLoader;
@@ -10,7 +14,7 @@ using static ArmaExtension.PluginLoader;
 namespace ArmaExtension;
 
 public static partial class Extension {
-
+    public static bool DEBUG = true;
 
     /// <summary>
     /// Called only once when Arma 3 loads the extension.
@@ -32,7 +36,25 @@ public static partial class Extension {
     /// <param name="outputSize">The maximum length of the buffer (always 32 for this particular method)</param>
     [UnmanagedCallersOnly(EntryPoint = "RVExtensionVersion")]
     private static void RVExtensionVersion(nint output, int outputSize) {
-        Log($"\n==============================================================\nExtension ({ExtensionName}) Started | {AssemblyDirectory} | {Version} |\n==============================================================");
+        
+        //string dllPath = Path.Combine(Path.GetDirectoryName(AssemblyDirectory) ?? "", $"{ExtensionName}_x64.dll");
+        //string dllHash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(dllPath)));
+
+        // Calculate header lenght
+        const int width = 79;
+        string title = $" {ExtensionName} ";
+        int padding = width - title.Length;
+        string top = new string('=', padding / 2) + title + new string('=', padding - padding / 2);
+        string bottom = new('=', width);
+
+        Log(
+            $"\n{top}" +
+            //$"\nDLL Path: \"{dllPath}\"" +
+            $"\nArma 3 Path: \"{AssemblyDirectory}\"" +
+            //$"\nSHA-256: {dllHash}" +
+            $"\nVersion: {Version}" +
+            $"\n{bottom}"
+        );
 
         bool firstRun = InitializePlugins(); // Initialize plugins if not already done
         if (!firstRun) Events.RaiseVersionCalled(Version);
@@ -142,5 +164,33 @@ public static partial class Extension {
         Marshal.WriteByte(output, length, 0);
 
         return returnCode;
+    }
+
+
+    private static string? GetArmaPath()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            using RegistryKey? key = Registry.LocalMachine.OpenSubKey(
+                @"SOFTWARE\WOW6432Node\Bohemia Interactive\ArmA 3"
+            );
+
+            string? armaPath = key?.GetValue("main") as string;
+
+            return string.IsNullOrWhiteSpace(armaPath)
+                ? null
+                : armaPath;
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            string? executable = Environment.ProcessPath;
+
+            return executable != null
+                ? Path.GetDirectoryName(executable)
+                : null;
+        }
+
+        return null;
     }
 }

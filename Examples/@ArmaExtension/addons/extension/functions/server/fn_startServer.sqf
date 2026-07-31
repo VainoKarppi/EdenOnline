@@ -28,31 +28,61 @@ uiSleep 0.1;
 private _return = ["StartServer",[_port, profileNameSteam, worldName, _gameVersion, _modHashes, _password]] call EXT_fnc_callExtensionAsync;
 
 if !(_return#0) exitWith {
-	[(format ["%1", _return#1]), 1, 5] call BIS_fnc_3DENNotification;
+	[(format ["%1", _return#1#0]), 1, 5] call BIS_fnc_3DENNotification;
 	endLoadingScreen;
 };
 
-private _id = ((_return select 1) select 0) select 0;
-private _otherClients = ((_return select 1) select 0) select 1;
+diag_log _return;
+private _id = ((_return select 1) select 0);
 
-EXT_var_OtherClients = createHashMapFromArray _otherClients;
+//EXT_var_OtherClients = createHashMapFromArray _otherClients;
 
 missionNamespace setVariable ["EXT_var_clientID",_id];
 
 
-// Send mission attributes to server
-// TODO Read from configClass for modded attributes
-/*
-{   
-    _value = (_section get3DENMissionAttribute _property);
-    ["SetMissionAttribute", [_section, _property, _value]] call EXT_fnc_callExtensionAsync;
-} forEach ("Multiplayer" get3DENMissionAttribute "respawn");
-*/
+
+
+
+// Send mission attributes if enabled
+if (missionNamespace getVariable ["EXT_var_syncMissionAttributes", false]) then {
+    private _attributeList = "true" configClasses (configFile >> "Cfg3DEN" >> "Mission") apply {
+        private _sectionCfg = _x;
+        private _attributes = [];
+    
+        {
+            _attributes append (
+                "true" configClasses (_x >> "Attributes") apply { getText (_x >> "data") }
+            );
+        } forEach ("true" configClasses (_sectionCfg >> "AttributeCategories"));
+
+        [configName _sectionCfg, _attributes]
+    };
+
+    private _attributes = [];
+    {
+        private _section = _x#0;
+        private _properties = _x#1;
+        {
+            private _property = _x;
+            if (_property != "") then {
+                private _value = (_section get3DENMissionAttribute _property);
+                if (isNil "_value") then {
+                    _attributes pushBack [_section, _property, nil];
+                } else {
+                    _attributes pushBack [_section, _property, _value];
+                }; 
+            };
+        } forEach _properties;
+    } forEach _attributeList;
+
+    ["SetInitialMissionAttributes", [_attributes]] call EXT_fnc_callExtensionAsync;
+};
+
 
 // Send current world edits to server
 {
-    _attributes = (_x get3DENAttributes "");
-    _id = _x call EXT_fnc_getId;
+    private _attributes = (_x get3DENAttributes "");
+    private _id = _x call EXT_fnc_getId;
 
     ["CreateObject", [_id, _attributes]] call EXT_fnc_callExtensionAsync;
 } forEach (all3DENEntities # 0);
@@ -87,12 +117,17 @@ while {EXT_var_expectedObjectSyncCount == -1 || (count (all3DENEntities # 0)) < 
     uiSleep 0.01;
 };
 
-missionNamespace setVariable ["EXT_var_Connected",true];
 
 call EXT_fnc_init3DENEvents;
 [] spawn EXT_fnc_drawCameras;
+[] spawn EXT_fnc_showPlayersDialog;
 
 [("CONNECTED TO SERVER WITH ID: " + str(_id)), 0,5] call BIS_fnc_3DENNotification;
+
+missionNamespace setVariable ["EXT_var_Connected", true];
+
+// Disable ability to preview the mission
+(findDisplay 313 displayCtrl 1023) ctrlEnable false;
 
 endLoadingScreen;
 

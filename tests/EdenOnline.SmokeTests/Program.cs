@@ -1,3 +1,4 @@
+using System.Reflection;
 using DynTypeSerializer;
 using EdenOnline;
 
@@ -27,5 +28,17 @@ if (roundTrip is null) throw new InvalidOperationException("ArmaCamera should de
 Assert(roundTrip.Id == camera.Id, "ArmaCamera.Id should round-trip.");
 Assert(roundTrip.Position.Length == 3, "ArmaCamera.Position should round-trip.");
 Assert(roundTrip.Direction.Length == 3, "ArmaCamera.Direction should round-trip.");
+
+var setMissionAttributeMethod = typeof(ArmaMethods).GetMethod("SetMissionAttribute", BindingFlags.Public | BindingFlags.Static);
+Assert(setMissionAttributeMethod is not null, "SetMissionAttribute should exist.");
+
+var serializerType = typeof(ArmaMethods).Assembly.GetType("ArmaExtension.Serializer");
+Assert(serializerType is not null, "Serializer type should exist.");
+
+var deserializeMethod = serializerType?.GetMethod("DeserializeArmaArray", BindingFlags.NonPublic | BindingFlags.Static);
+Assert(deserializeMethod is not null, "DeserializeArmaArray should exist.");
+
+var values = (object?[])deserializeMethod!.Invoke(null, [setMissionAttributeMethod!, new string[] { "\"Briefing\"", "\"Scenario\"", "[1,2,3]" }, null])!;
+Assert(values[2] is object[] array && array.Length == 3, "Array payloads should deserialize as object[] for object parameters.");
 
 Console.WriteLine("Smoke tests passed.");

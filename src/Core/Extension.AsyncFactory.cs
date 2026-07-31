@@ -56,28 +56,33 @@ internal static class AsyncFactory {
         // Start the actual task
         var task = Task.Run(async () => {
             try {
-                object?[] unserializedData = Serializer.DeserializeJsonArray(methodToInvoke, argArray);
+                object?[] unserializedData = Serializer.DeserializeArmaArray(methodToInvoke, argArray);
+
                 RaiseAsyncTaskStartd(methodToInvoke.Name, asyncKey, unserializedData);
-                Log(@$"ARMA >> EXTENSION | ASYNC{(isVoid ? "(VOID)" : "")} >> [""{methodToInvoke.Name}|{asyncKey}"", {Serializer.PrintArray(unserializedData)}]");
+                Log(@$"ARMA >> EXTENSION | ASYNC{(isVoid ? " (VOID)" : "")} >> [""{methodToInvoke.Name}|{asyncKey}"", {Serializer.PrintArray(unserializedData)}]");
 
                 object? result = methodToInvoke.Invoke(null, unserializedData);
 
-                if (isVoid) return;
+                // If the method returns a Task, await it and unwrap the result
+                if (!isVoid) result = await UnwrapAsync(result);
 
-                result = await UnwrapAsync(result);
+                RaiseAsyncTaskCompleted(methodToInvoke.Name, asyncKey, true, isVoid ? [] : [result]);
 
-                RaiseAsyncTaskCompleted(methodToInvoke.Name, asyncKey, true, [result]);
                 Extension.SendAsyncResponseCallbackMessage(
                     ExtensionResultCode.ASYNC_RESPONSE.ToString(),
-                    [result],
+                    isVoid ? [] : [result],
                     (int)ReturnCodes.Success,
                     asyncKey
                 );
             } catch (Exception ex) {
+                if (Extension.DEBUG) Log($"[ASYNC TASK ERROR] {ex}", LogLevel.Error, true);
+
                 ex = ex.InnerException ?? ex;
+
                 RaiseAsyncTaskCompleted(methodToInvoke.Name, asyncKey, false, [ex.Message]);
+
                 Extension.SendAsyncResponseCallbackMessage(
-                    ExtensionResultCode.ASYNC_SENT_FAILED.ToString(),
+                    ExtensionResultCode.ASYNC_RESPONSE.ToString(),
                     [ex.Message],
                     (int)ReturnCodes.Error,
                     asyncKey
