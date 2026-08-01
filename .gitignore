@@ -9,6 +9,7 @@ obj/
 *.dll
 *.pbo
 *.log
+**/*.zip
 
 **/hash.txt
 

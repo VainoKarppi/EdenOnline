@@ -151,11 +151,11 @@ public static partial class Server
             string clientMethodsHash = parts[2];
 
             if (!string.IsNullOrEmpty(CustomHash)) {
-                if (string.IsNullOrEmpty(clientCustomHash)) throw new Exception($"Client custom hash is empty, but server requires custom hash"); 
-                if (!CustomHash.Equals(clientCustomHash, StringComparison.OrdinalIgnoreCase)) throw new Exception($"Client custom hash mismatch");
+                //if (string.IsNullOrEmpty(clientCustomHash)) throw new Exception($"Client custom hash is empty, but server requires custom hash"); 
+                //if (!CustomHash.Equals(clientCustomHash, StringComparison.OrdinalIgnoreCase)) throw new Exception($"Client custom hash mismatch");
             }
     
-            if (buildId != clientBuild) throw new Exception($"Client build ID mismatch. Server: {buildId}, Client: {clientBuild}");
+           // if (buildId != clientBuild) throw new Exception($"Client build ID mismatch. Server: {buildId}, Client: {clientBuild}");
 
             // Register client methods from handshake, if not already registered (eg. from previous client handshakes)
             // TODO maybe actually already register the clientMethods on server start? Or atleast add as option
