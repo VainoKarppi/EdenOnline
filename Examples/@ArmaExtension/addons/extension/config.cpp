@@ -78,7 +78,7 @@ class Cfg3DEN
             // TODO Set these
             // TODO Run disconnect when exiting from 3DEN
             init = "call EXT_fnc_initExtension";
-            onTerrainNew = "diag_log str([1])";
+            onTerrainNew = "[1] call EXT_fnc_disconnect; diag_log ""WORLD CHANGED""; call EXT_fnc_initExtension";
             onMissionPreviewEnd = "diag_log str([2])";
             onMissionLoad = "diag_log str([3])";
             onMissionNew = "call EXT_fnc_initExtension";

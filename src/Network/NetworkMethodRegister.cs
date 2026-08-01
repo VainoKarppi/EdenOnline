@@ -49,36 +49,16 @@ public static class MethodBuilder {
             var dictInfos = !isServer ? _serverMethodInfos : _clientMethodInfos;
             if (dictInfos.ContainsKey(rpcInfo.Name)) continue;
 
-            // Create parameter expressions
-            var paramExprs = rpcInfo.Parameters
-                .Select(p => Expression.Parameter(p.Type, p.Name))
-                .ToArray();
-
-            Type[] parameterTypes = rpcInfo.Parameters.Select(p => p.Type).ToArray();
-
             Delegate del;
-            Type delegateType;
-
             if (rpcInfo.ReturnType == null)
             {
-                delegateType = Expression.GetActionType(parameterTypes);
-
-                var body = Expression.Throw(
-                    Expression.Constant(new InvalidOperationException($"Remote method '{rpcInfo.Name}' cannot be called locally"))
-                );
-
-                del = Expression.Lambda(delegateType, body, paramExprs).Compile();
+                del = new Action<object?[]>(args =>
+                    throw new InvalidOperationException($"Remote method '{rpcInfo.Name}' cannot be called locally"));
             }
             else
             {
-                delegateType = Expression.GetFuncType(parameterTypes.Concat([rpcInfo.ReturnType]).ToArray());
-
-                var body = Expression.Throw(
-                    Expression.Constant(new InvalidOperationException($"Remote method '{rpcInfo.Name}' cannot be called locally")),
-                    rpcInfo.ReturnType
-                );
-
-                del = Expression.Lambda(delegateType, body, paramExprs).Compile();
+                del = new Func<object?[], object?>(args =>
+                    throw new InvalidOperationException($"Remote method '{rpcInfo.Name}' cannot be called locally"));
             }
 
             if (!isServer)

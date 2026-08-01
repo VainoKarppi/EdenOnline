@@ -112,29 +112,23 @@ public static partial class ArmaMethods {
     }
 
     public static async Task<int> StartServer(double port, string username, string worldname, string armaVersion, object[] modHashes, string password = "null") {
-        try {
-            if (Client.IsTcpConnected()) throw new Exception("Server is already running. Please disconnect the client before starting a server.");
-        
-            string clientHash = GetHash(new object[] {modHashes, Extension.Version, armaVersion, worldname, password});
+        if (Client.IsTcpConnected()) throw new Exception("Server is already running. Please disconnect the client before starting a server.");
+    
+        string clientHash = GetHash(new object[] {modHashes, Extension.Version, armaVersion, worldname, password});
 
-            RegisterServerMethods(new ServerNetworkMethods());
-            PrintAvailableMethods("Server", GetAvailableServerMethods());
+        RegisterServerMethods(new ServerNetworkMethods());
+        PrintAvailableMethods("Server", GetAvailableServerMethods());
 
-            await Server.StartAsync((int)port, true, clientHash);
+        await Server.StartAsync((int)port, true, clientHash);
 
-            // Subscribe events
-            Server.OnClientConnected += ServerNetworkEvents.OnClientConnected;
-            Server.OnClientDisconnected += ServerNetworkEvents.OnClientDisconnected;
-            Server.OnServerShutdown += ServerNetworkEvents.OnServerShutdown;
+        // Subscribe events
+        Server.OnClientConnected += ServerNetworkEvents.OnClientConnected;
+        Server.OnClientDisconnected += ServerNetworkEvents.OnClientDisconnected;
+        Server.OnServerShutdown += ServerNetworkEvents.OnServerShutdown;
 
-            int clientId = await Connect("127.0.0.1", (int)port, username, worldname, armaVersion, modHashes, password);
+        int clientId = await Connect("127.0.0.1", (int)port, username, worldname, armaVersion, modHashes, password);
 
-            return clientId;
-        } catch (Exception ex) {
-            Log($"Error starting server: {ex.Message}", LogLevel.Error, true);
-            Log($"Error starting server: {ex}", LogLevel.Error, true);
-            return -1;
-        }
+        return clientId;
     }
 
     public static async Task CameraUpdate(object[] position, object[] direction) {

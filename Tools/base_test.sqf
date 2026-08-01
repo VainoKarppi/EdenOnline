@@ -9,6 +9,7 @@
 
 "XXXX" callExtension ["StartServer|1",[2302,"Razer","Altis","2.00.146773",["3db741e9"],""]];
 
+/*
 //"XXXX" callExtension ["StartServer|1",[5000,"Razer","Altis", "2.00.146773",["3db741e9"], ""]];
 
 //"XXXX" callExtension "TestNetwork";
@@ -39,3 +40,4 @@ sleep 1;
 sleep 1;
 
 freeExtension "XXXX";
+*/

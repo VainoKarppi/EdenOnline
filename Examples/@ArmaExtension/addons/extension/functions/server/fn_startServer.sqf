@@ -27,6 +27,8 @@ uiSleep 0.1;
 
 private _return = ["StartServer",[_port, profileNameSteam, worldName, _gameVersion, _modHashes, _password]] call EXT_fnc_callExtensionAsync;
 
+
+// TODO Verify the client is is 2 and especially NOT -1. Throw error
 if !(_return#0) exitWith {
 	[(format ["%1", _return#1#0]), 1, 5] call BIS_fnc_3DENNotification;
 	endLoadingScreen;
@@ -38,7 +40,6 @@ private _id = ((_return select 1) select 0);
 //EXT_var_OtherClients = createHashMapFromArray _otherClients;
 
 missionNamespace setVariable ["EXT_var_clientID",_id];
-
 
 
 
