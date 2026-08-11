@@ -79,7 +79,7 @@ public static partial class Client {
         NetworkMessage msg = new()
         {
             SenderId = ClientID,
-            TargetId = targetId,
+            TargetId = [targetId],
             MessageId = requestId,
             MessageType = type
         };

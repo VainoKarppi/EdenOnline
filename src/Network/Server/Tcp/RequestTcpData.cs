@@ -52,7 +52,7 @@ public static partial class Server {
     private static async Task<TResult?> RequestDataInternalAsync<TPayload, TResult>(int targetId, MessageType type, TPayload payload, bool isForwarded = false)
     {
         ushort requestId = MessageBuilder.GenerateRequestId(ref _requestId);
-        NetworkMessage msg = new() { SenderId = SERVER_ID, TargetId = targetId, MessageId = requestId, MessageType = type };
+        NetworkMessage msg = new() { SenderId = SERVER_ID, TargetId = [targetId], MessageId = requestId, MessageType = type };
 
         Clients.TryGetValue(targetId, out Connection? client);
         if (client == null) throw new Exception($"Client not found with this id: {targetId}");

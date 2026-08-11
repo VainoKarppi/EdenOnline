@@ -79,17 +79,16 @@ public static partial class Server
 
                     case MessageType.Custom:
                         // Handle custom message that is sent to the server itself
-                        if (msg.TargetId == SERVER_ID) {
+                        if (msg.TargetsServer) {
                             _ = Task.Run(() => OnTcpMessageReceived?.Invoke(msg));
                             await MessageBuilder.HandleCustomMessage(client.GetStream(), msg, token);
                         }
 
-                        // Forward to all clients (maybe even server if targetId == 0)
-                        if (msg.TargetId == -1 || msg.TargetId == 0) _ = BroadcastTcp(client, msg);
-                        
-                        
+                        // Forward to all clients when the target list is a broadcast or exclusion rule
+                        if (msg.ShouldBroadcast) _ = BroadcastTcp(client, msg);
+
                         // Forward to specific target
-                        if (msg.TargetId > 1) _ = ForwardTcpMessageToTarget(client, msg);
+                        if (msg.TargetId.Any(t => t > 1)) _ = ForwardTcpMessageToTarget(client, msg);
                         
                         continue;
 
@@ -114,7 +113,7 @@ public static partial class Server
         NetworkMessage message = new()
         {
             SenderId = 1,
-            TargetId = targetId,
+            TargetId = [targetId],
             MessageType = type
         };
         var packet = MessageBuilder.CreatePacket(message, data);
@@ -129,7 +128,7 @@ public static partial class Server
         object?[] broadcastResponses = [];
 
         // Run on server if targetId == 0, otherwise forward to all clients except the sender
-        if (message.TargetId == 0) {
+        if (message.TargetsEveryone) {
             _ = Task.Run(() => OnTcpMessageReceived?.Invoke(message));
             _ = await MessageBuilder.HandleBroadcastMessageOnServer(message, CancellationToken.None);
         }
@@ -144,7 +143,7 @@ public static partial class Server
                 _ = Task.Run(async () => {
                     var requestMessage = new NetworkMessage {
                         SenderId = sender.Id,
-                        TargetId = client.Id,
+                        TargetId = [client.Id],
                         MessageType = message.MessageType,
                         MessageId = message.MessageId,
                         Payload = message.Payload
@@ -169,7 +168,7 @@ public static partial class Server
                 var requestMessage = new NetworkMessage
                 {
                     SenderId = message.SenderId,
-                    TargetId = client.Id,
+                    TargetId = [client.Id],
                     MessageType = message.MessageType,
                     MessageId = requestId,
                     Payload = message.Payload
@@ -211,7 +210,7 @@ public static partial class Server
         NetworkMessage broadcastResponse = new()
         {
             SenderId = SERVER_ID,
-            TargetId = message.SenderId,
+            TargetId = [message.SenderId],
             MessageId = message.MessageId,
             MessageType = MessageType.ResponseBroadcast
         };
@@ -230,7 +229,10 @@ public static partial class Server
     {
         if (LogItem(LogLevel.Info)) Console.WriteLine($"[NETWORK] Forwarding message {message.MessageId} from {message.SenderId} to {message.TargetId}");
 
-        Connection? target = Clients[message.TargetId];
+        Connection? target = null;
+        int targetId = message.TargetId.FirstOrDefault(t => t > 0);
+        if (targetId > 0)
+            target = Clients[targetId];
         if (target == null) {
             // TODO send error response back to sender, if needed. Is already checked by the sender client, but maybe the client disconnected in the meantime.
             return;
@@ -249,7 +251,7 @@ public static partial class Server
         NetworkMessage response = new()
         {
             SenderId = maskSender ? SERVER_ID : message.SenderId,
-            TargetId = message.SenderId,
+            TargetId = [message.SenderId],
             MessageId = message.MessageId,
             MessageType = MessageType.Handshake
         };

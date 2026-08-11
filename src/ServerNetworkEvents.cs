@@ -32,12 +32,16 @@ public class ServerNetworkEvents {
         //await Task.Delay(500); // Wait a moment to make sure other clients are in loadign screen, before starting object sync, to prevent desync issues.
 
         //await Server.SendTcpMessageAsync(-clientId, "LoadingScreen", [false, 100]);
+
+        // TODO send UpdateClientList to all clients, to add this client to their list. (and add username to list)
     }
 
     public static async void OnClientDisconnected(int clientId, bool success) {
         //TODO returns false, when host client runs Disconnect, and shuts server down first. Should return true, when server is succesfully closed. Should we also return Disconnect reason instead of bool?
         Log($"Client disconnected with ID:{clientId}, SUCCESS:{success}");
 
+
+        // TODO Send UpdateClientList to all clients, to remove this client from their list. (and remove username from list)
     }
 
     public static async void OnServerShutdown()

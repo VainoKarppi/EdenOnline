@@ -44,15 +44,18 @@ public static partial class ArmaMethods {
         Client.OnClientConnected += ClientNetworkEvents.OnConnected;
         Client.OnClientDisconnected += ClientNetworkEvents.OnDisconnected;
         Client.OnServerShutdown += ClientNetworkEvents.OnServerShutdown;
+        Client.OnOtherClientConnected += ClientNetworkEvents.OnOtherClientConnected;
+        Client.OnOtherClientDisconnected += ClientNetworkEvents.OnOtherClientDisconnected;
 
         //* SEND AND REQUEST USERNAMES FROM SERVER
         await Client.SendTcpMessageAsync(1, "UpdateUserName", clientID, username);
         Log($"[CLIENT] Syncing client list and usernames...");
-        Dictionary<int, string>? clientUsernames = await Client.RequestTcpDataAsync<Dictionary<int, string>>(1, "GetAllUsernames");
-        Log($"[CLIENT] Got {clientUsernames?.Count} users");
-        if (clientUsernames != null && clientUsernames.Count() > 0)
+
+        UsernameList = await Client.RequestTcpDataAsync<Dictionary<int, string>>(1, "GetAllUsernames") ?? [];
+        Log($"[CLIENT] Got {UsernameList?.Count} users");
+        if (UsernameList != null && UsernameList.Count > 0)
         {
-            object[] otherUsersArray = clientUsernames
+            object[] otherUsersArray = UsernameList
                 .Where(x => x.Key != clientID)
                 .Select(kvp => new object[] { kvp.Key, kvp.Value })
                 .Cast<object>()
@@ -62,7 +65,7 @@ public static partial class ArmaMethods {
         }
 
         // TODO verify user count
-        Log($"[CLIENT] Received {clientUsernames?.Count ?? 0} users. Should be: {Client.GetOtherClients().Count}");
+        Log($"[CLIENT] Received {UsernameList?.Count ?? 0} users. Should be: {Client.GetOtherClients().Count}");
 
 
         //* MISSION ATTRIBUTES SYNC

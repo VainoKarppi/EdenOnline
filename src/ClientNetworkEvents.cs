@@ -35,4 +35,11 @@ public class ClientNetworkEvents {
         Log($"[CLIENT] Server shutdown event received. Reason: {reason}");
         Extension.SendToArma("ServerShutdown", [reason.ToString()]);
     }
+
+    public static void OnOtherClientConnected(int otherClientId) {
+        Log($"[CLIENT] Other client connected: {otherClientId}");
+    }
+    public static void OnOtherClientDisconnected(int otherClientId, bool success) {
+        Log($"[CLIENT] Other client disconnected: {otherClientId}");
+    }
 }

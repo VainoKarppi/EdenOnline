@@ -37,7 +37,7 @@ public static partial class Client
         NetworkMessage registerMsg = new()
         {
             SenderId = ClientID,
-            TargetId = Server.SERVER_ID,
+            TargetId = [Server.SERVER_ID],
             MessageType = MessageType.UdpRegister
         };
 

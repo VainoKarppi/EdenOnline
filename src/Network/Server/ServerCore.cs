@@ -119,7 +119,7 @@ public static partial class Server
     {
         NetworkMessage response = new() {
             SenderId = SERVER_ID,
-            TargetId = client.Id,
+            TargetId = [client.Id],
             MessageId = message.MessageId,
             MessageType = MessageType.Handshake
         };

@@ -12,22 +12,24 @@ internal static class MessageCrypto
     private const int NonceSize = 12;
     private const int TagSize = 16;
 
-    internal static byte[] CreateTcpEnvelope(byte[] messageBytes, MessageType type, int senderId, int targetId)
+    internal static byte[] CreateTcpEnvelope(byte[] messageBytes, MessageType type, int senderId, int[] targetIds)
     {
         if (type == MessageType.Handshake)
             return PrependMarker(HandshakeMarker, messageBytes);
 
-        byte[] key = GetEncryptionKeyForOutbound(senderId, targetId);
+        int primaryTargetId = GetPrimaryTargetId(targetIds);
+        byte[] key = GetEncryptionKeyForOutbound(senderId, primaryTargetId);
         byte[] ciphertext = EncryptBytes(messageBytes, key);
         return PrependMarker(EncryptedMarker, ciphertext);
     }
 
-    internal static byte[] CreateUdpEnvelope(byte[] messageBytes, MessageType type, int senderId, int targetId)
+    internal static byte[] CreateUdpEnvelope(byte[] messageBytes, MessageType type, int senderId, int[] targetIds)
     {
         if (type == MessageType.Handshake)
             return PrependMarker(HandshakeMarker, messageBytes);
 
-        byte[] key = GetEncryptionKeyForOutbound(senderId, targetId);
+        int primaryTargetId = GetPrimaryTargetId(targetIds);
+        byte[] key = GetEncryptionKeyForOutbound(senderId, primaryTargetId);
         byte[] ciphertext = EncryptBytes(messageBytes, key);
         return PrependMarker(EncryptedMarker, ciphertext);
     }
@@ -139,6 +141,15 @@ internal static class MessageCrypto
         using var aes = new AesGcm(key, TagSize);
         aes.Decrypt(nonce, ciphertext, tag, plaintext);
         return plaintext;
+    }
+
+    private static int GetPrimaryTargetId(int[] targetIds)
+    {
+        int[] normalized = NetworkMessage.NormalizeTargetIds(targetIds);
+        if (normalized.Length == 0)
+            return Server.SERVER_ID;
+
+        return normalized.FirstOrDefault(t => t > 0, Server.SERVER_ID);
     }
 
     private static byte[] GetEncryptionKeyForOutbound(int senderId, int targetId)

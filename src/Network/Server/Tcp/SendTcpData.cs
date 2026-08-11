@@ -39,7 +39,7 @@ public static partial class Server
             var msg = new NetworkMessage
             {
                 SenderId = SERVER_ID,
-                TargetId = client.Id,
+                TargetId = [client.Id],
                 MessageType = MessageType.Custom
             };
 
