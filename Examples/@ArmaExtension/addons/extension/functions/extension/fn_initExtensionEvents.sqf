@@ -130,11 +130,24 @@ addMissionEventHandler ["ExtensionCallback",{
 
 				case "UpdateClientList": {
 					// Updates player list and their names.
-					// TODO remove items from EXT_var_networkCameras if clients no longer exist on this list
 					// [[id,"name1"],[id,"name2"]]
+					
 					private _otherClients = _data select 0;
 					EXT_var_OtherClients = createHashMapFromArray _otherClients;
 
+
+					// Remove cameras belonging to clients that no longer exist
+					private _networkCameras = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap];
+					{
+						if !(_x in EXT_var_OtherClients) then {
+							_networkCameras deleteAt _x;
+						};
+					} forEach keys _networkCameras;
+
+					uiNamespace setVariable ["EXT_var_networkCameras", _networkCameras];
+
+
+					// Update client list
 					[] spawn EXT_fnc_showPlayersDialog;
 				};
 

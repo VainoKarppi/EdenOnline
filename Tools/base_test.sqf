@@ -7,16 +7,18 @@
 
 "XXXX" callExtension "version";
 
-"XXXX" callExtension ["StartServer|1",[2302,"Razer","Altis","2.00.146773",["3db741e9"],""]];
+//"XXXX" callExtension ["StartServer|1",[2302,"Razer","Altis","2.00.146773",["3db741e9"],""]];
 
 
 //"XXXX" callExtension ["StartServer|1",[5000,"Razer","Altis", "2.00.146773",["3db741e9"], ""]];
 
 //"XXXX" callExtension "TestNetwork";
 
-sleep 1;
 
-"XXXX" callExtension ["SetInitialMissionAttributes",[[["Scenario","Briefing",false],["NilValue","Test",nil], ["Multiplayer","Respawn",2]]]];
+
+
+
+//"XXXX" callExtension ["SetInitialMissionAttributes",[[["Scenario","Briefing",false],["NilValue","Test",nil], ["Multiplayer","Respawn",2]]]];
 
 
 //"XXXX" callExtension ["CameraUpdate",[[0,0,0], [0,0,0]]];
@@ -35,7 +37,24 @@ sleep 1;
 sleep 1;
 
 
+"XXXX" callExtension ["CreateObject|79996", ["CBN1DT70",[["Position",[5086.52,4906.72,0]],["ItemClass","B_soldier_M_F"]]]];
+
+sleep 1;
+
+"XXXX" callExtension ["UpdateObject|71111", ["CBN1DT70",[["Position",[5086.52,4906.72,100]]]]];
+
+sleep 1;
+
+
 "XXXX" callExtension ["CameraUpdate|-1",[[4593.98,5088.45,10],[0.704759,0.687867,-0.173648]]];
+
+sleep 1;
+
+"XXXX" callExtension ["CameraUpdate|-1",[[4593.98,5088.45,100],[0.704759,0.687867,-0.173648]]];
+
+sleep 1;
+
+"XXXX" callExtension ["CameraUpdate|-1",[[4593.98,5088.45,1000],[0.704759,0.687867,-0.173648]]];
 
 sleep 1;
 

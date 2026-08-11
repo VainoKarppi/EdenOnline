@@ -8,7 +8,7 @@ EXT_var_extensionName = "ArmaExtension";
 EXT_var_eventsReady = false;
 EXT_var_syncMissionAttributes = true;
 
-EXT_var_DEBUG = true;
+EXT_var_DEBUG = false;
 uiNamespace setVariable ["EXT_var_cameraDrawUpdate", 2];
 
 

@@ -23,8 +23,8 @@ namespace EdenOnline;
 
 public static class Settings {
     // Development-only flag for solo testing. Enables mirror mode so the sender also receives its own messages
-    public const bool MIRROR = true;
-    public const bool ALLOW_DUAL_CONNECTIONS = true; // Allow the same client to connect to both server and client at the same time, for testing purposes
+    public const bool MIRROR = false; // TODO remove this, when we have a proper test environment for server and client
+    public const bool ALLOW_DUAL_CONNECTIONS = false; // Allow the same client to connect to both server and client at the same time, for testing purposes
 }
 
 
