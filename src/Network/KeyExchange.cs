@@ -36,6 +36,12 @@ public static class KeyExchange
         using var importedServerKey = ECDiffieHellman.Create();
         importedServerKey.ImportSubjectPublicKeyInfo(serverPublicKeyBytes, out _);
         ClientSharedSecret = _clientEcdh.DeriveKeyFromHash(importedServerKey.PublicKey, HashAlgorithmName.SHA256, null, null);
+
+        try {
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            var hash = Convert.ToHexString(sha.ComputeHash(ClientSharedSecret)).Substring(0, 16);
+            Console.WriteLine($"[KEYX][CLIENT] Derived client shared secret hash: {hash}");
+        } catch {}
     }
 
     public static void InitializeServerKeyExchange(int clientId, string clientPublicKeyBase64)
@@ -62,6 +68,11 @@ public static class KeyExchange
             using var importedClientKey = ECDiffieHellman.Create();
             importedClientKey.ImportSubjectPublicKeyInfo(clientPublicKeyBytes, out _);
             _serverSharedSecrets[clientId] = serverEcdh.DeriveKeyFromHash(importedClientKey.PublicKey, HashAlgorithmName.SHA256, null, null);
+            try {
+                using var sha = System.Security.Cryptography.SHA256.Create();
+                var hash = Convert.ToHexString(sha.ComputeHash(_serverSharedSecrets[clientId])).Substring(0, 16);
+                Console.WriteLine($"[KEYX][SERVER] Derived server shared secret for client {clientId}: {hash}");
+            } catch {}
             _serverPublicKeys[clientId] = Convert.ToBase64String(serverEcdh.PublicKey.ExportSubjectPublicKeyInfo());
             _clientPublicKeys[clientId] = clientPublicKeyBase64;
         }

@@ -72,7 +72,16 @@ internal static class MessageCrypto
         }
 
         if (KeyExchange.ClientSharedSecret != null)
-            return DecryptBytes(body, KeyExchange.ClientSharedSecret);
+        {
+            try
+            {
+                return DecryptBytes(body, KeyExchange.ClientSharedSecret);
+            }
+            catch (CryptographicException)
+            {
+                // Fallback to trying server-specific shared secrets (handled below)
+            }
+        }
 
         if (TryDecryptWithAnyServerKey(body, out var plaintext))
             return plaintext;
@@ -116,6 +125,8 @@ internal static class MessageCrypto
         using var aes = new AesGcm(key, TagSize);
         aes.Encrypt(nonce, plaintext, ciphertext, tag);
 
+        // encryption completed
+
         byte[] result = new byte[NonceSize + TagSize + ciphertext.Length];
         Buffer.BlockCopy(nonce, 0, result, 0, NonceSize);
         Buffer.BlockCopy(tag, 0, result, NonceSize, TagSize);
@@ -139,7 +150,12 @@ internal static class MessageCrypto
 
         byte[] plaintext = new byte[ciphertext.Length];
         using var aes = new AesGcm(key, TagSize);
-        aes.Decrypt(nonce, ciphertext, tag, plaintext);
+        try {
+            aes.Decrypt(nonce, ciphertext, tag, plaintext);
+        } catch (CryptographicException ex) {
+            throw new CryptographicException($"AES-GCM authentication failed (nonceLen={nonce.Length}, tagLen={tag.Length}, cipherLen={ciphertext.Length}): {ex.Message}", ex);
+        }
+
         return plaintext;
     }
 
