@@ -1,40 +1,5 @@
-17:26:19.191 | [Error] Error starting server: System.Net.Sockets.SocketException (10048): Normalerweise darf jede Socketadresse (Protokoll, Netzwerkadresse oder Anschluss) nur jeweils einmal verwendet werden. at System.Net.Sockets.Socket.UpdateStatusAfterSocketErrorAndThrowException(SocketError, Boolean, String) + 0x6d at System.Net.Sockets.Socket.DoBind(EndPoint, SocketAddress) + 0x171 at System.Net.Sockets.Socket.Bind(EndPoint) + 0x3a at System.Net.Sockets.TcpListener.Start(Int32) + 0x37 at DynTypeNetwork.Server.StartTcp(Int32 port) + 0x6c ahhhhhm at DynTypeNetwork.Server.<StartAsync>d__39.MoveNext() + 0x82 --- End of stack trace from previous location --- at EdenOnline.ArmaMethods.<StartServer>d__6.MoveNext() + 0x74 17:26:19.191 | [Info] EXTENSION CALLBACK >> ARMA >> ["ArmaExtension", "ASYNC_RESPONSE|62491|0", "[-1]"] 17:26:19.204 | [Debug] ARMA >> EXTENSION (Args) >> SetInitialMissionAttributes|80426
 
+The second client gets these messages, when the first "host" client sends UDP packets about their CameraUpdates:
+   [CLIENT UDP] Invalid packet: Unable to decrypt UDP message.
+   [CLIENT UDP] Invalid packet: Unable to decrypt UDP message.
 
-71543",["84.250.208.125",2302,"Lego","Stratis","2.20.152984",["8a2eb1af","7a3fd23a","46981d1a","322ac721","9f4e6826","32cfcb0d","eb442c52","8b4af371","82d83132","8152a08e","6a67d97a","f9bd46ab","640e771a"],""]]
-17:13:45 ERROR: (Connect|71543): ERROR: (Connect|71543): Request timed out!
-17:13:45 [false,"ERROR: (Connect|71543): Request timed out!"]
-17:13:45 Error in expression <#0) exitWith {
-[(format ["%1", _return#1#0]), 1, 5] call BIS_fnc_3DENNotificatio>
-17:13:45   Error position: <#0]), 1, 5] call BIS_fnc_3DENNotificatio>
-17:13:45   Error #: Type String, expected Array
-17:13:45 File extension\functions\server\fn_connect.sqf..., line 60
-
-
-["84.250.208.125",2302,"Lego","Stratis","2.20.152984",["8a2eb1af","7a3fd23a","46981d1a","322ac721","9f4e6826","32cfcb0d","eb442c52","8b4af371","82d83132","8152a08e","6a67d97a","f9bd46ab","640e771a"],""]]
-17:13:41.021 | [Info] [CLIENT] Connect Method Called: 84.250.208.125:2302, world: Stratis, username: Lego,  modHashes: 8a2eb1af,7a3fd23a,46981d1a,322ac721,9f4e6826,32cfcb0d,eb442c52,8b4af371,82d83132,8152a08e,6a67d97a,f9bd46ab,640e771a, clientHash: 2ed7144e396b6df73eeefb1f44741165b45d422dc142d4b421c265a650b9bb20, password: 
-17:14:02.068 | [Error] [ASYNC TASK ERROR] System.Net.Sockets.SocketException (10060): Ein Verbindungsversuch ist fehlgeschlagen, da die Gegenstelle nach einer bestimmten Zeitspanne nicht richtig reagiert hat, oder die hergestellte Verbindung war fehlerhaft, da der verbundene Host nicht reagiert hat.
-   at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.ThrowException(SocketError, CancellationToken) + 0x3d
-   at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.System.Threading.Tasks.Sources.IValueTaskSource.GetResult(Int16) + 0x4e
-   at System.Threading.Tasks.ValueTask.ValueTaskSourceAsTask.<>c.<.cctor>b__4_0(Object state) + 0x6c
---- End of stack trace from previous location ---
-   at System.Net.Sockets.TcpClient.<CompleteConnectAsync>d__33.MoveNext() + 0x64
---- End of stack trace from previous location ---
-   at DynTypeNetwork.Client.<ConnectTcp>d__42.MoveNext() + 0x95
---- End of stack trace from previous location ---
-   at DynTypeNetwork.Client.<ConnectTcp>d__42.MoveNext() + 0x758
---- End of stack trace from previous location ---
-   at DynTypeNetwork.Client.<ConnectAsync>d__3.MoveNext() + 0x5a
---- End of stack trace from previous location ---
-   at EdenOnline.ArmaMethods.<Connect>d__5.MoveNext() + 0x950
---- End of stack trace from previous location ---
-   at ArmaExtension.AsyncFactory.<UnwrapAsync>d__5.MoveNext() + 0x6a
---- End of stack trace from previous location ---
-   at ArmaExtension.AsyncFactory.<>c__DisplayClass3_0.<<ExecuteAsyncTask>b__0>d.MoveNext() + 0xa9
-17:14:02.068 | [Info] EXTENSION CALLBACK >> ARMA >> ["ArmaExtension", "ASYNC_RESPONSE|71543|1", "["Ein Verbindungsversuch ist fehlgeschlagen, da die Gegenstelle nach einer bestimmten Zeitspanne nicht richtig reagiert hat, oder die hergestellte Verbindung war fehlerhaft, da der verbundene Host nicht reagiert hat."]"]
-
-
-
-
-When starting server, and there is already a server running, the startServer throws error, but returns [-1] as client id.
-Should be 2. It shows then succesfully connected, while it should say this error and say unable to start the server.

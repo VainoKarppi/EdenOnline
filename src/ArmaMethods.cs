@@ -181,10 +181,7 @@ public static partial class ArmaMethods {
         {
             Log("[CLIENT] Disconnect requested >> Client is hosting the server >> Stopping server");
             await Server.StopAsync();
-            await Client.ResetConnectionStatusAsync();
-        }
-        else
-        {
+        } else {
             Log("[CLIENT] Disconnect requested >> Client is connected to a remote server >> Disconnecting");
             await Client.DisconnectAsync();
         }

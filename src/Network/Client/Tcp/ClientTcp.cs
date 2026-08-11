@@ -94,7 +94,7 @@ public static partial class Client
 
                     if (msg == null) {
                         // Connection lost or stream closed
-                        await HandleServerShutdown(ServerDisconnectReason.ConnectionError);
+                        await HandleServerShutdown(DisconnectReason.ConnectionError);
                         break;
                     }
 
@@ -126,15 +126,18 @@ public static partial class Client
 
                         int client_id = (int)data[0];
                         bool success = (bool)data[1];
+                        DisconnectReason reason = (DisconnectReason?)data[2] ?? DisconnectReason.Unknown;
+
+                        // TODO Read actual reason from the data
                         
                         Clients.Remove(client_id);
-                        _ = Task.Run(() => OnOtherClientDisconnected?.Invoke(client_id, success));
+                        _ = Task.Run(() => OnOtherClientDisconnected?.Invoke(client_id, success, reason));
 
                         continue;
                     }
 
                     if (msg.MessageType == MessageType.ServerShutdown) {
-                        await HandleServerShutdown(ServerDisconnectReason.ServerShutdown);
+                        await HandleServerShutdown(DisconnectReason.ServerShutdown);
                         break;
                     }
 
@@ -156,14 +159,22 @@ public static partial class Client
             }
             catch (Exception ex) when (ex is ObjectDisposedException || ex is IOException)
             {
-                // Connection was forcibly closed
-                if (LogItem(LogLevel.Info)) Console.WriteLine($"[CLIENT] Connection lost: {ex.Message}");
-                await HandleServerShutdown(ServerDisconnectReason.ConnectionLost);
+                
+                if (_cts.Token.IsCancellationRequested)
+                {
+                    // Client disconnected on purpose
+                    if (LogItem(LogLevel.Info)) Console.WriteLine("[CLIENT] Disconnected by client request (intentional disconnect).");
+                } else {
+                    // Connection was forcibly closed
+                    if (LogItem(LogLevel.Info)) Console.WriteLine($"[CLIENT] Connection lost: {ex.Message}");
+                    await HandleServerShutdown(DisconnectReason.ConnectionLost);
+                }
+
             }
             catch (Exception ex)
             {
                 if (LogItem(LogLevel.Info)) Console.WriteLine($"[CLIENT] Receive loop exception: {ex}");
-                await HandleServerShutdown(ServerDisconnectReason.ConnectionError);
+                await HandleServerShutdown(DisconnectReason.ConnectionError);
             }
         });
     }

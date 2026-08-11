@@ -98,6 +98,11 @@ public static partial class Server
 
         _tcpListener = null;
         _udpListener = null;
+
+        _clientIdCounter = 1; // Reset ID counter
+
+        // Just in case the server is running in the same process as a client, reset the client connection status
+        await Client.ResetConnectionStatusAsync();
     }
 
     private static async Task ClientDisconnected(Connection client, bool success) {

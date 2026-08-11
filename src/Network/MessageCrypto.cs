@@ -112,7 +112,7 @@ internal static class MessageCrypto
         if (TryDecryptWithAnyServerKey(body, out var plaintext))
             return plaintext;
 
-        throw new CryptographicException("Unable to decrypt UDP message.");
+        throw new CryptographicException($"Unable to decrypt UDP message. MessageSentFrom: {senderId}");
     }
 
     private static byte[] EncryptBytes(byte[] plaintext, byte[] secret)

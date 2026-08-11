@@ -61,7 +61,7 @@ public static partial class Client
         );
     }
     
-    private static async Task HandleServerShutdown(ServerDisconnectReason reason)
+    private static async Task HandleServerShutdown(DisconnectReason reason)
     {
         // Invoke the shutdown event asynchronously and wait up to 100 ms for it to complete.
         // The event handler may continue running in the background if it exceeds the timeout.
@@ -71,7 +71,7 @@ public static partial class Client
         await DisconnectAsync();
     }
 
-    public static async Task ResetConnectionStatusAsync()
+    internal static async Task ResetConnectionStatusAsync()
     {
         try
         {
@@ -92,15 +92,15 @@ public static partial class Client
         } catch {}
     }
 
-    public static async Task DisconnectAsync()
+    public static async Task DisconnectAsync(DisconnectReason reason = DisconnectReason.ClientDisconnect)
     {
         try
         {
             await SendMessageAsync(Server.SERVER_ID, MessageType.ClientDisconnected, null);
 
-            OnClientDisconnected?.Invoke(true);
-
             await ResetConnectionStatusAsync();
+
+            OnClientDisconnected?.Invoke(true, reason);
         } catch {}
     }
 }

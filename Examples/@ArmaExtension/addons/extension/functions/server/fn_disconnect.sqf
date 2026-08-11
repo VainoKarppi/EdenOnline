@@ -15,7 +15,6 @@ if (missionNamespace getVariable ["EXT_var_Connected",false] && !(missionNamespa
 
 // variables
 missionNamespace setVariable ["EXT_var_clientID",nil];
-missionNamespace setVariable ["EXT_var_Connected",false];
 
 // Remove player list
 ctrlDelete (uiNamespace getVariable ["EXT_var_PlayerListDialog",controlNull]);
@@ -29,12 +28,15 @@ EXT_var_extensionIDs = [];
 ["EXT_var_GUIDISPLAY", "onEachFrame"] call BIS_fnc_removeStackedEventHandler;
 ((findDisplay 313) displayCtrl 51) ctrlRemoveEventHandler ["Draw", missionNamespace getVariable ["EXT_var_MAPCTRL", -1]];
 
-if (_type == 0) then {
-	["Server was shutdown!",0,5] call BIS_fnc_3DENNotification;
-} else {
-	["You disconnected!",0,5] call BIS_fnc_3DENNotification;
+if (missionNamespace getVariable ["EXT_var_Connected",false]) then {
+	if (_type == 0) then {
+		["Server was shutdown!",0,5] call BIS_fnc_3DENNotification;
+	} else {
+		["You disconnected!",0,5] call BIS_fnc_3DENNotification;
+	};
 };
 
+missionNamespace setVariable ["EXT_var_Connected",false];
 
 /*
 test = false;
