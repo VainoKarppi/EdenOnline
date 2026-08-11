@@ -24,10 +24,22 @@ namespace EdenOnline;
 // These are methods that other clients or the server can invoke remotely, and request data for
 
 public class ClientNetworkMethods {
-    public static void UpdateUserName(int clientID, string username)
+    public static void RegisterUserName(int clientID, string username)
     {
         Log($"[CLIENT] Received username list update! ({clientID}) {username}");
         ArmaMethods.UsernameList[clientID] = username;
+        // Push updated client list to Arma UI (exclude ourselves)
+        try {
+            var otherUsersArray = ArmaMethods.UsernameList
+                .Where(x => x.Key != Client.ClientID)
+                .Select(kvp => new object[] { kvp.Key, kvp.Value })
+                .Cast<object>()
+                .ToArray();
+
+            Extension.SendToArma("UpdateClientList", [otherUsersArray]);
+        } catch (Exception ex) {
+            Log($"[CLIENT] Failed to send UpdateClientList to Arma: {ex}");
+        }
     }
     public static void UpdateCamera(ArmaCamera camera) {
         Log($"[CLIENT] Received camera update from client {camera.Id}: Position: {string.Join(",", camera.Position)}, Direction: {string.Join(",", camera.Direction)}");

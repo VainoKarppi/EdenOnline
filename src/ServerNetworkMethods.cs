@@ -1,4 +1,3 @@
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -31,10 +30,23 @@ public class ServerNetworkMethods {
     public static ObjectManager ServerObjectManager { get; } = new ObjectManager();
     public static MissionAttributeManager MissionAttributeManager { get; } = new MissionAttributeManager();
 
-    public static void UpdateUserName(int clientID, string username)
+    public static void RegisterUserName(int clientID, string username)
     {
         Log($"[SERVER] Adding user {clientID} {username} to UsernameList");
         UsernameList[clientID] = username;
+
+        // Broadcast this username registration to all other connected clients
+        try {
+            _ = Server.SendTcpMessageAsync(-clientID, "RegisterUserName", clientID, username);
+        } catch (Exception ex) {
+            Log($"[SERVER] Failed to broadcast RegisterUserName: {ex}");
+        }
+    }
+
+    public static void RemoveUserName(int clientID)
+    {
+        Log($"[SERVER] Removing user {clientID} from UsernameList");
+        UsernameList.Remove(clientID);
     }
 
     public static Dictionary<int, string> GetAllUsernames()

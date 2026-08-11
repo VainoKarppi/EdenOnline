@@ -48,7 +48,7 @@ public static partial class ArmaMethods {
         Client.OnOtherClientDisconnected += ClientNetworkEvents.OnOtherClientDisconnected;
 
         //* SEND AND REQUEST USERNAMES FROM SERVER
-        await Client.SendTcpMessageAsync(1, "UpdateUserName", clientID, username);
+        await Client.SendTcpMessageAsync(1, "RegisterUserName", clientID, username);
         Log($"[CLIENT] Syncing client list and usernames...");
 
         UsernameList = await Client.RequestTcpDataAsync<Dictionary<int, string>>(1, "GetAllUsernames") ?? [];

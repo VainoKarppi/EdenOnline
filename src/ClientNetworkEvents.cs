@@ -41,5 +41,18 @@ public class ClientNetworkEvents {
     }
     public static void OnOtherClientDisconnected(int otherClientId, bool success) {
         Log($"[CLIENT] Other client disconnected: {otherClientId}");
+        // Remove the user from local username list and notify Arma UI
+        ArmaMethods.UsernameList.Remove(otherClientId);
+        try {
+            var otherUsersArray = ArmaMethods.UsernameList
+                .Where(x => x.Key != Client.ClientID)
+                .Select(kvp => new object[] { kvp.Key, kvp.Value })
+                .Cast<object>()
+                .ToArray();
+
+            Extension.SendToArma("UpdateClientList", [otherUsersArray]);
+        } catch (Exception ex) {
+            Log($"[CLIENT] Failed to send UpdateClientList to Arma after other client disconnected: {ex}");
+        }
     }
 }
