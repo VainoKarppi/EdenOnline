@@ -171,6 +171,7 @@ public static partial class ArmaMethods {
                 Direction = direction
             };
 
+            Log($"[CLIENT] Sending camera update to server: {camera.Id}, pos: {string.Join(",", camera.Position)}, dir: {string.Join(",", camera.Direction)}");
             await Client.SendUdpMessageAsync(-1, "UpdateCamera", camera);
         } catch (Exception ex)
         {

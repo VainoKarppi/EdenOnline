@@ -5,7 +5,7 @@ if (isNil "EXT_var_networkCameras") then {
 };
 
 diag_log "Starting EXT_fnc_drawCameras";
-uiNamespace setVariable ["EXT_var_tickTime", diag_tickTime];
+uiNamespace setVariable ["EXT_var_lastCameraTick", diag_tickTime];
 
 
 // TODO add smooth interpolation, and read previous history of locations, and calculate "future" path
@@ -17,27 +17,27 @@ _code = {
     if (is3DENPreview) then {continue};
 
     // Sends this client camera position to other clients via UDP
-    _time = uiNamespace getVariable ["EXT_var_tickTime", diag_tickTime];
-    if (diag_tickTime - _time > uiNamespace getVariable ["EXT_var_cameraDrawUpdate", 0.1]) then {
-        uiNamespace setVariable ["EXT_var_tickTime", diag_tickTime];
+    private _lastUpdate = uiNamespace getVariable ["EXT_var_lastCameraTick", diag_tickTime];
+    if (diag_tickTime - _lastUpdate > uiNamespace getVariable ["EXT_var_cameraDrawUpdate", 0.1]) then {
+        uiNamespace setVariable ["EXT_var_lastCameraTick", diag_tickTime];
 
         if (missionNamespace getVariable ["EXT_var_Connected", false]) then {
-            _startPos = getPosATL get3DENCamera; // TODO doesent work flawlessly
+            _startPos = getPosATL get3DENCamera; // TODO doesent work flawlessly. Also sea moves the object
             _forwardVec = vectorDir get3DENCamera;
             ["CameraUpdate", [_startPos, _forwardVec], true] spawn EXT_fnc_callExtensionAsync;
         };
     };
  
     // Draw other client cameras
-    _drawDistance = 4000;
-    _cameras = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap];
+    private _drawDistance = 4000;
+    private _cameras = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap];
     {
-        _clientID = _x;
-        _camData = _y; // [pos, dir]
+        private _clientID = _x;
+        private _camData = _y; // [pos, dir]
 
-        _name = EXT_var_OtherClients getOrDefault [_clientID, "Unknown"];
-        _position = _camData select 0;
-        _dir = _camData select 1;
+        private _name = EXT_var_OtherClients getOrDefault [_clientID, "Unknown"];
+        private _position = _camData select 0;
+        private _dir = _camData select 1;
 
         // For debug purposes draw mirrored camera from self visible angle
         if (EXT_var_DEBUG) then {
@@ -47,7 +47,7 @@ _code = {
         // Draw 3d only, if the distance is < _drawDistance
         if (_position distance getPosATL get3DENCamera > _drawDistance) then {continue};
 
-        _end = _position vectorAdd (_dir vectorMultiply 1000);
+        private _end = _position vectorAdd (_dir vectorMultiply 1000);
 
         drawLine3D [_position, _end, [1,0,0,3]];
 
@@ -80,18 +80,18 @@ _code = {
 // Draw map markers
 // ((findDisplay 313) displayCtrl 51) ctrlRemoveEventHandler ["Draw", EXT_var_MAPCTRL];
 EXT_var_MAPCTRL = ((findDisplay 313) displayCtrl 51) ctrlAddEventHandler ["Draw", {
-    _mapCtrl = _this select 0;
+    private _mapCtrl = _this select 0;
     
-    _cameras = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap];
+    private _cameras = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap];
     {
-        _clientID = _x;
-        _camData = _y; // [pos, dir]
+        private _clientID = _x;
+        private _camData = _y; // [pos, dir]
 
-        _name = missionNamespace getVariable ["EXT_var_OtherClients",[]] get _clientID;
-        _position = _camData select 0;
-        _dir = _camData select 1;
+        private _name = missionNamespace getVariable ["EXT_var_OtherClients",[]] get _clientID;
+        private _position = _camData select 0;
+        private _dir = _camData select 1;
 
-        _yawDeg = (_dir select 0) atan2 (_dir select 1);
+        private _yawDeg = (_dir select 0) atan2 (_dir select 1);
         if (_yawDeg < 0) then { _yawDeg = _yawDeg + 360 };
 
         _mapCtrl drawIcon [
