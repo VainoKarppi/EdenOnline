@@ -136,8 +136,6 @@ public static partial class Server
 
             if (message.TargetId.Any(t => t < 0) && message.TargetId.Any(t => Math.Abs(t) == client.Id)) continue;
 
-            Console.WriteLine($"BroadcastUdp FROM: {message.SenderId} TO:{client.Id}");
-
             NetworkMessage udpMsg = new()
             {
                 SenderId = message.SenderId,

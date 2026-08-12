@@ -42,7 +42,6 @@ public class ClientNetworkMethods {
         }
     }
     public static void UpdateCamera(ArmaCamera camera) {
-        Log($"[CLIENT] Received camera update from server: {camera.Id}, pos: {string.Join(",", camera.Position)}, dir: {string.Join(",", camera.Direction)}");
         Extension.SendToArma("CameraUpdate", [camera.Id, camera.Position, camera.Direction]);
     }
 

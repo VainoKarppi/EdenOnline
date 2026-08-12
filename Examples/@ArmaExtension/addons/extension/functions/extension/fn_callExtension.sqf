@@ -11,7 +11,10 @@ if (isNil "EXT_var_extensionRequests") then {
 if (_fireAndForget) then {_function = _function + "|-1"};
 
 
-diag_log formatText ["REQUEST: %1 WITH ARGS: %2", _function, _arguments];
+// TODO Temp
+if (_function != "CameraUpdate" && _function != "SetMissionAttribute") then {
+	diag_log formatText ["REQUEST: %1 WITH ARGS: %2", _function, _arguments];
+};
 
 private _result = EXT_var_extensionName callExtension [_function, _arguments];
 

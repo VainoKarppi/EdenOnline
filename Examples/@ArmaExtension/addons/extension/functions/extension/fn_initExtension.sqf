@@ -9,7 +9,7 @@ EXT_var_eventsReady = false;
 EXT_var_syncMissionAttributes = true;
 
 EXT_var_DEBUG = false;
-uiNamespace setVariable ["EXT_var_cameraDrawUpdate", 10];
+uiNamespace setVariable ["EXT_var_cameraDrawUpdate", 0.2];
 
 
 private _result = EXT_var_extensionName callExtension "version";

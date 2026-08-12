@@ -23,7 +23,9 @@ private _request = _function + "|" + str(_requestId); // Add ASYNC key to reques
 // Call Extension
 
 // TODO Temp
-diag_log formatText ["REQUEST ASYNC: (%1|%2) WITH ARGS: %3", _function, _requestId, _arguments];
+if (_function != "CameraUpdate" && _function != "SetMissionAttribute") then {
+	diag_log formatText ["REQUEST ASYNC: (%1|%2) WITH ARGS: %3", _function, _requestId, _arguments];
+};
 
 private _result = EXT_var_extensionName callExtension [_request, _arguments];
 

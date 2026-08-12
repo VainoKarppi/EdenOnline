@@ -32,7 +32,7 @@ addMissionEventHandler ["ExtensionCallback",{
 		};
 		
 
-		if (_function != "ASYNC_RESPONSE") then {
+		if (_function != "CameraUpdate" && _function != "ASYNC_RESPONSE") then {
 			diag_log "=========================================================================================";
 			diag_log _function;
 			diag_log _data;
