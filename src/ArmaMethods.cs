@@ -67,7 +67,7 @@ public static partial class ArmaMethods {
             }
 
             // TODO verify user count
-            Log($"[CLIENT] Received {UsernameList?.Count ?? 0} users. Should be: {Client.GetOtherClients().Count}");
+            Log($"[CLIENT] Received {UsernameList?.Count - 1 ?? 0} users. Should be: {Client.GetOtherClients().Count}");
 
             await Client.SendTcpMessageAsync(-1, "LoadingScreen", [true, 20]);
             await Task.Delay(50);
@@ -172,7 +172,7 @@ public static partial class ArmaMethods {
             };
 
             Log($"[CLIENT] Sending camera update to server: {camera.Id}, pos: {string.Join(",", camera.Position)}, dir: {string.Join(",", camera.Direction)}");
-            await Client.SendUdpMessageAsync(-1, "UpdateCamera", camera);
+            await Client.SendTcpMessageAsync(-1, "UpdateCamera", camera);
         } catch (Exception ex)
         {
             Log(ex);
