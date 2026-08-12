@@ -1,4 +1,4 @@
-﻿namespace ArmaExtension;
+﻿namespace EdenOnline;
 
 internal static partial class Enums {
     internal enum ReturnCodes {

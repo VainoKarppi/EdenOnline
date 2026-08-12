@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Threading.Tasks;
-using static ArmaExtension.Extension;
-using static ArmaExtension.Logger;
-using static ArmaExtension.Enums;
+using static EdenOnline.Extension;
+using static EdenOnline.Logger;
+using static EdenOnline.Enums;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace ArmaExtension;
+namespace EdenOnline;
 
 public static partial class MethodSystem {
     public class AnnotatedType(Type type) {

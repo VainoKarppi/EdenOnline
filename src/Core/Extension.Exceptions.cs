@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ArmaExtension;
+namespace EdenOnline;
 
 
 [Serializable]

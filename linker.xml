@@ -1,7 +1,7 @@
 ﻿<!-- DO NOT MODIFY THIS FILE MANUALLY - THIS FILE UPDATES AUTOMATICALLY -->
 <linker>
-    <assembly fullname="ArmaExtension_x64">
-        <type fullname="ArmaExtension.*" preserve="all" />
+    <assembly fullname="EdenOnline_x64">
+        <type fullname="EdenOnline.*" preserve="all" />
         <type fullname="EdenOnline.*" preserve="all" />
         <type fullname="DynTypeNetwork.*" preserve="all" />
         <type fullname="DynTypeSerializer.*" preserve="all" />

@@ -7,6 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../ArmaExtension.csproj" />
+    <ProjectReference Include="../../EdenOnline.csproj" />
   </ItemGroup>
 </Project>

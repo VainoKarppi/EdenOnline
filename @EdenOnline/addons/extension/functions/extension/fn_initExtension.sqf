@@ -1,10 +1,10 @@
 if !(isNil "EXT_var_extensionRequests") exitWith { true }; // Extension already initialized
 
 
-diag_log "Initializing Extension Test for C# .NET";
+diag_log "Initializing EdenOnline C# Extension";
 
 // Init variables
-EXT_var_extensionName = "ArmaExtension";
+EXT_var_extensionName = "EdenOnline";
 EXT_var_eventsReady = false;
 EXT_var_syncMissionAttributes = true;
 

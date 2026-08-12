@@ -1,0 +1,10 @@
+name = "EdenOnline";
+author = "Razer";
+action = "";
+dir = "@EdenOnline";
+logo = "logo.paa";
+logoOver = "logo.paa";
+picture = "logo.paa";
+hidePicture = 0;
+hideName = 0;
+overview = "Eden Online extends the Arma 3 Eden Editor with real-time multiplayer collaboration and object synchronization. Multiple editors can work on the same scenario while changes to placed objects, units, vehicles, and other editor elements are synchronized between connected users. See other editors in the 3D workspace, coordinate object placement and editing, and build scenarios together without manually exchanging mission files.";

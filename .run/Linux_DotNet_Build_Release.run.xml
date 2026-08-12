@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Linux dotnet build Release" type="ShConfigurationType">
-    <option name="SCRIPT_TEXT" value="command -v dotnet >/dev/null || { echo 'dotnet SDK not found. Install a .NET SDK with net10.0 support.'; exit 127; }&#10;dotnet build ArmaExtension.csproj --configuration Release" />
+    <option name="SCRIPT_TEXT" value="command -v dotnet >/dev/null || { echo 'dotnet SDK not found. Install a .NET SDK with net10.0 support.'; exit 127; }&#10;dotnet build EdenOnline.csproj --configuration Release" />
     <option name="INDEPENDENT_SCRIPT_PATH" value="true" />
     <option name="SCRIPT_PATH" value="" />
     <option name="SCRIPT_OPTIONS" value="" />

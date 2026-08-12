@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
-using static ArmaExtension.Logger;
-using ArmaExtension;
+using static EdenOnline.Logger;
+using EdenOnline;
 
 using EdenOnline;
 using System.Text.Json;

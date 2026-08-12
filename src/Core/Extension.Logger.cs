@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 
-namespace ArmaExtension;
+namespace EdenOnline;
 
 /// <summary>
 /// Logger class for logging messages to a file and optionally to the console.

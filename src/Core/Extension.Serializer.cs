@@ -6,9 +6,9 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.Json.Nodes;
-using static ArmaExtension.Logger;
+using static EdenOnline.Logger;
 
-namespace ArmaExtension;
+namespace EdenOnline;
 
 internal static class Serializer
 {

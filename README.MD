@@ -55,7 +55,7 @@ Ubuntu 24.04 and newer should use the Ubuntu feed or Ubuntu .NET backports for .
 ### Build
 
 ```bash
-dotnet build ArmaExtension.csproj --configuration Debug
+dotnet build EdenOnline.csproj --configuration Debug
 ```
 
 ### Smoke tests
@@ -67,7 +67,7 @@ dotnet run --project tests/EdenOnline.SmokeTests/EdenOnline.SmokeTests.csproj --
 ### Cleanup
 
 ```bash
-dotnet clean ArmaExtension.csproj --configuration Debug
+dotnet clean EdenOnline.csproj --configuration Debug
 ```
 
 ### Container build
@@ -81,7 +81,7 @@ docker run --rm \
   -v "$PWD:/workspace" \
   -w /workspace \
   mcr.microsoft.com/dotnet/sdk:10.0 \
-  dotnet build ArmaExtension.csproj --configuration Debug
+  dotnet build EdenOnline.csproj --configuration Debug
 
 docker run --rm \
   --user "$(id -u):$(id -g)" \
@@ -98,10 +98,10 @@ The container workflow does not publish the Windows NativeAOT DLL.
 
 ### Publish Windows DLL
 
-The Windows NativeAOT settings are defined in `ArmaExtension.csproj`:
+The Windows NativeAOT settings are defined in `EdenOnline.csproj`:
 
 ```bash
-dotnet publish ArmaExtension.csproj
+dotnet publish EdenOnline.csproj
 ```
 
 Shared Rider run configurations are available in `.run/`. VS Code tasks are available in `.vscode/tasks.json`.
@@ -112,7 +112,7 @@ Shared Rider run configurations are available in `.run/`. VS Code tasks are avai
 
 ```text
 EdenOnline/
-├── Examples/@ArmaExtension     # Mod / SQF Code
+├── @EdenOnline     # Mod / SQF Code
 ├── src/                        # C# extension source code
 ├── Tools/                      # .ps1 script that will run Arma 3 with the changes in C# and sqf code
 
@@ -122,12 +122,12 @@ EdenOnline/
 
 You can edit your `.sqf` source code in the `src` folder (C# project) and then run the VSCode task `Test With Arma` to execute it.
 
-The `src/Core` folder is its own project and should have minimal changes. If you wish to make modifications there, see this repository: [ArmaExtension](https://github.com/VainoKarppi/ArmaExtension)
+The `src/Core` folder is its own project and should have minimal changes. If you wish to make modifications there, see this repository: [EdenOnline](https://github.com/VainoKarppi/EdenOnline)
 
 ### Steps
 
 1. Open the `src` folder in VSCode.
-2. Edit your `.sqf` scripts as needed in `Examples/@ArmaExtension/addons` folder.
+2. Edit your `.sqf` scripts as needed in `@EdenOnline/addons` folder.
 3. Run the VSCode task `Test With Arma` to launch your scripts or integration with Arma.
 
 This workflow allows you to quickly test changes without manually copying files or launching Arma separately.

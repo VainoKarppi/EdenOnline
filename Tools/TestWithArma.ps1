@@ -9,7 +9,7 @@ try {
 }
 
 $projectPath = Get-ProjectPath
-$modFolder = "$projectPath\Examples\@$((Get-BuildInfo).AssemblyName -replace '_x64$', '')"
+$modFolder = "$projectPath\@$((Get-BuildInfo).AssemblyName -replace '_x64$', '')"
 
 if (-not (Test-Path -Path $modFolder)) {
     New-Item -Path $modFolder -ItemType Directory | Out-Null
@@ -28,7 +28,7 @@ if (Build-Project -projectPath $projectPath -destinationPath $modFolder) {
     if (Pack-Addons -modFolder $modFolder) {
         if (Start-Arma) {
             # Combine Watch-ExtensionLog and Watch-RPTLog in the same console
-            # E:\SteamLibrary\steamapps\common\Arma 3\ArmaExtension_Logs
+            # E:\SteamLibrary\steamapps\common\Arma 3\EdenOnline_Logs
 
             $armaPath = Get-ArmaPath
             

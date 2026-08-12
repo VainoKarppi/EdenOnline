@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace ArmaExtension;
+namespace EdenOnline;
 
 public static partial class Extension
 {
@@ -37,7 +37,7 @@ public static partial class Extension
     [UnmanagedCallersOnly(EntryPoint = "RVExtensionGetFeatureFlags")]
     public static ulong RVExtensionGetFeatureFlags() => (ulong)_featureFlags;
 
-    [DllImport("ArmaExtension_x64.dll", EntryPoint = "RVExtensionGetFeatureFlags")]
+    [DllImport("EdenOnline_x64.dll", EntryPoint = "RVExtensionGetFeatureFlags")]
     public static extern ulong GetFeatureFlagsNative();
 
 

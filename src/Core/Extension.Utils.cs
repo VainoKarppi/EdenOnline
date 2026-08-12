@@ -2,7 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Reflection;
-namespace ArmaExtension;
+namespace EdenOnline;
 
 public static partial class Extension {
     public readonly static string AssemblyDirectory = GetAssemblyLocation();

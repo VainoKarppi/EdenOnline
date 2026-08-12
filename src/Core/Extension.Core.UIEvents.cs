@@ -4,9 +4,9 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-using static ArmaExtension.Logger;
+using static EdenOnline.Logger;
 
-namespace ArmaExtension;
+namespace EdenOnline;
 
 // TODO REEQUIRES TESTING AND VALIDATION (no idea if this works...)
 

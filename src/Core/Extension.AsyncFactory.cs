@@ -4,13 +4,13 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using static ArmaExtension.Logger;
-using static ArmaExtension.Enums;
-using static ArmaExtension.MethodSystem;
-using static ArmaExtension.Events;
+using static EdenOnline.Logger;
+using static EdenOnline.Enums;
+using static EdenOnline.MethodSystem;
+using static EdenOnline.Events;
 using System.Collections.Generic;
 
-namespace ArmaExtension;
+namespace EdenOnline;
 
 internal static class AsyncFactory {
     public static readonly ConcurrentDictionary<int, (Task Task, CancellationTokenSource CancelSource)> AsyncTasks = new();

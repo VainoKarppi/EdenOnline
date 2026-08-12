@@ -7,11 +7,11 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Win32;
-using static ArmaExtension.Logger;
-using static ArmaExtension.MethodSystem;
-using static ArmaExtension.PluginLoader;
+using static EdenOnline.Logger;
+using static EdenOnline.MethodSystem;
+using static EdenOnline.PluginLoader;
 
-namespace ArmaExtension;
+namespace EdenOnline;
 
 public static partial class Extension {
     public static bool DEBUG = true;

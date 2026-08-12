@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
-using static ArmaExtension.Logger;
+using static EdenOnline.Logger;
 
-namespace ArmaExtension;
+namespace EdenOnline;
 
 [AttributeUsage(AttributeTargets.Class)]
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods)]
-internal sealed class ArmaExtensionPluginAttribute : Attribute
+internal sealed class EdenOnlinePluginAttribute : Attribute
 {
 }
 
@@ -42,7 +42,7 @@ internal static partial class PluginLoader
         return type.IsClass
             && type.IsAbstract
             && type.IsSealed
-            && type.IsDefined(typeof(ArmaExtensionPluginAttribute), inherit: false);
+            && type.IsDefined(typeof(EdenOnlinePluginAttribute), inherit: false);
     }
 
     /// <summary>

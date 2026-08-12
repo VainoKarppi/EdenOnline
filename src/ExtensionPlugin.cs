@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
-using static ArmaExtension.Logger;
-using ArmaExtension;
+using static EdenOnline.Logger;
+using EdenOnline;
 
 using EdenOnline;
 using System.Text.Json;
@@ -28,7 +28,7 @@ public static class Settings {
 }
 
 
-[ArmaExtensionPlugin]
+[EdenOnlinePlugin]
 public static partial class ArmaMethods {
     public static ObjectManager ClientObjectManager { get; } = new ObjectManager();
     public static MissionAttributeManager ClientMissionAttributeManager { get; } = new MissionAttributeManager();

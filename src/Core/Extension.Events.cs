@@ -1,9 +1,9 @@
 using System;
 using System.Reflection;
 using System.Threading;
-using static ArmaExtension.Logger;
+using static EdenOnline.Logger;
 
-namespace ArmaExtension;
+namespace EdenOnline;
 
 public static partial class Events {
     // EVENTS

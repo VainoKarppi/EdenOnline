@@ -32,7 +32,7 @@ Assert(roundTrip.Direction.Length == 3, "ArmaCamera.Direction should round-trip.
 var setMissionAttributeMethod = typeof(ArmaMethods).GetMethod("SetMissionAttribute", BindingFlags.Public | BindingFlags.Static);
 Assert(setMissionAttributeMethod is not null, "SetMissionAttribute should exist.");
 
-var serializerType = typeof(ArmaMethods).Assembly.GetType("ArmaExtension.Serializer");
+var serializerType = typeof(ArmaMethods).Assembly.GetType("EdenOnline.Serializer");
 Assert(serializerType is not null, "Serializer type should exist.");
 
 var deserializeMethod = serializerType?.GetMethod("DeserializeArmaArray", BindingFlags.NonPublic | BindingFlags.Static);
