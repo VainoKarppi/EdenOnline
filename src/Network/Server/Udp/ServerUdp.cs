@@ -111,15 +111,6 @@ public static partial class Server
                 {
                     if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER UDP] Receive loop error: {ex.Message}");
                 }
-
-                try
-                {
-                    await Task.Delay(1000, _cts.Token);
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
             }
 
             if (LogItem(LogLevel.Info)) Console.WriteLine("[SERVER UDP] Receive loop stopped.");

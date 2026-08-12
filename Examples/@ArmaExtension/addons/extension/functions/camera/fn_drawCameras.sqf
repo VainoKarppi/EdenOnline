@@ -13,54 +13,388 @@ uiNamespace setVariable ["EXT_var_lastCameraTick", diag_tickTime];
 
 _code = {
     if (isNull (findDisplay 313)) exitWith {};
-    // Dont draw on while preview
     if (is3DENPreview) then {continue};
 
-    // Sends this client camera position to other clients via UDP
-    private _lastUpdate = uiNamespace getVariable ["EXT_var_lastCameraTick", diag_tickTime];
-    if (diag_tickTime - _lastUpdate > uiNamespace getVariable ["EXT_var_cameraDrawUpdate", 0.1]) then {
-        uiNamespace setVariable ["EXT_var_lastCameraTick", diag_tickTime];
+    // =====================================================================
+    // Send own camera position to other clients
+    // =====================================================================
+
+    private _lastUpdate = uiNamespace getVariable [
+        "EXT_var_lastCameraTick",
+        diag_tickTime
+    ];
+
+    private _updateInterval = uiNamespace getVariable [
+        "EXT_var_cameraDrawUpdate",
+        0.2
+    ];
+
+    if (diag_tickTime - _lastUpdate > _updateInterval) then {
+        uiNamespace setVariable [
+            "EXT_var_lastCameraTick",
+            diag_tickTime
+        ];
 
         if (missionNamespace getVariable ["EXT_var_Connected", false]) then {
-            _startPos = getPosATL get3DENCamera; // TODO doesent work flawlessly. Also sea moves the object
-            _forwardVec = vectorDir get3DENCamera;
-            ["CameraUpdate", [_startPos, _forwardVec], true] spawn EXT_fnc_callExtensionAsync;
+            private _startPos = getPosATL get3DENCamera;
+            private _forwardVec = vectorDir get3DENCamera;
+
+            [
+                "CameraUpdate",
+                [_startPos, _forwardVec],
+                true
+            ] spawn EXT_fnc_callExtensionAsync;
         };
     };
- 
+
+    // =====================================================================
     // Draw other client cameras
+    // =====================================================================
+
     private _drawDistance = 4000;
-    private _cameras = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap];
+
+    private _cameras = uiNamespace getVariable [
+        "EXT_var_networkCameras",
+        createHashMap
+    ];
+
+
+    private _interpStates = uiNamespace getVariable [
+        "EXT_var_cameraInterp",
+        createHashMap
+    ];
+
+    private _now = diag_tickTime;
+
     {
         private _clientID = _x;
-        private _camData = _y; // [pos, dir]
+        private _camData = _y;
 
-        private _name = EXT_var_OtherClients getOrDefault [_clientID, "Unknown"];
-        private _position = _camData select 0;
-        private _dir = _camData select 1;
-
-        // For debug purposes draw mirrored camera from self visible angle
-        if (EXT_var_DEBUG) then {
-            _position vectorAdd [0,0,-5];
+        // Make sure the received data has the expected structure
+        if (
+            !(_camData isEqualType []) ||
+            {count _camData < 2}
+        ) then {
+            continue
         };
-        
-        // Draw 3d only, if the distance is < _drawDistance
-        if (_position distance getPosATL get3DENCamera > _drawDistance) then {continue};
 
-        private _end = _position vectorAdd (_dir vectorMultiply 1000);
+        private _rawPos = _camData select 0;
+        private _rawDir = _camData select 1;
 
-        drawLine3D [_position, _end, [1,0,0,3]];
+        if (
+            !(_rawPos isEqualType []) ||
+            {!(_rawDir isEqualType [])} ||
+            {count _rawPos != 3} ||
+            {count _rawDir != 3}
+        ) then {
+            continue
+        };
 
-        // draw 3d camera icon + name of the other client
-        if (!isNil "_name") then { // Should be never nil
-            _yawDeg = (_dir select 0) atan2 (_dir select 1);
-            if (_yawDeg < 0) then { _yawDeg = _yawDeg + 360 };
-            _iconDir = getDir get3DENCamera - _yawDeg;
+        // =================================================================
+        // Get/create interpolation state
+        // =================================================================
+
+        private _interp = _interpStates getOrDefault [
+            _clientID,
+            createHashMap
+        ];
+
+        private _initialized = _interp getOrDefault [
+            "initialized",
+            false
+        ];
+
+        // =================================================================
+        // First packet from this client
+        // =================================================================
+
+        if (!_initialized) then {
+
+            _interp set ["initialized", true];
+
+            _interp set ["rawPos", _rawPos];
+            _interp set ["rawDir", _rawDir];
+            _interp set ["rawTime", _now];
+
+            _interp set ["fromPos", _rawPos];
+            _interp set ["toPos", _rawPos];
+
+            _interp set ["fromDir", _rawDir];
+            _interp set ["toDir", _rawDir];
+
+            _interp set ["start", _now];
+            _interp set ["dur", _updateInterval max 0.05];
+
+            _interp set ["curPos", _rawPos];
+            _interp set ["curDir", _rawDir];
+
+            _interpStates set [
+                _clientID,
+                _interp
+            ];
+        };
+
+        // =================================================================
+        // Detect new network data
+        // =================================================================
+
+        private _lastRawPos = _interp getOrDefault [
+            "rawPos",
+            _rawPos
+        ];
+
+        private _lastRawDir = _interp getOrDefault [
+            "rawDir",
+            _rawDir
+        ];
+
+        private _lastRawTime = _interp getOrDefault [
+            "rawTime",
+            _now
+        ];
+
+        private _positionChanged = (
+            (_rawPos distance _lastRawPos) > 0.001
+        );
+
+        private _directionChanged = (
+            (_rawDir distance _lastRawDir) > 0.001
+        );
+
+        if (_positionChanged || _directionChanged) then {
+
+            // Current rendered position becomes the beginning
+            // of the next interpolation segment.
+            private _curPos = _interp getOrDefault [
+                "curPos",
+                _lastRawPos
+            ];
+
+            private _curDir = _interp getOrDefault [
+                "curDir",
+                _lastRawDir
+            ];
+
+            // Actual time between network updates.
+            private _dur = _now - _lastRawTime;
+
+
+            _dur = 0.05 max (_dur min 0.75);
+
+            // New position interpolation
+            _interp set [
+                "fromPos",
+                _curPos
+            ];
+
+            _interp set [
+                "toPos",
+                _rawPos
+            ];
+
+            // New direction interpolation
+            _interp set [
+                "fromDir",
+                _curDir
+            ];
+
+            _interp set [
+                "toDir",
+                _rawDir
+            ];
+
+            // Start interpolation now
+            _interp set [
+                "start",
+                _now
+            ];
+
+            _interp set [
+                "dur",
+                _dur
+            ];
+
+            // Store latest network data
+            _interp set [
+                "rawPos",
+                _rawPos
+            ];
+
+            _interp set [
+                "rawDir",
+                _rawDir
+            ];
+
+            _interp set [
+                "rawTime",
+                _now
+            ];
+        };
+
+        // =================================================================
+        // Calculate interpolation amount
+        // =================================================================
+
+        private _start = _interp getOrDefault [
+            "start",
+            _now
+        ];
+
+        private _dur = _interp getOrDefault [
+            "dur",
+            (_updateInterval max 0.05)
+        ];
+
+        private _fromPos = _interp getOrDefault [
+            "fromPos",
+            _rawPos
+        ];
+
+        private _toPos = _interp getOrDefault [
+            "toPos",
+            _rawPos
+        ];
+
+        private _fromDir = _interp getOrDefault [
+            "fromDir",
+            _rawDir
+        ];
+
+        private _toDir = _interp getOrDefault [
+            "toDir",
+            _rawDir
+        ];
+
+        private _t = if (_dur > 0) then {
+            (_now - _start) / _dur
+        } else {
+            1
+        };
+
+        // Clamp to 0..1
+        _t = 0 max (_t min 1);
+
+        // =================================================================
+        // Interpolate position
+        // =================================================================
+
+        private _position = [
+            (_fromPos select 0) +
+            ((_toPos select 0) - (_fromPos select 0)) * _t,
+
+            (_fromPos select 1) +
+            ((_toPos select 1) - (_fromPos select 1)) * _t,
+
+            (_fromPos select 2) +
+            ((_toPos select 2) - (_fromPos select 2)) * _t
+        ];
+
+        // =================================================================
+        // Interpolate direction
+        // =================================================================
+
+        private _dir = [
+            (_fromDir select 0) +
+            ((_toDir select 0) - (_fromDir select 0)) * _t,
+
+            (_fromDir select 1) +
+            ((_toDir select 1) - (_fromDir select 1)) * _t,
+
+            (_fromDir select 2) +
+            ((_toDir select 2) - (_fromDir select 2)) * _t
+        ];
+
+        // Normalize direction safely
+        private _dirMagnitude = vectorMagnitude _dir;
+
+        if (_dirMagnitude > 0.0001) then {
+            _dir = _dir vectorMultiply (1 / _dirMagnitude);
+        } else {
+            _dir = _fromDir;
+        };
+
+        // =================================================================
+        // Store current interpolated state
+        // =================================================================
+
+        _interp set [
+            "curPos",
+            _position
+        ];
+
+        _interp set [
+            "curDir",
+            _dir
+        ];
+
+        _interpStates set [
+            _clientID,
+            _interp
+        ];
+
+        // =================================================================
+        // Drawing
+        // =================================================================
+
+        private _name = EXT_var_OtherClients getOrDefault [
+            _clientID,
+            "Unknown"
+        ];
+
+        // Debug offset
+        private _drawPosition = _position;
+
+        if (EXT_var_DEBUG) then {
+            _drawPosition = _drawPosition vectorAdd [
+                0,
+                0,
+                -5
+            ];
+        };
+
+        // Distance check
+        private _localCameraPosition = getPosATL get3DENCamera;
+
+        if (
+            _drawPosition distance _localCameraPosition >
+            _drawDistance
+        ) then {
+            continue
+        };
+
+        // Camera direction line
+        private _end = _drawPosition vectorAdd (
+            _dir vectorMultiply 1000
+        );
+
+        drawLine3D [
+            _drawPosition,
+            _end,
+            [1, 0, 0, 3]
+        ];
+
+        // =================================================================
+        // Camera icon + name
+        // =================================================================
+
+        if (!isNil "_name") then {
+
+            private _yawDeg = (
+                (_dir select 0) atan2
+                (_dir select 1)
+            );
+
+            if (_yawDeg < 0) then {
+                _yawDeg = _yawDeg + 360;
+            };
+
+            private _iconDir =
+                getDir get3DENCamera - _yawDeg;
 
             drawIcon3D [
                 "a3\3den\data\cfg3den\camera\cameraTexture_ca.paa",
                 [0, 0, 1, 1],
-                _position,
+                _drawPosition,
                 1.5,
                 1.5,
                 _iconDir,
@@ -72,9 +406,17 @@ _code = {
                 true
             ];
         };
+
     } forEach _cameras;
+
+    // Save interpolation states
+    uiNamespace setVariable [
+        "EXT_var_cameraInterp",
+        _interpStates
+    ];
 };
-["EXT_var_GUIDISPLAY", "onEachFrame", _code] call BIS_fnc_addStackedEventHandler;
+
+["EXT_var_CameraDrawEvent", "onEachFrame", _code] call BIS_fnc_addStackedEventHandler;
 
 
 // Draw map markers

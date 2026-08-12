@@ -171,7 +171,7 @@ public static partial class ArmaMethods {
                 Direction = direction
             };
 
-            await Client.SendTcpMessageAsync(-1, "UpdateCamera", camera);
+            await Client.SendUdpMessageAsync(-1, "UpdateCamera", camera);
         } catch (Exception ex)
         {
             Log(ex);
