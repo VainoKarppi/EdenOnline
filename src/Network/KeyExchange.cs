@@ -38,9 +38,8 @@ public static class KeyExchange
         ClientSharedSecret = _clientEcdh.DeriveKeyFromHash(importedServerKey.PublicKey, HashAlgorithmName.SHA256, null, null);
 
         try {
-            using var sha = System.Security.Cryptography.SHA256.Create();
+            using var sha = SHA256.Create();
             var hash = Convert.ToHexString(sha.ComputeHash(ClientSharedSecret)).Substring(0, 16);
-            Console.WriteLine($"[KEYX][CLIENT] Derived client shared secret hash: {hash}");
         } catch {}
     }
 
@@ -69,9 +68,8 @@ public static class KeyExchange
             importedClientKey.ImportSubjectPublicKeyInfo(clientPublicKeyBytes, out _);
             _serverSharedSecrets[clientId] = serverEcdh.DeriveKeyFromHash(importedClientKey.PublicKey, HashAlgorithmName.SHA256, null, null);
             try {
-                using var sha = System.Security.Cryptography.SHA256.Create();
+                using var sha = SHA256.Create();
                 var hash = Convert.ToHexString(sha.ComputeHash(_serverSharedSecrets[clientId])).Substring(0, 16);
-                Console.WriteLine($"[KEYX][SERVER] Derived server shared secret for client {clientId}: {hash}");
             } catch {}
             _serverPublicKeys[clientId] = Convert.ToBase64String(serverEcdh.PublicKey.ExportSubjectPublicKeyInfo());
             _clientPublicKeys[clientId] = clientPublicKeyBase64;

@@ -34,14 +34,14 @@ sleep 1;
 
 "XXXX" callExtension ["Connect|1",["84.250.208.125",2302,"Legodev","Altis","2.00.146773",["3db741e9"],""]];
 
-sleep 1;
+sleep 3;
 
 
 "XXXX" callExtension ["CreateObject|79996", ["CBN1DT70",[["Position",[5086.52,4906.72,0]],["ItemClass","B_soldier_M_F"]]]];
 
 sleep 1;
 
-//"XXXX" callExtension ["UpdateObject|71111", ["CBN1DT70",[["Position",[5086.52,4906.72,100]]]]];
+"XXXX" callExtension ["UpdateObject|71111", ["CBN1DT70",[["Position",[5086.52,4906.72,100]]]]];
 
 sleep 1;
 
@@ -54,11 +54,19 @@ sleep 1;
 
 sleep 1;
 
-"XXXX" callExtension ["CameraUpdate|-1",[[4593.98,5088.45,1000],[0.704759,0.687867,-0.173648]]];
+"XXXX" callExtension ["CameraUpdate|-1",[[4593.98,5088.45,200],[0.704759,0.687867,-0.173648]]];
 
 sleep 1;
 
-"XXXX" callExtension ["Disconnect|1",[]];
+"XXXX" callExtension ["CameraUpdate|-1",[[4593.98,5088.45,300],[0.704759,0.687867,-0.173648]]];
+
+sleep 1;
+
+"XXXX" callExtension ["CameraUpdate|-1",[[4593.98,5088.45,400],[0.704759,0.687867,-0.173648]]];
+
+sleep 3;
+
+//"XXXX" callExtension ["Disconnect|19",[]];
 
 sleep 1;
 

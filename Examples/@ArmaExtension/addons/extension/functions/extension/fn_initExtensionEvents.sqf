@@ -129,23 +129,50 @@ addMissionEventHandler ["ExtensionCallback",{
 				case "UpdateClientList": {
 					// Updates player list and their names.
 					// [[id,"name1"],[id,"name2"]]
-					
+
+					// Make an independent copy of the previous client list
+					private _previousClients = missionNamespace getVariable ["EXT_var_OtherClients", createHashMap];
+
+					_previousClients = +_previousClients;
+
+					// Create the new client list
 					private _otherClients = _data select 0;
-					EXT_var_OtherClients = createHashMapFromArray _otherClients;
+					private _newClients = createHashMapFromArray _otherClients;
 
-
-					// Remove cameras belonging to clients that no longer exist
-					private _networkCameras = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap];
+					// Detect newly connected clients
 					{
-						if !(_x in EXT_var_OtherClients) then {
-							_networkCameras deleteAt _x;
+						private _clientId = _x;
+
+						if !(_clientId in _previousClients) then {
+							private _username = _newClients get _clientId;
+
+							diag_log format ["[EXTENSION] Client connected: %1 (%2)", _clientId, _username];
+							systemChat format ["Client connected: %1 (%2)", _clientId, _username];
 						};
-					} forEach keys _networkCameras;
+					} forEach keys _newClients;
+
+					// Detect disconnected clients and remove their cameras
+					private _networkCameras = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap];
+
+					{
+						private _clientId = _x;
+
+						if !(_clientId in _newClients) then {
+							private _username = _previousClients getOrDefault [_clientId, format ["Client %1", _clientId]];
+
+							_networkCameras deleteAt _clientId;
+
+							diag_log format ["[EXTENSION] Client disconnected: %1 (%2)", _clientId, _username];
+							systemChat format ["Client disconnected: %1 (%2)", _clientId, _username];
+						};
+					} forEach keys _previousClients;
+
+					// Store the new client list
+					missionNamespace setVariable ["EXT_var_OtherClients", _newClients];
 
 					uiNamespace setVariable ["EXT_var_networkCameras", _networkCameras];
 
-
-					// Update client list
+					// Update client list UI
 					[] spawn EXT_fnc_showPlayersDialog;
 				};
 

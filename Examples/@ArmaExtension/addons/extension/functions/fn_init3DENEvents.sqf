@@ -69,7 +69,7 @@ add3DENEventHandler ["OnEditableEntityAdded", {
 add3DENEventHandler ["OnEditableEntityRemoved", {
 	params ["_entity"];
 
-	// FIX UNTIL THIS GETS FIXED (single object)
+	// FIX UNTIL THIS GETS FIXED BY BI (single object)
 	if (_entity isEqualType grpNull) exitWith {
 		{
 			[_x] call EXT_fnc_deleteObject;

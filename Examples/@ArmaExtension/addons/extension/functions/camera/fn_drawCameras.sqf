@@ -29,7 +29,7 @@ _code = {
     };
  
     // Draw other client cameras
-    _drawDistance = 2000;
+    _drawDistance = 4000;
     _cameras = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap];
     {
         _clientID = _x;

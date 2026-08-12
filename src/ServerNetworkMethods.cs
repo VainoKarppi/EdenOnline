@@ -23,17 +23,25 @@ namespace EdenOnline;
 
 // These are methods that other clients can invoke remotely, and request data for
 
-public class ServerNetworkMethods {
-
-    // TODO Move these elsewhere -> Or create new ones, everytime server is started again. Remove existing data, if server is restarted.
+public static class ServerStateManager
+{
     public static Dictionary<int, string> UsernameList { get; set; } = [];
     public static ObjectManager ServerObjectManager { get; } = new ObjectManager();
     public static MissionAttributeManager MissionAttributeManager { get; } = new MissionAttributeManager();
 
+    public static void Reset()
+    {
+        UsernameList.Clear();
+        ServerObjectManager.Clear();
+        MissionAttributeManager.Clear();
+    }
+}
+
+public class ServerNetworkMethods {
+
     public static void RegisterUserName(int clientID, string username)
     {
-        Log($"[SERVER] Adding user {clientID} {username} to UsernameList");
-        UsernameList[clientID] = username;
+        ServerStateManager.UsernameList[clientID] = username;
 
         // Broadcast this username registration to all other connected clients
         try {
@@ -45,32 +53,28 @@ public class ServerNetworkMethods {
 
     public static void RemoveUserName(int clientID)
     {
-        string username = UsernameList.ContainsKey(clientID) ? UsernameList[clientID] : "Unknown";
-        Log($"[SERVER] Removing user {clientID} ({username}) from UsernameList");
-        UsernameList.Remove(clientID);
+        ServerStateManager.UsernameList.Remove(clientID);
     }
 
     public static Dictionary<int, string> GetAllUsernames()
     {
-        return UsernameList;
+        return ServerStateManager.UsernameList;
     }
     public static void CreateObject(ArmaObject armaObject)
     {
         // Only update local server database
-        ServerObjectManager.AddOrUpdateObject(armaObject);
+        ServerStateManager.ServerObjectManager.AddOrUpdateObject(armaObject);
     }
 
     public static void UpdateObject(ArmaObject armaObject)
     {
-        Log($"[SERVER] Received UpdateObject for object {armaObject.Id} with attributes: {armaObject.Attributes?.Count}");
         // Only update local server database
-        ServerObjectManager.AddOrUpdateObject(armaObject);
+        ServerStateManager.ServerObjectManager.AddOrUpdateObject(armaObject);
     }
     public static bool RemoveObject(string objectID)
     {
-        Log($"[SERVER] Received RemoveObject for object {objectID}");
         // Only update local server database
-        bool success = ServerObjectManager.RemoveObject(objectID);
+        bool success = ServerStateManager.ServerObjectManager.RemoveObject(objectID);
         return success;
     }
 
@@ -80,16 +84,16 @@ public class ServerNetworkMethods {
     }
 
     public static int GetObjectCount() {
-        return ServerObjectManager.Objects.Count;
+        return ServerStateManager.ServerObjectManager.Objects.Count;
     }
 
     public static List<ArmaObject> GetAllObjects() {
-        return ServerObjectManager.GetAllObjects();
+        return ServerStateManager.ServerObjectManager.GetAllObjects();
     }
 
     public static void SetMissionAttribute(MissionAttribute missionAttribute) {
         Log($"[SERVER] Setting Attribute: [{missionAttribute.Section}, {missionAttribute.Property}, {missionAttribute.Value}]");
-        MissionAttributeManager.SetAttribute([missionAttribute.Section!, missionAttribute.Property!], missionAttribute.Value!);
+        ServerStateManager.MissionAttributeManager.SetAttribute([missionAttribute.Section!, missionAttribute.Property!], missionAttribute.Value!);
     }
 
     public static void SetInitialMissionAttributes(MissionAttribute[] attributes)
@@ -97,13 +101,13 @@ public class ServerNetworkMethods {
         Log($"[SERVER] Received SetInitialMissionAttributes ({attributes.Count()})");
         foreach (MissionAttribute attribute in attributes)
         {
-            MissionAttributeManager.SetAttribute([attribute.Section!, attribute.Property!],attribute.Value);
+            ServerStateManager.MissionAttributeManager.SetAttribute([attribute.Section!, attribute.Property!],attribute.Value);
         }
     }
 
     public static Dictionary<string[], object?> GetMissionAttributes() {
         try {
-            var attributes = MissionAttributeManager.GetAllAttributes();
+            var attributes = ServerStateManager.MissionAttributeManager.GetAllAttributes();
 
             return attributes;
         } catch (Exception ex) {

@@ -12,7 +12,6 @@ using DynTypeSerializer;
 using static DynTypeNetwork.Settings.Logging;
 
 
-
 namespace DynTypeNetwork;
 
 
@@ -126,9 +125,10 @@ public static partial class Client
 
                         int client_id = (int)data[0];
                         bool success = (bool)data[1];
-                        DisconnectReason reason = (DisconnectReason?)data[2] ?? DisconnectReason.Unknown;
 
-                        // TODO Read actual reason from the data
+                        // TODO Read and send the actual reason from the data
+                        DisconnectReason reason = data.Length > 2 ? (DisconnectReason?)data[2] ?? DisconnectReason.Unknown : DisconnectReason.Unknown;
+                        
                         
                         Clients.Remove(client_id);
                         _ = Task.Run(() => OnOtherClientDisconnected?.Invoke(client_id, success, reason));

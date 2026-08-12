@@ -1,5 +1,0 @@
-
-The second client gets these messages, when the first "host" client sends UDP packets about their CameraUpdates:
-   [CLIENT UDP] Invalid packet: Unable to decrypt UDP message.
-   [CLIENT UDP] Invalid packet: Unable to decrypt UDP message.
-

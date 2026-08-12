@@ -49,17 +49,18 @@ public class ClientNetworkMethods {
         Extension.SendToArma("ObjectCreated", [createdObj.Id, createdObj.Attributes]);
     }
     public static void UpdateObject(ArmaObject updatedObj) {
-        Log($"[CLIENT] Received UpdateObject for object {updatedObj.Id} with attributes: {updatedObj.Attributes?.Count}");
         Extension.SendToArma("ObjectUpdated", [updatedObj.Id, updatedObj.Attributes]);
     }
     public static void RemoveObject(string objectID) {
-        Log($"[CLIENT] Received RemoveObject for object {objectID}");
         Extension.SendToArma("ObjectRemoved", [objectID]);
     }
 
-    public static void LoadingScreen(bool enable) {
+    public static void LoadingScreen(bool enable, int progress = 1) {
         Log($"[CLIENT] Received LoadingScreen: {enable}");
-        Extension.SendToArma("LoadingScreen", [enable, 50 / 100.0]);
+
+        progress = Math.Clamp(progress, 1, 100);
+    
+        Extension.SendToArma("LoadingScreen", [enable, progress / 100.0]);
     }
 
     public static void SetMissionAttribute(string section, string property, object? value) {

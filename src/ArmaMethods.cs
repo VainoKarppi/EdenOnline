@@ -36,82 +36,109 @@ public static partial class ArmaMethods {
         
         int clientID = await Client.ConnectAsync(host, port, startUdp: true, clientHash);
 
-
-        // TODO Send network message to other clients to start loading screen to block edits. Wait for 1 second, before starting sync.
-        // TODO Create backup on server to toggle loading screen off, if this client disconnects or loses connection while syncinc.
-        
-        // subscribe events
-        Client.OnClientConnected += ClientNetworkEvents.OnConnected;
-        Client.OnClientDisconnected += ClientNetworkEvents.OnDisconnected;
-        Client.OnServerShutdown += ClientNetworkEvents.OnServerShutdown;
-        Client.OnOtherClientConnected += ClientNetworkEvents.OnOtherClientConnected;
-        Client.OnOtherClientDisconnected += ClientNetworkEvents.OnOtherClientDisconnected;
-
-        //* SEND AND REQUEST USERNAMES FROM SERVER
-        await Client.SendTcpMessageAsync(1, "RegisterUserName", clientID, username);
-        Log($"[CLIENT] Syncing client list and usernames...");
-
-        UsernameList = await Client.RequestTcpDataAsync<Dictionary<int, string>>(1, "GetAllUsernames") ?? [];
-        Log($"[CLIENT] Got {UsernameList?.Count} users");
-        if (UsernameList != null && UsernameList.Count > 0)
-        {
-            object[] otherUsersArray = UsernameList
-                .Where(x => x.Key != clientID)
-                .Select(kvp => new object[] { kvp.Key, kvp.Value })
-                .Cast<object>()
-                .ToArray();
+        try {
             
-            Extension.SendToArma("UpdateClientList", [otherUsersArray]);
-        }
+            // subscribe events
+            Client.OnClientConnected += ClientNetworkEvents.OnConnected;
+            Client.OnClientDisconnected += ClientNetworkEvents.OnDisconnected;
+            Client.OnServerShutdown += ClientNetworkEvents.OnServerShutdown;
+            Client.OnOtherClientConnected += ClientNetworkEvents.OnOtherClientConnected;
+            Client.OnOtherClientDisconnected += ClientNetworkEvents.OnOtherClientDisconnected;
 
-        // TODO verify user count
-        Log($"[CLIENT] Received {UsernameList?.Count ?? 0} users. Should be: {Client.GetOtherClients().Count}");
+            // Send network message to other clients to start loading screen to block edits. Wait for 1 second, before starting sync.
+            await Client.SendTcpMessageAsync(-1, "LoadingScreen", [true, 10]);
+            await Task.Delay(1000);
 
+            //* SEND AND REQUEST USERNAMES FROM SERVER
+            await Client.SendTcpMessageAsync(1, "RegisterUserName", clientID, username);
+            Log($"[CLIENT] Syncing client list and usernames...");
 
-        //* MISSION ATTRIBUTES SYNC
-        Dictionary<string[], object?>? missionAttributes = await Client.RequestTcpDataAsync<Dictionary<string[], object?>>(1, "GetMissionAttributes");
-        if (missionAttributes == null) {
-            throw new Exception("Failed to sync mission attributes: Received null from server");
-        }
-
-        Log($"[CLIENT] Received {missionAttributes.Count} mission attributes from server.");
-
-        object?[] attributes = missionAttributes
-            .Select(kvp => (object?)new object?[]
+            UsernameList = await Client.RequestTcpDataAsync<Dictionary<int, string>>(1, "GetAllUsernames") ?? [];
+            Log($"[CLIENT] Got {UsernameList?.Count} users");
+            if (UsernameList != null && UsernameList.Count > 0)
             {
-                kvp.Key.Length > 0 ? kvp.Key[0] : "", // section
-                kvp.Key.Length > 1 ? kvp.Key[1] : "", // property
-                kvp.Value
-            })
-            .ToArray();
-
-        Extension.SendToArma("SetInitialMissionAttributes", [attributes]);
-
-
-        //* MISSION OBJECTS SYNC
-        Log($"[CLIENT] Requesting object count from server...");
-        int objectCount = await Client.RequestTcpDataAsync<int>(1, "GetObjectCount");
-        Extension.SendToArma("ObjectSyncCount", [objectCount]);
-
-        if (objectCount > 0) {
-            List<ArmaObject>? objects = await Client.RequestTcpDataAsync<List<ArmaObject>>(1, "GetAllObjects");
-            if (objects == null || objects.Count == 0) {
-                throw new Exception("Failed to sync objects: Received null from server");
+                object[] otherUsersArray = UsernameList
+                    .Where(x => x.Key != clientID)
+                    .Select(kvp => new object[] { kvp.Key, kvp.Value })
+                    .Cast<object>()
+                    .ToArray();
+                
+                Extension.SendToArma("UpdateClientList", [otherUsersArray]);
             }
 
-            foreach (var obj in objects) {
-                Extension.SendToArma("ObjectSyncData", [obj.Id, obj.Attributes]);
+            // TODO verify user count
+            Log($"[CLIENT] Received {UsernameList?.Count ?? 0} users. Should be: {Client.GetOtherClients().Count}");
+
+            await Client.SendTcpMessageAsync(-1, "LoadingScreen", [true, 20]);
+            await Task.Delay(100);
+
+            //* MISSION ATTRIBUTES SYNC
+            Dictionary<string[], object?>? missionAttributes = await Client.RequestTcpDataAsync<Dictionary<string[], object?>>(1, "GetMissionAttributes");
+            if (missionAttributes == null) {
+                throw new Exception("Failed to sync mission attributes: Received null from server");
             }
+
+            Log($"[CLIENT] Received {missionAttributes.Count} mission attributes from server.");
+
+            await Client.SendTcpMessageAsync(-1, "LoadingScreen", [true, 30]);
+            await Task.Delay(100);
+
+            object?[] attributes = missionAttributes
+                .Select(kvp => (object?)new object?[]
+                {
+                    kvp.Key.Length > 0 ? kvp.Key[0] : "", // section
+                    kvp.Key.Length > 1 ? kvp.Key[1] : "", // property
+                    kvp.Value
+                })
+                .ToArray();
+
+            Extension.SendToArma("SetInitialMissionAttributes", [attributes]);
+
+            await Client.SendTcpMessageAsync(-1, "LoadingScreen", [true, 50]);
+            await Task.Delay(100);
+
+            //* MISSION OBJECTS SYNC
+            Log($"[CLIENT] Requesting object count from server...");
+            int objectCount = await Client.RequestTcpDataAsync<int>(1, "GetObjectCount");
+            Extension.SendToArma("ObjectSyncCount", [objectCount]);
+
+            if (objectCount > 0) {
+                List<ArmaObject>? objects = await Client.RequestTcpDataAsync<List<ArmaObject>>(1, "GetAllObjects");
+                if (objects == null || objects.Count == 0) {
+                    throw new Exception("Failed to sync objects: Received null from server");
+                }
+
+                foreach (var obj in objects) {
+                    Extension.SendToArma("ObjectSyncData", [obj.Id, obj.Attributes]);
+                }
+                
+            }
+            Log($"[CLIENT] Object sync complete. Total objects synced: {objectCount}");
+
+            await Client.SendTcpMessageAsync(-1, "LoadingScreen", [true, 90]);
+            await Task.Delay(100);
+
+            // TODO Send initial client camera positions.
+
+            Log($"[CLIENT] Connect Method Finished: {host}:{port}");
+            Log($"[CLIENT] Connected with ID: {clientID}");
+
             
+            await Client.SendTcpMessageAsync(-1, "LoadingScreen", [false, 100]);
+            
+            return clientID;
+
+        } catch (Exception ex) {
+            Log($"[CLIENT] Exception during connect method: {ex}");
+
+            // TODO Create backup on server to toggle loading screen off from other clients, if this client disconnects or loses connection while sync in progress.
+            // Only allow single client to sync at a time, and if that client disconnects, send message to all other clients to disable loading screen????
+
+            await Client.SendTcpMessageAsync(-1, "LoadingScreen", [false, 100]);
+         
+            await Client.DisconnectAsync();
+            throw;
         }
-        Log($"[CLIENT] Object sync complete. Total objects synced: {objectCount}");
-
-
-        // TODO Send initial client camera positions.
-
-        Log($"[CLIENT] Connect Method Finished: {host}:{port}");
-        Log($"[CLIENT] Connected with ID: {clientID}");
-        return clientID;
     }
 
     public static async Task<int> StartServer(double port, string username, string worldname, string armaVersion, object[] modHashes, string password = "null") {

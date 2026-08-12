@@ -18,7 +18,6 @@ using static DynTypeNetwork.Settings.Logging;
 
 namespace DynTypeNetwork;
 
-// TODO Add excluded targets list array int[]
 public class NetworkMessage
 {
     public int SenderId { get; set; }
@@ -112,7 +111,7 @@ internal class HandshakeMessage
 public static class MessageBuilder
 {
     #region TCP
-    internal static byte[] CreateTcpMessage(NetworkMessage msg)
+    internal static byte[] CreateTcpMessage(NetworkMessage msg, bool isServerBroadcast = false)
     {
         msg.Timestamp = DateTime.UtcNow.Ticks;
 
@@ -141,7 +140,11 @@ public static class MessageBuilder
         if (payloadLength > 0) buffer.AddRange(payloadBytes);
 
         byte[] messageBytes = buffer.ToArray();
-        byte[] envelope = MessageCrypto.CreateTcpEnvelope(messageBytes, msg.MessageType, msg.SenderId, msg.TargetId);
+
+        // If called from server always use SERVER_ID instead of msg.SenderId to get the correct shared secret for encryption
+        int senderId = isServerBroadcast ? Server.SERVER_ID : msg.SenderId;
+
+        byte[] envelope = MessageCrypto.CreateTcpEnvelope(messageBytes, msg.MessageType, senderId, msg.TargetId);
 
         byte[] lengthPrefix = BitConverter.GetBytes(envelope.Length);
         return [.. lengthPrefix, ..envelope];

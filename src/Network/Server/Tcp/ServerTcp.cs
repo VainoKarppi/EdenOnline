@@ -126,13 +126,6 @@ public static partial class Server
     {
         var tasks = new List<Task<object?>>();
         object?[] broadcastResponses = [];
-
-        // Run on server if targetId == 0, otherwise forward to all clients except the sender
-        if (message.TargetsEveryone) {
-            _ = Task.Run(() => OnTcpMessageReceived?.Invoke(message));
-            _ = await MessageBuilder.HandleBroadcastMessageOnServer(message, CancellationToken.None);
-        }
-
         
         var clientsToSend = Clients.Values.Where(c => c.Connected && (EdenOnline.Settings.MIRROR || c.Id != sender.Id));
 
@@ -149,7 +142,7 @@ public static partial class Server
                         Payload = message.Payload
                     };
 
-                    var data = MessageBuilder.CreateTcpMessage(requestMessage);
+                    var data = MessageBuilder.CreateTcpMessage(requestMessage, isServerBroadcast: true);
                     await client.GetStream().WriteAsync(data);
                 });
             

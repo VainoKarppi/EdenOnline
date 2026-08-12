@@ -112,6 +112,7 @@ public static partial class Server
 
         OnClientDisconnected?.Invoke(client.Id, success, DisconnectReason.Unknown);
 
+        // Notify other clients that this client has disconnected
         foreach (var otherClient in Clients.Values) {
             await SendMessageAsync(otherClient, otherClient.Id, MessageType.ClientDisconnected, new object[] { client.Id, success });
         }

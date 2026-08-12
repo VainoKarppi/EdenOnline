@@ -29,11 +29,9 @@ public class ServerNetworkEvents {
 
         //await Server.SendTcpMessageAsync(-clientId, "LoadingScreen", [true, 0]);
 
-        //await Task.Delay(500); // Wait a moment to make sure other clients are in loadign screen, before starting object sync, to prevent desync issues.
+        //await Task.Delay(2000);
 
         //await Server.SendTcpMessageAsync(-clientId, "LoadingScreen", [false, 100]);
-
-        // TODO send UpdateClientList to all clients, to add this client to their list. (and add username to list)
     }
 
     public static async void OnClientDisconnected(int clientId, bool success, DisconnectReason reason) {
@@ -48,9 +46,8 @@ public class ServerNetworkEvents {
     {
         Log($"[SERVER] Server shutdown event received. Reason: {reason}");
         Log($"[SERVER] Clearing mission state lists");
-        ServerNetworkMethods.MissionAttributeManager.Clear();
-        ServerNetworkMethods.ServerObjectManager.Clear();
-        ServerNetworkMethods.UsernameList.Clear();
+
+        ServerStateManager.Reset();
     }
     
 }

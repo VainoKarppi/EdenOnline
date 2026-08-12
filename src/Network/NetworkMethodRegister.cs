@@ -146,7 +146,7 @@ public static class MethodBuilder {
             && parameters.Length == 1
             && parameters[0].ParameterType == typeof(object[]);
 
-        if (LogItem(LogLevel.Info)) Console.WriteLine($"Invoking:{methodName} with args: [{string.Join(", ", finalArgs.Select(a => a?.ToString() ?? "null"))}] ({finalArgs.Length})");
+        if (LogItem(LogLevel.Debug)) Console.WriteLine($"Invoking:{methodName} with args: [{string.Join(", ", finalArgs.Select(a => a?.ToString() ?? "null"))}] ({finalArgs.Length})");
         
         if (isReflectionWrapper)
             return (T?)del.DynamicInvoke([finalArgs]);
