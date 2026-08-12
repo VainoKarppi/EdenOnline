@@ -32,6 +32,7 @@ EXT_var_extensionResponses = createHashMap;
 EXT_var_extensionRequests = createHashMap;
 EXT_var_Objects = createHashMap;
 EXT_var_OtherClients = createHashMap;
+EXT_var_IsHost = false;
 
 diag_log formatText ["VERSION: %1",_data];
 

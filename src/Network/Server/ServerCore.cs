@@ -80,7 +80,7 @@ public static partial class Server
     public static async Task StopAsync()
     {
         if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Server shutdown requested");
-        OnServerShutdown?.Invoke();
+        OnServerShutdown?.Invoke(DisconnectReason.ServerShutdown);
 
         // Send disconnect message to clients, before clearing list and closing connections
         foreach (Connection? client in Clients.Values) {
@@ -110,7 +110,7 @@ public static partial class Server
         Clients.Remove(client.Id);
         if (!client.HandshakeDone) return;
 
-        OnClientDisconnected?.Invoke(client.Id, success);
+        OnClientDisconnected?.Invoke(client.Id, success, DisconnectReason.Unknown);
 
         foreach (var otherClient in Clients.Values) {
             await SendMessageAsync(otherClient, otherClient.Id, MessageType.ClientDisconnected, new object[] { client.Id, success });
@@ -213,14 +213,14 @@ public static partial class Server
             KeyExchange.RemoveServerKeyExchange(client.Id);
             Clients.Remove(client.Id);
 
+            // Error occured after the handshake, meaning the client was already connected, so we need to notify other clients that this client has disconnected
             if (client.HandshakeDone) {
-                OnClientDisconnected?.Invoke(client.Id, false);
+                OnClientDisconnected?.Invoke(client.Id, false, DisconnectReason.ConnectionError);
             }
+
             if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Handshake failed for client {client.Id}: {ex.Message}");
 
-            Thread.Sleep(100); // Give client some time to receive handshake failure message before closing connection
-
-            // TODO get HandshakeFailureReason
+            // TODO get real HandshakeFailureReason
             await InvokeEventAsync(() => OnHandshakeFailed?.Invoke(HandshakeFailureReason.Unknown, ex.Message));
 
             client.Close();

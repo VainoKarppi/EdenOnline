@@ -22,12 +22,12 @@ public static partial class Server
     /// <summary>
     /// True if intentional / false if not
     /// </summary>
-    public static event Action? OnServerShutdown;
+    public static event Action<DisconnectReason>? OnServerShutdown;
 
     public static event Func<HandshakeFailureReason, string, Task>? OnHandshakeFailed;
 
     public static event Action<int>? OnClientConnected;
-    public static event Action<int, bool>? OnClientDisconnected;
+    public static event Action<int, bool, DisconnectReason>? OnClientDisconnected;
 
     public static event Action<NetworkMessage>? OnTcpMessageSent;
     public static event Action<NetworkMessage>? OnTcpMessageReceived;

@@ -126,6 +126,7 @@ call EXT_fnc_init3DENEvents;
 [("CONNECTED TO SERVER WITH ID: " + str(_id)), 0,5] call BIS_fnc_3DENNotification;
 
 missionNamespace setVariable ["EXT_var_Connected", true];
+missionNamespace setVariable ["EXT_var_IsHost", true];
 
 // Disable ability to preview the mission
 (findDisplay 313 displayCtrl 1023) ctrlEnable false;

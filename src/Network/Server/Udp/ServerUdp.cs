@@ -145,7 +145,7 @@ public static partial class Server
                 MessageType = MessageType.Custom,
                 Payload = message.Payload
             };
-            var packet = MessageBuilder.CreateUdpMessage(udpMsg);
+            var packet = MessageBuilder.CreateUdpMessage(udpMsg, isServerBroadcast: true);
 
             await _udpListener!.SendAsync(packet.AsMemory(), client.UdpEndpoint, _cts.Token);
         }

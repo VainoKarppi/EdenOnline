@@ -56,6 +56,10 @@ addMissionEventHandler ["ExtensionCallback",{
 		} else {
 			// IS data that we need to process (call in)
 			switch (_method) do {
+				case "ServerShutdown": {
+					diag_log format ["ServerShutdown: %1", _data#0];
+					[1, _data#0] spawn EXT_fnc_disconnect;
+				};
 				case "LoadingScreen": {
 					_enable = _data select 0;
 					_progress = _data select 1;

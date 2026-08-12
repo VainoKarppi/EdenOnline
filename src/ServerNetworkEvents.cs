@@ -36,16 +36,17 @@ public class ServerNetworkEvents {
         // TODO send UpdateClientList to all clients, to add this client to their list. (and add username to list)
     }
 
-    public static async void OnClientDisconnected(int clientId, bool success) {
+    public static async void OnClientDisconnected(int clientId, bool success, DisconnectReason reason) {
         //TODO returns false, when host client runs Disconnect, and shuts server down first. Should return true, when server is succesfully closed. Should we also return Disconnect reason instead of bool?
-        Log($"Client disconnected with ID:{clientId}, SUCCESS:{success}");
+        Log($"Client disconnected with ID:{clientId}, SUCCESS:{success}, REASON:{reason}");
 
         // Remove username from server list. Other clients are notified of this via network event OnOtherClientDisconnected, which is triggered by the server when a client disconnects.
         ServerNetworkMethods.RemoveUserName(clientId);
     }
 
-    public static async void OnServerShutdown()
+    public static async void OnServerShutdown(DisconnectReason reason)
     {
+        Log($"[SERVER] Server shutdown event received. Reason: {reason}");
         Log($"[SERVER] Clearing mission state lists");
         ServerNetworkMethods.MissionAttributeManager.Clear();
         ServerNetworkMethods.ServerObjectManager.Clear();

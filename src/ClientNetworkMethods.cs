@@ -42,12 +42,10 @@ public class ClientNetworkMethods {
         }
     }
     public static void UpdateCamera(ArmaCamera camera) {
-        Log($"[CLIENT] Received camera update from client {camera.Id}: Position: {string.Join(",", camera.Position)}, Direction: {string.Join(",", camera.Direction)}");
         Extension.SendToArma("CameraUpdate", [camera.Id, camera.Position, camera.Direction]);
     }
 
     public static void CreateObject(ArmaObject createdObj) {
-        Log($"[CLIENT] Received CreateObject for object {createdObj.Id} with attributes: {createdObj.Attributes?.Count}");
         Extension.SendToArma("ObjectCreated", [createdObj.Id, createdObj.Attributes]);
     }
     public static void UpdateObject(ArmaObject updatedObj) {

@@ -56,7 +56,7 @@ sleep 1;
 
 "XXXX" callExtension ["CameraUpdate|-1",[[4593.98,5088.45,1000],[0.704759,0.687867,-0.173648]]];
 
-sleep 5;
+sleep 1;
 
 "XXXX" callExtension ["Disconnect|1",[]];
 

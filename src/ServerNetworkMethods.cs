@@ -45,7 +45,8 @@ public class ServerNetworkMethods {
 
     public static void RemoveUserName(int clientID)
     {
-        Log($"[SERVER] Removing user {clientID} from UsernameList");
+        string username = UsernameList.ContainsKey(clientID) ? UsernameList[clientID] : "Unknown";
+        Log($"[SERVER] Removing user {clientID} ({username}) from UsernameList");
         UsernameList.Remove(clientID);
     }
 
@@ -55,7 +56,6 @@ public class ServerNetworkMethods {
     }
     public static void CreateObject(ArmaObject armaObject)
     {
-        Log($"[SERVER] Received CreateObject for object {armaObject.Id} with attributes: {armaObject.Attributes?.Count}");
         // Only update local server database
         ServerObjectManager.AddOrUpdateObject(armaObject);
     }

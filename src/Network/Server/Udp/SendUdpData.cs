@@ -41,7 +41,7 @@ public static partial class Server
 
                 var msg = new NetworkMessage
                 {
-                    SenderId = targetId,
+                    SenderId = SERVER_ID,
                     TargetId = [client.Id],
                     MessageType = MessageType.Custom,
                     Payload = Serializer.Serialize(payload)

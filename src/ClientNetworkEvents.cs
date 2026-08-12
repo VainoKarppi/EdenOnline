@@ -40,7 +40,7 @@ public class ClientNetworkEvents {
         Log($"[CLIENT] Other client connected: {otherClientId}");
     }
     public static void OnOtherClientDisconnected(int otherClientId, bool success, DisconnectReason reason) {
-        string username = ArmaMethods.UsernameList[otherClientId] ?? "Unknown";
+        string username = ArmaMethods.UsernameList.ContainsKey(otherClientId) ? ArmaMethods.UsernameList[otherClientId] : "Unknown";
 
         Log($"[CLIENT] Other client disconnected: {otherClientId} ({username}). Success: {success}, Reason: {reason}");
         // Remove the user from local username list and notify Arma UI

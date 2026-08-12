@@ -219,7 +219,7 @@ public static class MessageBuilder
     #region UDP
     private static readonly uint[] Crc32Table = CreateCrc32Table();
 
-    internal static byte[] CreateUdpMessage(NetworkMessage msg)
+    internal static byte[] CreateUdpMessage(NetworkMessage msg, bool isServerBroadcast = false)
     {
         msg.Timestamp = DateTime.UtcNow.Ticks;
 
@@ -256,7 +256,10 @@ public static class MessageBuilder
         uint checksum = CalculateChecksum(messageBytes, 4, offset - 4); // skip first 4 bytes
         Buffer.BlockCopy(BitConverter.GetBytes(checksum), 0, messageBytes, 0, 4);
 
-        return MessageCrypto.CreateUdpEnvelope(messageBytes, msg.MessageType, msg.SenderId, msg.TargetId);
+        // If called from server always use SERVER_ID instead of msg.SenderId to get the correct shared secret for encryption
+        int senderId = isServerBroadcast ? Server.SERVER_ID : msg.SenderId;
+
+        return MessageCrypto.CreateUdpEnvelope(messageBytes, msg.MessageType, senderId, msg.TargetId);
     }
 
     internal static NetworkMessage ReadUdpMessage(byte[] data, bool includeData = false, int? senderId = null)
