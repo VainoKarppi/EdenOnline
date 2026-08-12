@@ -47,7 +47,7 @@ public static partial class ArmaMethods {
 
             // Send network message to other clients to start loading screen to block edits. Wait for 1 second, before starting sync.
             await Client.SendTcpMessageAsync(-1, "LoadingScreen", [true, 10]);
-            await Task.Delay(1000);
+            await Task.Delay(500);
 
             //* SEND AND REQUEST USERNAMES FROM SERVER
             await Client.SendTcpMessageAsync(1, "RegisterUserName", clientID, username);
@@ -70,7 +70,7 @@ public static partial class ArmaMethods {
             Log($"[CLIENT] Received {UsernameList?.Count ?? 0} users. Should be: {Client.GetOtherClients().Count}");
 
             await Client.SendTcpMessageAsync(-1, "LoadingScreen", [true, 20]);
-            await Task.Delay(100);
+            await Task.Delay(50);
 
             //* MISSION ATTRIBUTES SYNC
             Dictionary<string[], object?>? missionAttributes = await Client.RequestTcpDataAsync<Dictionary<string[], object?>>(1, "GetMissionAttributes");
@@ -81,7 +81,7 @@ public static partial class ArmaMethods {
             Log($"[CLIENT] Received {missionAttributes.Count} mission attributes from server.");
 
             await Client.SendTcpMessageAsync(-1, "LoadingScreen", [true, 30]);
-            await Task.Delay(100);
+            await Task.Delay(50);
 
             object?[] attributes = missionAttributes
                 .Select(kvp => (object?)new object?[]
@@ -95,7 +95,7 @@ public static partial class ArmaMethods {
             Extension.SendToArma("SetInitialMissionAttributes", [attributes]);
 
             await Client.SendTcpMessageAsync(-1, "LoadingScreen", [true, 50]);
-            await Task.Delay(100);
+            await Task.Delay(50);
 
             //* MISSION OBJECTS SYNC
             Log($"[CLIENT] Requesting object count from server...");
@@ -116,7 +116,7 @@ public static partial class ArmaMethods {
             Log($"[CLIENT] Object sync complete. Total objects synced: {objectCount}");
 
             await Client.SendTcpMessageAsync(-1, "LoadingScreen", [true, 90]);
-            await Task.Delay(100);
+            await Task.Delay(50);
 
             // TODO Send initial client camera positions.
 
