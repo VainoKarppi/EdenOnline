@@ -20,6 +20,7 @@ public static partial class ArmaMethods
         if (!Client.IsTcpConnected())
             throw new Exception("Client is not connected. Cannot create object.");
 
+
         ArmaObject obj = new(objectID, metadata);
         await Client.SendTcpMessageAsync(0, "CreateObject", obj);
 
@@ -43,8 +44,7 @@ public static partial class ArmaMethods
     /// </summary>
     public static async Task RemoveObject(string objectID)
     {
-        if (!Client.IsTcpConnected())
-            throw new Exception("Client is not connected. Cannot remove object.");
+        if (!Client.IsTcpConnected()) throw new Exception("Client is not connected. Cannot remove object.");
 
         await Client.SendTcpMessageAsync(0, "RemoveObject", objectID);
     }
@@ -56,8 +56,7 @@ public static partial class ArmaMethods
     {
         try
         {
-            if (!Client.IsUdpConnected())
-                throw new Exception("Client is not connected. Cannot send camera position.");
+            if (!Client.IsUdpConnected()) throw new Exception("Client is not connected. Cannot send camera position.");
 
             ArmaCamera camera = new()
             {

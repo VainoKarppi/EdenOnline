@@ -23,6 +23,7 @@ public static partial class Server
         internal int Id { get; set; } = Interlocked.Increment(ref _clientIdCounter);
         internal bool HandshakeDone { get; set; } = false;
         internal IPEndPoint? UdpEndpoint { get; set; }
+        public bool Authenticated { get; set; } = false;
     }
 
     public readonly static Dictionary<int, Connection> Clients = [];
@@ -157,11 +158,11 @@ public static partial class Server
             string clientMethodsHash = parts[2];
 
             if (!string.IsNullOrEmpty(CustomHash)) {
-                //if (string.IsNullOrEmpty(clientCustomHash)) throw new Exception($"Client custom hash is empty, but server requires custom hash"); 
-                //if (!CustomHash.Equals(clientCustomHash, StringComparison.OrdinalIgnoreCase)) throw new Exception($"Client custom hash mismatch");
+                if (string.IsNullOrEmpty(clientCustomHash)) throw new Exception($"Client custom hash is empty, but server requires custom hash"); 
+                if (!CustomHash.Equals(clientCustomHash, StringComparison.OrdinalIgnoreCase)) throw new Exception($"Client custom hash mismatch");
             }
     
-           // if (buildId != clientBuild) throw new Exception($"Client build ID mismatch. Server: {buildId}, Client: {clientBuild}");
+            if (buildId != clientBuild) throw new Exception($"Client build ID mismatch. Server: {buildId}, Client: {clientBuild}");
 
             // Register client methods from handshake, if not already registered (eg. from previous client handshakes)
             // TODO maybe actually already register the clientMethods on server start? Or atleast add as option
@@ -175,9 +176,11 @@ public static partial class Server
 
             KeyExchange.InitializeServerKeyExchange(client.Id, payload.ClientPublicKey);
 
+            // TODO If Authentication is enabled, make sure the client gets authenticated, before setting the client as connected, and notifying other clients.
+
             Clients.Add(client.Id, client);
             client.HandshakeDone = true;
-
+            
             OnClientConnected?.Invoke(client.Id);
 
             // Notify other clients that client was connected
@@ -186,6 +189,8 @@ public static partial class Server
                 await SendMessageAsync(otherClient, otherClient.Id, MessageType.ClientConnected, client.Id);
             }
 
+            // TODO Send also the hmac challange
+            // TODO Add ability to Hardcode server public key to user code, so that we can verify that the server is the correct one, and not a man in the middle
             HandshakeMessage handshakeResponse = new() {
                 Success = true,
                 Message = "SUCCESS",
@@ -198,7 +203,7 @@ public static partial class Server
             
             var handshakeResult = MessageBuilder.CreatePacket(response, handshakeResponse);
 
-            await client.GetStream().WriteAsync(handshakeResult);
+            await client.GetStream().WriteAsync(handshakeResult);     
         } catch (Exception ex) {
 
             // Send handshake failure response to client, before closing connection and removing from clients list

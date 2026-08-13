@@ -237,7 +237,7 @@ _code = {
         // =================================================================
 
         // Maximum line length
-        private _lineLength = 1000;
+        private _lineLength = 3000;
 
         private _lineStart = _drawPosition;
 

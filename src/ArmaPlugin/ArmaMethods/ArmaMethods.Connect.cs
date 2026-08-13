@@ -19,14 +19,14 @@ public static partial class ArmaMethods
     /// <summary>
     /// Connects this client to a remote server.
     /// </summary>
-    public static async Task<int> Connect(string host, int port, string username, string worldname,
-        string armaVersion, object[] modHashes, string password = "")
+    public static async Task<int> Connect(string host, int port, string username, string worldname, string armaVersion, object[] modHashes, string password = "")
     {
-        if (Client.IsTcpConnected() && !Settings.ALLOW_DUAL_CONNECTIONS)
-            throw new Exception("Client is already connected. Please disconnect before connecting again.");
+        if (Client.IsTcpConnected() && !Settings.ALLOW_DUAL_CONNECTIONS) throw new Exception("Client is already connected. Please disconnect before connecting again.");
 
-        string clientHash = HashUtils.GetHash(new object[] { modHashes, Extension.Version, armaVersion, worldname, password });
+        string clientHash = HashUtils.GetHash(new object[] { Extension.Version });
         Log($"[CLIENT] Connect: {host}:{port}, world: {worldname}, user: {username}, hash: {clientHash}");
+
+        RegisterClientAuthentication(worldname, armaVersion, modHashes, password);
 
         int clientID = await Client.ConnectAsync(host, port, startUdp: true, clientHash);
 
@@ -62,19 +62,34 @@ public static partial class ArmaMethods
         }
     }
 
+    private static void RegisterClientAuthentication(string worldname, string armaVersion, object[] modHashes, string password)
+    {
+        Authentication.SetClientAuthentication(() =>
+        {
+            Console.WriteLine("[CLIENT] Sending authentication data to server...");
+            return Task.FromResult<object[]?>([worldname, armaVersion, modHashes, password]);
+        });
+    }
+    
+
+
+    private static string? _serverWorldName;
+    private static string? _serverArmaVersion;
+    private static object[]? _serverModHashes;
+    private static string? _serverPassword;
     /// <summary>
     /// Starts a local server and connects this client to it (host mode).
     /// </summary>
-    public static async Task<int> StartServer(double port, string username, string worldname,
-        string armaVersion, object[] modHashes, string password = "null")
+    public static async Task<int> StartServer(double port, string username, string worldname, string armaVersion, object[] modHashes, string password = "null")
     {
-        if (Client.IsTcpConnected())
-            throw new Exception("Server is already running. Please disconnect the client before starting a server.");
+        if (Client.IsTcpConnected()) throw new Exception("Server is already running. Please disconnect the client before starting a server.");
 
-        string clientHash = HashUtils.GetHash(new object[] { modHashes, Extension.Version, armaVersion, worldname, password });
+        string clientHash = HashUtils.GetHash(new object[] { Extension.Version });
 
         MethodBuilder.RegisterServerMethods(new ServerNetworkMethods());
         ExtensionPlugin.PrintAvailableMethods("Server", MethodBuilder.GetAvailableServerMethods());
+
+        RegisterServerAuthentication(worldname, armaVersion, modHashes, password);
 
         await Server.StartAsync((int)port, true, clientHash);
 
@@ -84,6 +99,51 @@ public static partial class ArmaMethods
 
         int clientId = await Connect("127.0.0.1", (int)port, username, worldname, armaVersion, modHashes, password);
         return clientId;
+    }
+
+    private static void RegisterServerAuthentication(string worldname, string armaVersion, object[] modHashes, string password)
+    {
+        _serverWorldName = worldname;
+        _serverArmaVersion = armaVersion;
+        _serverModHashes = modHashes;
+        _serverPassword = password;
+
+        Authentication.SetServerValidator(ServerValidateAuthenticationAsync);
+    }
+
+    private static async Task<bool> ServerValidateAuthenticationAsync(object[]? parameters)
+    {
+        if (parameters is null || parameters.Length != 4)
+            throw new Exception("Invalid authentication parameters.");
+
+        string? worldName = parameters[0]?.ToString();
+        string? armaVersion = parameters[1]?.ToString();
+        object[]? modHashes = parameters[2] as object[];
+        string? password = parameters[3]?.ToString();
+
+        if (!string.Equals(worldName, _serverWorldName, StringComparison.Ordinal))
+            throw new Exception("World name does not match.");
+
+        if (!string.Equals(armaVersion, _serverArmaVersion, StringComparison.Ordinal))
+            throw new Exception("Arma version does not match.");
+
+        if (!string.Equals(password, _serverPassword, StringComparison.Ordinal))
+            throw new Exception("Incorrect password.");
+
+        if (!ModHashesEqual(modHashes, _serverModHashes))
+            throw new Exception("Mod configuration does not match.");
+
+        return true;
+    }
+    private static bool ModHashesEqual(object[]? clientHashes, object[]? serverHashes)
+    {
+        if (clientHashes is null || serverHashes is null)
+            return clientHashes == serverHashes;
+
+        return clientHashes
+            .Select(x => x?.ToString())
+            .ToHashSet()
+            .SetEquals(serverHashes.Select(x => x?.ToString()));
     }
 
     // -- Connection helpers --
@@ -105,11 +165,10 @@ public static partial class ArmaMethods
 
     private static async Task SyncUsernames(int clientID, string username)
     {
-        await Client.SendTcpMessageAsync(1, "RegisterUserName", clientID, username);
         Log("[CLIENT] Syncing client list and usernames...");
+        await Client.SendTcpMessageAsync(1, "RegisterUserName", clientID, username);
 
         ClientStateManager.UsernameList = await Client.RequestTcpDataAsync<Dictionary<int, string>>(1, "GetAllUsernames") ?? [];
-        Log($"[CLIENT] Got {ClientStateManager.UsernameList?.Count} users");
 
         if (ClientStateManager.UsernameList != null && ClientStateManager.UsernameList.Count > 0)
         {
@@ -117,16 +176,15 @@ public static partial class ArmaMethods
             Extension.SendToArma("UpdateClientList", [otherUsersArray]);
         }
 
-        Log($"[CLIENT] Received {ClientStateManager.UsernameList?.Count - 1 ?? 0} other users. Expected: {Client.GetOtherClients().Count}");
+        Log($"[CLIENT] Received {ClientStateManager.UsernameList?.Count - 1 ?? 0} other users.");
     }
 
     private static async Task SyncMissionAttributes()
     {
-        Dictionary<string[], object?>? missionAttributes =
-            await Client.RequestTcpDataAsync<Dictionary<string[], object?>>(1, "GetMissionAttributes");
+        Log("[CLIENT] Requesting mission attributes from server...");
+        Dictionary<string[], object?>? missionAttributes = await Client.RequestTcpDataAsync<Dictionary<string[], object?>>(1, "GetMissionAttributes");
 
-        if (missionAttributes == null)
-            throw new Exception("Failed to sync mission attributes: Received null from server");
+        if (missionAttributes == null) throw new Exception("Failed to sync mission attributes: Received null from server");
 
         Log($"[CLIENT] Received {missionAttributes.Count} mission attributes from server.");
 

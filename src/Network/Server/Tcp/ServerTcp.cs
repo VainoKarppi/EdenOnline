@@ -57,27 +57,39 @@ public static partial class Server
     private static async Task HandleTcpClientAsync(Connection client, CancellationToken token)
     {
         bool clientDisconnectSuccess = false;
+        client.Authenticated = Authentication.Enabled;
         try
         {
             while (!token.IsCancellationRequested && client.Connected)
             {
-                    NetworkMessage? msg = MessageBuilder.ReadTcpMessage(client.GetStream(), client.Id);
-                    if (msg is null) break;
-                switch (msg.MessageType)
-                {
+                NetworkMessage? msg = MessageBuilder.ReadTcpMessage(client.GetStream(), client.Id);
+                if (msg is null) break;
+
+                switch (msg.MessageType) {
+                    case MessageType.AuthenticationReady:
+                        await HandleAuthenticationReadyAsync(client);
+                        continue;
+
+                    case MessageType.AuthenticationResponse:
+                        await HandleAuthenticationResponseAsync(client, msg);
+                        continue;
+
                     case MessageType.Handshake:
                         await HandleClientHandshake(client, msg);
                         continue;
 
                     case MessageType.Response:
+                        if (!client.Authenticated && Authentication.ServerDropOnFail) throw new Exception($"Client {client.Id} not authenticated");
                         Responses[msg.MessageId] = msg;
                         continue;
 
                     case MessageType.ClientDisconnected:
+                    if (!client.Authenticated && Authentication.ServerDropOnFail) throw new Exception($"Client {client.Id} not authenticated");
                         clientDisconnectSuccess = true;
                         continue;
 
                     case MessageType.Custom:
+                        if (!client.Authenticated && Authentication.ServerDropOnFail) throw new Exception($"Client {client.Id} not authenticated");
                         // Handle custom message that is sent to the server itself
                         if (msg.TargetsServer) {
                             _ = Task.Run(() => OnTcpMessageReceived?.Invoke(msg));
@@ -96,10 +108,10 @@ public static partial class Server
                         if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Unknown message type from client {client.Id}: {msg.MessageType}");
                         continue;
                 }
-
-
             }
-        } catch (Exception) {}
+        } catch (Exception ex) {
+            if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Client {client.Id} disconnected unexpectedly. Reason: {ex.Message}");
+        }
 
         await ClientDisconnected(client, clientDisconnectSuccess);
     }
@@ -251,6 +263,56 @@ public static partial class Server
         var packet = MessageBuilder.CreatePacket(response, result);
 
         await sender.GetStream().WriteAsync(packet);
+    }
+
+
+    private static async Task HandleAuthenticationReadyAsync(Connection client)
+    {
+        // Client notifies server that it is ready to receive
+        // the authentication check request.
+        if (!client.HandshakeDone) throw new InvalidOperationException($"Client {client.Id} sent AuthenticationReady message, but handshake is not done yet.");
+
+        // Request authentication data from the client.
+        NetworkMessage requestMessage = new()
+        {
+            SenderId = SERVER_ID,
+            TargetId = [client.Id],
+            MessageType = MessageType.AuthenticationRequest
+        };
+
+        var requestPacket = MessageBuilder.CreatePacket(requestMessage);
+
+        await client.GetStream().WriteAsync(requestPacket);
+
+        if (LogItem(LogLevel.Debug)) Console.WriteLine($"[SERVER] Authentication request sent to client {client.Id}. Waiting for response...");
+    }
+
+    private static async Task HandleAuthenticationResponseAsync(Connection client, NetworkMessage msg)
+    {
+        object[]? authenticationParameters = MessageBuilder.UnpackPayload<object[]?>(msg.Payload);
+
+        (bool success, string? error) = await Authentication.ServerValidateAsync(authenticationParameters);
+
+        if (LogItem(LogLevel.Debug)) Console.WriteLine($"[SERVER] Authentication result for client {client.Id}: " + $"{(success ? "SUCCESS" : "FAILURE")} " + $"ERROR: {error ?? "None"}");
+
+        client.Authenticated = success;
+
+        if (!success) OnHandshakeFailed?.Invoke(HandshakeFailureReason.AuthenticationFailed, error ?? "Unknown error");
+        
+        NetworkMessage responseMessage = new()
+        {
+            SenderId = SERVER_ID,
+            TargetId = [client.Id],
+            MessageType = MessageType.AuthenticationResponse
+        };
+
+        var responsePacket = MessageBuilder.CreatePacket(responseMessage, new object[] { success, error ?? "" });
+
+        await client.GetStream().WriteAsync(responsePacket);
+
+        // TODO: Verify that the client has enough time to read the message
+        // before dropping the connection.
+        if (!success && Authentication.ServerDropOnFail) throw new Exception("Authentication failed.");
     }
 }
 

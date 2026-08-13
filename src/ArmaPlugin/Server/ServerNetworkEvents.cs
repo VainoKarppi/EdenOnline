@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using static EdenOnline.Logger;
 using EdenOnline;
 
-using EdenOnline;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -36,7 +35,7 @@ public class ServerNetworkEvents {
 
     public static async void OnClientDisconnected(int clientId, bool success, DisconnectReason reason) {
         //TODO returns false, when host client runs Disconnect, and shuts server down first. Should return true, when server is succesfully closed. Should we also return Disconnect reason instead of bool?
-        Log($"Client disconnected with ID:{clientId}, SUCCESS:{success}, REASON:{reason}");
+        Log($"[SERVER] Client disconnected with ID:{clientId}, SUCCESS:{success}, REASON:{reason}");
 
         // Remove username from server list. Other clients are notified of this via network event OnOtherClientDisconnected, which is triggered by the server when a client disconnects.
         ServerNetworkMethods.RemoveUserName(clientId);

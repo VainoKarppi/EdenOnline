@@ -96,7 +96,7 @@ public static partial class Client
     {
         try
         {
-            await SendMessageAsync(Server.SERVER_ID, MessageType.ClientDisconnected, null);
+            if (IsTcpConnected()) await SendMessageAsync(Server.SERVER_ID, MessageType.ClientDisconnected, null);
 
             await ResetConnectionStatusAsync();
 

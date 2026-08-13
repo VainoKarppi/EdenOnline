@@ -49,6 +49,10 @@ public static partial class Server {
         
 
     // ── INTERNAL GENERIC ───────────────────────
+    private static Task<TResult?> RequestDataInternalAsync<TResult>(int targetId, MessageType type, bool isForwarded = false) {
+        return RequestDataInternalAsync<object?, TResult>(targetId, type, null, isForwarded);
+    }
+    
     private static async Task<TResult?> RequestDataInternalAsync<TPayload, TResult>(int targetId, MessageType type, TPayload payload, bool isForwarded = false)
     {
         ushort requestId = MessageBuilder.GenerateRequestId(ref _requestId);

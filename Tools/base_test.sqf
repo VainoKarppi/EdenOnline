@@ -7,7 +7,7 @@
 
 "XXXX" callExtension "version";
 
-//"XXXX" callExtension ["StartServer|1",[2302,"Razer","Altis","2.00.146773",["3db741e9"],""]];
+//"XXXX" callExtension ["StartServer|1",[2302,"Razer","Altis","2.00.146773",["3db741e9"],"asd"]];
 
 
 //"XXXX" callExtension ["StartServer|1",[5000,"Razer","Altis", "2.00.146773",["3db741e9"], ""]];
@@ -32,7 +32,7 @@ sleep 1;
 
 //"XXXX" callExtension ["Disconnect|222",[]];
 
-"XXXX" callExtension ["Connect|1",["84.250.208.125",2302,"Legodev","Altis","2.00.146773",["3db741e9"],""]];
+"XXXX" callExtension ["Connect|1",["84.250.208.125",2302,"Legodev","Stratis","2.20.152984",["1ae484ae","322ac721","32cfcb0d","46981d1a","640e771a","6a67d97a","7a3fd23a","8152a08e","82d83132","8b4af371","9f4e6826","eb442c52","f9bd46ab"],""]];
 
 sleep 3;
 

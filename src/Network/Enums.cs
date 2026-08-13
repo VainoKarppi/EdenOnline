@@ -10,7 +10,8 @@ public enum HandshakeFailureReason
     InvalidHash,
     ServerFull,
     Timeout,
-    RejectedByServer
+    RejectedByServer,
+    AuthenticationFailed
 }
 
 public enum DisconnectReason

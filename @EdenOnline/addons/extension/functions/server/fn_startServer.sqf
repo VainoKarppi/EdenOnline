@@ -18,6 +18,8 @@ if !((all3DENEntities) isEqualto [[],[],[],[],[],[],[],[-999]]) exitWith {
 EOEX_var_expectedObjectSyncCount = -1;
 
 private _modHashes = (getLoadedModsInfo select {_x#6 != ""})  apply {_x#6};
+_modHashes sort true;
+
 private _gameVersion = format ["%1.%2",(productVersion#2)/100 toFixed 2,(productVersion#3)];
 private _password = "";
 
