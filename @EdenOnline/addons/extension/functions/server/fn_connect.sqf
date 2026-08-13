@@ -3,33 +3,33 @@ params [["_host","127.0.0.1",[""]], ["_port",2302,[0]], ["_password","",[""]]];
 
 // TODO make sure server is not already running && !connected
 
-if (missionNamespace getVariable ["EXT_var_Connected",false]) exitWith {
+if (missionNamespace getVariable ["EOEX_var_Connected",false]) exitWith {
 	["YOU ARE ALREADY CONNECTED", 1, 5] call BIS_fnc_3DENNotification;
 };
 
 
 private _continue = true;
 if !((all3DENEntities) isEqualTo [[],[],[],[],[],[],[],[-999]]) then {
-    uiNamespace setVariable ["EXT_var_ButtonConfirmed", nil];
+    uiNamespace setVariable ["EOEX_var_ButtonConfirmed", nil];
 
     [
         "<t align='center'>Connecting to a server will delete your current world.</t><br/><br/><t align='center' font='PuristaMedium'>Do you want to continue?</t>",
         "Warning",
         [
             "Yes",
-            { uiNamespace setVariable ["EXT_var_ButtonConfirmed", true] }
+            { uiNamespace setVariable ["EOEX_var_ButtonConfirmed", true] }
         ],
         [
             "No",
-            { uiNamespace setVariable ["EXT_var_ButtonConfirmed", false] }
+            { uiNamespace setVariable ["EOEX_var_ButtonConfirmed", false] }
         ],
         "\A3\ui_f\data\igui\cfg\simpleTasks\types\danger_ca.paa",
         findDisplay 313
     ] call BIS_fnc_3DENShowMessage;
 
-    waitUntil { !isNil { uiNamespace getVariable "EXT_var_ButtonConfirmed" } };
+    waitUntil { !isNil { uiNamespace getVariable "EOEX_var_ButtonConfirmed" } };
 
-    _continue = uiNamespace getVariable ["EXT_var_ButtonConfirmed", false];
+    _continue = uiNamespace getVariable ["EOEX_var_ButtonConfirmed", false];
     if !(_continue) exitWith {};
     
     // OK was pressed, so delete all progress and entities
@@ -42,7 +42,7 @@ if !((all3DENEntities) isEqualTo [[],[],[],[],[],[],[],[-999]]) then {
 if !(_continue) exitWith {};
 
 
-EXT_var_expectedObjectSyncCount = -1;
+EOEX_var_expectedObjectSyncCount = -1;
 
 private _modHashes = (getLoadedModsInfo select {_x#6 != ""})  apply {_x#6};
 private _gameVersion = format ["%1.%2",(productVersion#2)/100 toFixed 2,(productVersion#3)];
@@ -52,7 +52,7 @@ startLoadingScreen ["Starting server..."];
 
 uiSleep 0.5;
 
-private _return = ["Connect",[_host, _port, profileNameSteam, worldName, _gameVersion, _modHashes, _password], false, 5] call EXT_fnc_callExtensionAsync;
+private _return = ["Connect",[_host, _port, profileNameSteam, worldName, _gameVersion, _modHashes, _password], false, 5] call EOEX_fnc_callExtensionAsync;
 
 diag_log _return;
 
@@ -64,27 +64,27 @@ if !(_return#0) exitWith {
 private _id = ((_return select 1) select 0);
 
 //private _otherClients = ((_return select 1) select 0) select 1;
-//EXT_var_OtherClients = createHashMapFromArray _otherClients;
+//EOEX_var_OtherClients = createHashMapFromArray _otherClients;
 
-missionNamespace setVariable ["EXT_var_clientID",_id];
+missionNamespace setVariable ["EOEX_var_clientID",_id];
 
 // Wait until objects have been syncronised
 
 private _timeoutSeconds = 30;
 private _startTime = diag_tickTime;
 
-while {EXT_var_expectedObjectSyncCount == -1 || (count (all3DENEntities # 0)) < EXT_var_expectedObjectSyncCount} do {
+while {EOEX_var_expectedObjectSyncCount == -1 || (count (all3DENEntities # 0)) < EOEX_var_expectedObjectSyncCount} do {
 
 	// Timeout check
     if ((diag_tickTime - _startTime) > _timeoutSeconds) exitWith {
         ["Server sync timed out!", 1, 5] call BIS_fnc_3DENNotification;
-        missionNamespace setVariable ["EXT_var_Connected", false];
+        missionNamespace setVariable ["EOEX_var_Connected", false];
         endLoadingScreen;
     };
 
-    if (EXT_var_expectedObjectSyncCount > 0) then {
+    if (EOEX_var_expectedObjectSyncCount > 0) then {
         private _spawned = count (all3DENEntities # 0);
-        private _expected = EXT_var_expectedObjectSyncCount;
+        private _expected = EOEX_var_expectedObjectSyncCount;
 
         private _progress = _spawned / _expected;
 
@@ -103,17 +103,17 @@ while {EXT_var_expectedObjectSyncCount == -1 || (count (all3DENEntities # 0)) < 
 
 // (findDisplay 313 displayCtrl 1023) ctrlEnable true
 
-call EXT_fnc_init3DENEvents;
-[] spawn EXT_fnc_drawCameras;
-[] spawn EXT_fnc_showPlayersDialog;
+call EOEX_fnc_init3DENEvents;
+[] spawn EOEX_fnc_drawCameras;
+[] spawn EOEX_fnc_showPlayersDialog;
 
 [("CONNECTED TO SERVER WITH ID: " + str(_id)), 0,5] call BIS_fnc_3DENNotification;
 
-missionNamespace setVariable ["EXT_var_Connected", true];
+missionNamespace setVariable ["EOEX_var_Connected", true];
 
 
 // disable ability to preview the mission
-(findDisplay 313 displayCtrl 1023) ctrlEnable false;
+[false] call EOEX_fnc_togglePlayButtons;
 
 endLoadingScreen;
 

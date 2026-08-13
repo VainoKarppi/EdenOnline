@@ -6,8 +6,13 @@ using System.Collections.Generic;
 namespace EdenOnline;
 
 
-public class ObjectManager
+public class ClientStateManager
 {
+    /// <summary>
+    /// Tracks connected client IDs and their usernames on the client side.
+    /// </summary>
+    public static Dictionary<int, string> UsernameList { get; set; } = [];
+
     public ConcurrentDictionary<string, ArmaObject> Objects { get; set; } = new();
 
     /// <summary>Adds a new object or merges incoming attributes into an existing object while preserving the other attributes.</summary>

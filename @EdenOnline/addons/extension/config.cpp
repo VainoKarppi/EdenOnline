@@ -16,7 +16,7 @@ class CfgPatches
 class CfgFunctions
 {
 	class Extension {
-		tag = "EXT";
+		tag = "EOEX";
 		class Functions_Main
 		{
 			file = "\extension\functions";
@@ -61,6 +61,7 @@ class CfgFunctions
 			file = "\extension\functions\ui";
 			class showConnectDialog {};
             class showPlayersDialog {};
+            class togglePlayButtons {};
 		};
 	};
 };
@@ -77,11 +78,11 @@ class Cfg3DEN
         {
             // TODO Set these
             // TODO Run disconnect when exiting from 3DEN
-            init = "call EXT_fnc_initExtension";
-            onTerrainNew = "[1] call EXT_fnc_disconnect; diag_log ""WORLD CHANGED""; call EXT_fnc_initExtension";
+            init = "call EOEX_fnc_initExtension";
+            onTerrainNew = "[1] call EOEX_fnc_disconnect; diag_log ""WORLD CHANGED""; call EOEX_fnc_initExtension";
             onMissionPreviewEnd = "diag_log str([2])";
             onMissionLoad = "diag_log str([3])";
-            onMissionNew = "call EXT_fnc_initExtension";
+            onMissionNew = "call EOEX_fnc_initExtension";
             onMissionPreview = "diag_log str([5])";
             onMissionSave = "diag_log str([6])";
             onMissionAutoSave = "diag_log str([7])";
@@ -92,7 +93,7 @@ class Cfg3DEN
 class ctrlMenuStrip;
 class display3DEN
 {
-	onUnload="[1] call EXT_fnc_disconnect;[""onUnload"",_this,""Display3DEN"",'3DENDisplays'] call (uinamespace getvariable 'BIS_fnc_initDisplay');";
+	onUnload="[1] call EOEX_fnc_disconnect;[""onUnload"",_this,""Display3DEN"",'3DENDisplays'] call (uinamespace getvariable 'BIS_fnc_initDisplay');";
 
 	class Controls
 	{
@@ -102,14 +103,14 @@ class display3DEN
 			{
 				class Tools
 				{
-					items[] += {"EXT_EdenOnline"};
+					items[] += {"EOEX_EdenOnline"};
 				};
 
-				class EXT_EdenOnline
+				class EOEX_EdenOnline
 				{
 					text = "Eden Online";
 					picture = "\a3\3DEN\Data\Controls\ctrlMenu\link_ca.paa"; // TODO
-					action = "[] spawn EXT_fnc_showConnectDialog;";
+					action = "[] spawn EOEX_fnc_showConnectDialog;";
 				};
 			};
 		};
@@ -121,7 +122,7 @@ class RscEdit;
 class RscButton;
 class CfgDialogs {
 
-    class EXT_ConnectDialog {
+    class EOEX_ConnectDialog {
         idd = 5000;
         movingEnable = 0;
         enableSimulation = 1;
@@ -173,7 +174,7 @@ class CfgDialogs {
                 text = "Connect";
                 x = 0.37; y = 0.52;
                 w = 0.12; h = 0.04;
-                action = "[] call EXT_fnc_onConnect;";
+                action = "[] call EOEX_fnc_onConnect;";
             };
 
             class CancelButton: RscButton {

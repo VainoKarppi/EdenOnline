@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using static EdenOnline.Logger;
 using EdenOnline;
 
-using EdenOnline;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -21,21 +20,6 @@ using static DynTypeNetwork.MethodBuilder;
 namespace EdenOnline;
 
 
-// These are methods that other clients can invoke remotely, and request data for
-
-public static class ServerStateManager
-{
-    public static Dictionary<int, string> UsernameList { get; set; } = [];
-    public static ObjectManager ServerObjectManager { get; } = new ObjectManager();
-    public static MissionAttributeManager MissionAttributeManager { get; } = new MissionAttributeManager();
-
-    public static void Reset()
-    {
-        UsernameList.Clear();
-        ServerObjectManager.Clear();
-        MissionAttributeManager.Clear();
-    }
-}
 
 public class ServerNetworkMethods {
 

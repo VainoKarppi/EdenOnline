@@ -268,7 +268,7 @@ public static partial class MethodSystem {
                     returnType = method.ReturnType.Name;
                 }
 
-                Log($"Registered Method: {method.Name}({parameters}) --> {returnType}{(isAsync ? " [Async Only]" : "")}");
+                Log($"{method.Name}({parameters}) --> {returnType}{(isAsync ? " [Async Only]" : "")}");
             }
         }
 

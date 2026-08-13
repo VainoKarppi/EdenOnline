@@ -1,22 +1,22 @@
 
 /*
-_cameras = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap];
+_cameras = uiNamespace getVariable ["EOEX_var_networkCameras", createHashMap];
 _cameras set [2, [[0,0,0],[1,1,1]]];
 _cameras set [3, [[100,100,100],[1,1,1]]];
-uiNamespace setVariable ["EXT_var_networkCameras", _cameras];
+uiNamespace setVariable ["EOEX_var_networkCameras", _cameras];
 
-EXT_var_OtherClients = createHashMapFromArray [[2,"Razer"]];
+EOEX_var_OtherClients = createHashMapFromArray [[2,"Razer"]];
 */
 
-if (isNil {uiNamespace getVariable "EXT_var_networkCameras"} || isNil "EXT_var_OtherClients") exitWith {
+if (isNil {uiNamespace getVariable "EOEX_var_networkCameras"} || isNil {missionNamespace getVariable "EOEX_var_OtherClients"}) exitWith {
     diag_log "ERROR: Unable to create player list GUI. >> Invalid variables!"
 };
 
 // Clear existing list, and create new
-ctrlDelete (uiNamespace getVariable ["EXT_var_PlayerListDialog", controlNull]);
-uiNamespace setVariable ["EXT_var_PlayerListDialog", nil];
+ctrlDelete (uiNamespace getVariable ["EOEX_var_PlayerListDialog", controlNull]);
+uiNamespace setVariable ["EOEX_var_PlayerListDialog", nil];
 
-if (count EXT_var_OtherClients == 0) exitWith { diag_log "No other players on server, hiding player list GUI!" };
+if (count EOEX_var_OtherClients == 0) exitWith { diag_log "No other players on server, hiding player list GUI!" };
 
 disableSerialization;
 
@@ -42,7 +42,7 @@ _list ctrlCommit 0;
 {
     _list lbAdd (_y);
     _list lbSetData [_forEachIndex, str(_x)];
-} forEach EXT_var_OtherClients;
+} forEach EOEX_var_OtherClients;
 
 // Select first item
 _list lbSetCurSel 0;
@@ -53,7 +53,7 @@ _list ctrlAddEventHandler ["LBSelChanged", {
 
     private _clientID = parseNumber (_list lbData _selectedIndex);
 
-    private _cameraData = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap] get _clientID;
+    private _cameraData = uiNamespace getVariable ["EOEX_var_networkCameras", createHashMap] get _clientID;
     if (isNil "_cameraData") exitWith {};
 
     private _targetCameraPos = _cameraData # 0;
@@ -81,7 +81,7 @@ _list ctrlAddEventHandler ["LBDblClick", {
 
     private _clientID = parseNumber (_list lbData _selectedIndex);
 
-    private _cameraData = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap] get _clientID;
+    private _cameraData = uiNamespace getVariable ["EOEX_var_networkCameras", createHashMap] get _clientID;
     if (isNil "_cameraData") exitWith {};
 
     private _targetCameraPos = _cameraData # 0;
@@ -201,4 +201,4 @@ _list ctrlAddEventHandler ["MouseButtonDown", {
 }];
 
 
-uiNamespace setVariable ["EXT_var_PlayerListDialog", _list];
+uiNamespace setVariable ["EOEX_var_PlayerListDialog", _list];

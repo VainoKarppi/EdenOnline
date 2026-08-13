@@ -1,18 +1,18 @@
-if !(isNil "EXT_var_extensionRequests") exitWith { true }; // Extension already initialized
+if !(isNil "EOEX_var_extensionRequests") exitWith { true }; // Extension already initialized
 
 
 diag_log "Initializing EdenOnline C# Extension";
 
 // Init variables
-EXT_var_extensionName = "EdenOnline";
-EXT_var_eventsReady = false;
-EXT_var_syncMissionAttributes = true;
+EOEX_var_extensionName = "EdenOnline";
+EOEX_var_eventsReady = false;
+EOEX_var_syncMissionAttributes = true;
 
-EXT_var_DEBUG = false;
-uiNamespace setVariable ["EXT_var_cameraDrawUpdate", 0.2];
+EOEX_var_DEBUG = false;
+uiNamespace setVariable ["EOEX_var_cameraDrawUpdate", 0.2];
 
 
-private _result = EXT_var_extensionName callExtension "version";
+private _result = EOEX_var_extensionName callExtension "version";
 if (_result == "") exitWith { false }; // Extension not found. Already logged to .RPT
 
 private _return = [];
@@ -26,17 +26,17 @@ private _data = (_return select 1) select 0;
 
 if (_return select 0 == "ERROR") exitWith { diag_log format ["ERROR: ", _data]; false };
 
-EXT_var_extensionVersion = _data;
+EOEX_var_extensionVersion = _data;
 
-EXT_var_extensionResponses = createHashMap;
-EXT_var_extensionRequests = createHashMap;
-EXT_var_Objects = createHashMap;
-EXT_var_OtherClients = createHashMap;
-EXT_var_IsHost = false;
+EOEX_var_extensionResponses = createHashMap;
+EOEX_var_extensionRequests = createHashMap;
+EOEX_var_Objects = createHashMap;
+EOEX_var_OtherClients = createHashMap;
+EOEX_var_IsHost = false;
 
 diag_log formatText ["VERSION: %1",_data];
 
-call EXT_fnc_initExtensionEvents;
+call EOEX_fnc_initExtensionEvents;
 
 
 true

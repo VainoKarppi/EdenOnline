@@ -3,8 +3,8 @@
 
 params [["_function","",[""]],["_arguments",[],[[]]],["_fireAndForget",false,[false]]];
 
-if (isNil "EXT_var_extensionRequests") then {
-	private _initSuccess = call EXT_fnc_init;
+if (isNil "EOEX_var_extensionRequests") then {
+	private _initSuccess = call EOEX_fnc_init;
 	if (!_initSuccess) exitWith {};
 };
 
@@ -16,7 +16,7 @@ if (_function != "CameraUpdate" && _function != "SetMissionAttribute") then {
 	diag_log formatText ["REQUEST: %1 WITH ARGS: %2", _function, _arguments];
 };
 
-private _result = EXT_var_extensionName callExtension [_function, _arguments];
+private _result = EOEX_var_extensionName callExtension [_function, _arguments];
 
 private _return = if (_result isEqualType []) then {
 	parseSimpleArray (_result select 0)

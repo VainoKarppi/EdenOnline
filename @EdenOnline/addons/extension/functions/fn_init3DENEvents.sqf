@@ -3,9 +3,9 @@
 diag_log "3DEN Online Events Initialized";
 
 // Used to queue multiple attribute changes into a single array of changes.
-if (isNil "EXT_var_AttributeQueues") then {
-    EXT_var_AttributeQueues = createHashMap;          // object --> [ [property, value], ... ]
-    EXT_var_AttributeTimers  = createHashMap;         // object --> scriptHandle (for terminate)
+if (isNil "EOEX_var_AttributeQueues") then {
+    EOEX_var_AttributeQueues = createHashMap;          // object --> [ [property, value], ... ]
+    EOEX_var_AttributeTimers  = createHashMap;         // object --> scriptHandle (for terminate)
 };
 
 // * OBJECTS
@@ -60,10 +60,10 @@ add3DENEventHandler ["OnPaste", {
 add3DENEventHandler ["OnEditableEntityAdded", {
 	params ["_entity"];
 	
-	_id = _entity getVariable "EXT_objectID";
+	_id = _entity getVariable "EOEX_var_objectID";
 	if !(isNil "_id") exitWith {};
 
-	[_entity] spawn EXT_fnc_createObject;
+	[_entity] spawn EOEX_fnc_createObject;
 }];
 
 add3DENEventHandler ["OnEditableEntityRemoved", {
@@ -72,16 +72,16 @@ add3DENEventHandler ["OnEditableEntityRemoved", {
 	// FIX UNTIL THIS GETS FIXED BY BI (single object)
 	if (_entity isEqualType grpNull) exitWith {
 		{
-			[_x] call EXT_fnc_deleteObject;
+			[_x] call EOEX_fnc_deleteObject;
 		} forEach get3DENSelected "object";
 	};
 
-	[_entity] call EXT_fnc_deleteObject;
+	[_entity] call EOEX_fnc_deleteObject;
 }];
 
 
 add3DENEventHandler ["OnEntityAttributeChanged", {
-	_this spawn EXT_fnc_updateObjectAttributes;
+	_this spawn EOEX_fnc_updateObjectAttributes;
 }];
 
 // * CONNECTIONS
@@ -90,17 +90,17 @@ add3DENEventHandler ["OnConnectingEnd", {
 }];
 
 // * MISSION SETTINGS
-remove3DENEventHandler ["OnMissionAttributeChanged", uiNamespace getVariable ["EXT_var_OnMissionAttributeChangedId", -1]];
+remove3DENEventHandler ["OnMissionAttributeChanged", uiNamespace getVariable ["EOEX_var_OnMissionAttributeChangedId", -1]];
 
-if (missionNamespace getVariable ["EXT_var_syncMissionAttributes", false]) then {
+if (missionNamespace getVariable ["EOEX_var_syncMissionAttributes", false]) then {
 	
 	private _id = add3DENEventHandler ["OnMissionAttributeChanged", {
 		params ["_section", "_property"];
 		_value = (_section get3DENMissionAttribute _property);
 
-		[_section,_property,_value] call EXT_fnc_updateMissionAttributes;
+		[_section,_property,_value] call EOEX_fnc_updateMissionAttributes;
 		
 	}];
 
-	uiNamespace setVariable ["EXT_var_OnMissionAttributeChangedId", _id];
+	uiNamespace setVariable ["EOEX_var_OnMissionAttributeChangedId", _id];
 };

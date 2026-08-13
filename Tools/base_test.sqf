@@ -26,7 +26,7 @@
 //"XXXX" callExtension ["CameraUpdate|-1",[[4593.98,5088.45,10],[0.704759,0.687867,-0.173648]]];
 
 
-//["CreateObject", [_id, _attributes]] call EXT_fnc_callExtensionAsync;
+//["CreateObject", [_id, _attributes]] call EOEX_fnc_callExtensionAsync;
 
 sleep 1;
 

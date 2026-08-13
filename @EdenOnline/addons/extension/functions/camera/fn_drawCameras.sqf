@@ -1,15 +1,15 @@
 
 // Initialize the last update time
-if (isNil "EXT_var_networkCameras") then {
-    uiNamespace setVariable ["EXT_var_networkCameras", createHashMap]; // keys = player UID, values = [pos, dir]
+if (isNil "EOEX_var_networkCameras") then {
+    uiNamespace setVariable ["EOEX_var_networkCameras", createHashMap]; // keys = player UID, values = [pos, dir]
 };
 
-diag_log "Starting EXT_fnc_drawCameras";
-uiNamespace setVariable ["EXT_var_lastCameraTick", diag_tickTime];
+diag_log "Starting EOEX_fnc_drawCameras";
+uiNamespace setVariable ["EOEX_var_lastCameraTick", diag_tickTime];
 
 
 
-// ["EXT_var_GUIDISPLAY", "onEachFrame"] call BIS_fnc_removeStackedEventHandler;
+// ["EOEX_var_GUIDISPLAY", "onEachFrame"] call BIS_fnc_removeStackedEventHandler;
 
 _code = {
     if (isNull (findDisplay 313)) exitWith {};
@@ -19,18 +19,18 @@ _code = {
     // Send own camera position to other clients
     // =====================================================================
 
-    private _lastUpdate = uiNamespace getVariable ["EXT_var_lastCameraTick", diag_tickTime];
+    private _lastUpdate = uiNamespace getVariable ["EOEX_var_lastCameraTick", diag_tickTime];
 
-    private _updateInterval = uiNamespace getVariable ["EXT_var_cameraDrawUpdate", 0.2];
+    private _updateInterval = uiNamespace getVariable ["EOEX_var_cameraDrawUpdate", 0.2];
 
     if (diag_tickTime - _lastUpdate > _updateInterval) then {
-        uiNamespace setVariable ["EXT_var_lastCameraTick", diag_tickTime];
+        uiNamespace setVariable ["EOEX_var_lastCameraTick", diag_tickTime];
 
-        if (missionNamespace getVariable ["EXT_var_Connected", false]) then {
+        if (missionNamespace getVariable ["EOEX_var_Connected", false]) then {
             private _startPos = getPosATL get3DENCamera;
             private _forwardVec = vectorDir get3DENCamera;
 
-            ["CameraUpdate", [_startPos, _forwardVec], true] spawn EXT_fnc_callExtensionAsync;
+            ["CameraUpdate", [_startPos, _forwardVec], true] spawn EOEX_fnc_callExtensionAsync;
         };
     };
 
@@ -40,10 +40,10 @@ _code = {
 
     private _drawDistance = 4000;
 
-    private _cameras = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap];
+    private _cameras = uiNamespace getVariable ["EOEX_var_networkCameras", createHashMap];
 
 
-    private _interpStates = uiNamespace getVariable ["EXT_var_cameraInterp", createHashMap];
+    private _interpStates = uiNamespace getVariable ["EOEX_var_cameraInterp", createHashMap];
 
     private _now = diag_tickTime;
 
@@ -218,12 +218,12 @@ _code = {
         // Drawing
         // =================================================================
 
-        private _name = EXT_var_OtherClients getOrDefault [_clientID, "Unknown"];
+        private _name = EOEX_var_OtherClients getOrDefault [_clientID, "Unknown"];
 
         // Debug offset
         private _drawPosition = _position;
 
-        if (EXT_var_DEBUG) then {
+        if (EOEX_var_DEBUG) then {
             _drawPosition = _drawPosition vectorAdd [0,0,-5];
         };
 
@@ -310,23 +310,24 @@ _code = {
         } forEach _cameras;
 
     // Save interpolation states
-    uiNamespace setVariable ["EXT_var_cameraInterp", _interpStates];
+    uiNamespace setVariable ["EOEX_var_cameraInterp", _interpStates];
 };
 
-["EXT_var_CameraDrawEvent", "onEachFrame", _code] call BIS_fnc_addStackedEventHandler;
+["EOEX_var_CameraDrawEvent", "onEachFrame", _code] call BIS_fnc_addStackedEventHandler;
 
+// [Control #51,Control #52,Control #46,Control #47,Control #48,Control #49,Control #87,Control #998,Control #2,Control #76,Control #120,Control #1000,Control #1001,Control #1002,Control #1006,Control #1007,Control #1008,Control #10091,Control #-1,Control #1003]
 
 // Draw map markers
-// ((findDisplay 313) displayCtrl 51) ctrlRemoveEventHandler ["Draw", EXT_var_MAPCTRL];
-EXT_var_MAPCTRL = ((findDisplay 313) displayCtrl 51) ctrlAddEventHandler ["Draw", {
+// ((findDisplay 313) displayCtrl 51) ctrlRemoveEventHandler ["Draw", EOEX_var_MAPCTRL];
+EOEX_var_MAPCTRL = ((findDisplay 313) displayCtrl 51) ctrlAddEventHandler ["Draw", {
     private _mapCtrl = _this select 0;
     
-    private _cameras = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap];
+    private _cameras = uiNamespace getVariable ["EOEX_var_networkCameras", createHashMap];
     {
         private _clientID = _x;
         private _camData = _y; // [pos, dir]
 
-        private _name = missionNamespace getVariable ["EXT_var_OtherClients",[]] get _clientID;
+        private _name = missionNamespace getVariable ["EOEX_var_OtherClients",[]] get _clientID;
         private _position = _camData select 0;
         private _dir = _camData select 1;
 

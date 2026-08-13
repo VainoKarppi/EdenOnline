@@ -7,28 +7,29 @@ params [["_type",1],["_reason",""]];
 diag_log "Disconnecting from 3DEN Online...";
 
 // Call Disconnect. Dont disconnect for real, when using DEBUg. This allows us to rejoin as a "second" person to server.
-if (missionNamespace getVariable ["EXT_var_Connected",false] && !(missionNamespace getVariable ["EXT_var_DEBUG",false])) then {
-	["Disconnect", []] spawn EXT_fnc_callExtensionAsync; // Disconnect can only be called using async key!
+if (missionNamespace getVariable ["EOEX_var_Connected",false] && !(missionNamespace getVariable ["EOEX_var_DEBUG",false])) then {
+	["Disconnect", []] spawn EOEX_fnc_callExtensionAsync; // Disconnect can only be called using async key!
 };
 
-
+// Re-enable Play buttons
+[true] call EOEX_fnc_togglePlayButtons;
 
 // variables
-missionNamespace setVariable ["EXT_var_clientID",nil];
-missionNamespace setVariable ["EXT_var_IsHost", false];
-missionNamespace setVariable ["EXT_var_extensionResponse", []];
-missionNamespace setVariable ["EXT_var_extensionIDs", []];
+missionNamespace setVariable ["EOEX_var_clientID",nil];
+missionNamespace setVariable ["EOEX_var_IsHost", false];
+missionNamespace setVariable ["EOEX_var_extensionResponse", []];
+missionNamespace setVariable ["EOEX_var_extensionIDs", []];
 
 // Remove player list
-ctrlDelete (uiNamespace getVariable ["EXT_var_PlayerListDialog",controlNull]);
-uiNamespace setVariable ["EXT_var_PlayerListDialog",nil];
+ctrlDelete (uiNamespace getVariable ["EOEX_var_PlayerListDialog",controlNull]);
+uiNamespace setVariable ["EOEX_var_PlayerListDialog",nil];
 
 
 // Remove camera object draws
-["EXT_var_GUIDISPLAY", "onEachFrame"] call BIS_fnc_removeStackedEventHandler;
-((findDisplay 313) displayCtrl 51) ctrlRemoveEventHandler ["Draw", missionNamespace getVariable ["EXT_var_MAPCTRL", -1]];
+["EOEX_var_CameraDrawEvent", "onEachFrame"] call BIS_fnc_removeStackedEventHandler;
+((findDisplay 313) displayCtrl 51) ctrlRemoveEventHandler ["Draw", missionNamespace getVariable ["EOEX_var_MAPCTRL", -1]];
 
-if (missionNamespace getVariable ["EXT_var_Connected",false]) then {
+if (missionNamespace getVariable ["EOEX_var_Connected",false]) then {
 	// If there is no reason, it was successful
 	if (_reason == "") then {
 		if (_type == 0) then {
@@ -45,7 +46,7 @@ if (missionNamespace getVariable ["EXT_var_Connected",false]) then {
 	};
 };
 
-missionNamespace setVariable ["EXT_var_Connected",false];
+missionNamespace setVariable ["EOEX_var_Connected",false];
 
 /*
 test = false;

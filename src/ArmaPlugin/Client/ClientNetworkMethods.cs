@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using static EdenOnline.Logger;
 using EdenOnline;
 
-using EdenOnline;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -27,10 +26,10 @@ public class ClientNetworkMethods {
     public static void RegisterUserName(int clientID, string username)
     {
         Log($"[CLIENT] Received username list update! ({clientID}) {username}");
-        ArmaMethods.UsernameList[clientID] = username;
+        ClientStateManager.UsernameList[clientID] = username;
         // Push updated client list to Arma UI (exclude ourselves)
         try {
-            var otherUsersArray = ArmaMethods.UsernameList
+            var otherUsersArray = ClientStateManager.UsernameList
                 .Where(x => x.Key != Client.ClientID)
                 .Select(kvp => new object[] { kvp.Key, kvp.Value })
                 .Cast<object>()

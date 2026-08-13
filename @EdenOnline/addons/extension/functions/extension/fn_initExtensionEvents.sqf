@@ -1,6 +1,6 @@
 
 
-if (isNil "EXT_var_extensionName" || isNil "EXT_var_extensionResponses") exitWith {
+if (isNil "EOEX_var_extensionName" || isNil "EOEX_var_extensionResponses") exitWith {
 	diag_log "Extension not initialized yet!";
 };
 
@@ -9,7 +9,7 @@ addMissionEventHandler ["ExtensionCallback",{
 	if (_name == "" || _function == "") exitWith {};
 
 	
-	if (_name == EXT_var_extensionName) then {
+	if (_name == EOEX_var_extensionName) then {
 
 		_data = parseSimpleArray _data;
 
@@ -22,10 +22,10 @@ addMissionEventHandler ["ExtensionCallback",{
 			_code = missionNamespace getVariable _method;
 			if (!isNil "_method") then {
 				_response = _data call _code;
-				EXT_var_extensionName callExtension [format ["ARMA_RESPONSE|%1", _requestID], _response];
+				EOEX_var_extensionName callExtension [format ["ARMA_RESPONSE|%1", _requestID], _response];
 			} else {
 				_response = _data call compile _method;
-				EXT_var_extensionName callExtension [format ["ARMA_RESPONSE|%1", _requestID], _response];
+				EOEX_var_extensionName callExtension [format ["ARMA_RESPONSE|%1", _requestID], _response];
 			}
 
 			
@@ -49,47 +49,47 @@ addMissionEventHandler ["ExtensionCallback",{
 			
 			if (_requestID == -1) exitWith { diag_log "ERROR: Async Key not included in response!" };
 
-			if !(_requestID in EXT_var_extensionRequests) exitWith { diag_log format ["ERROR: ID %1 not found!", _requestID] };
+			if !(_requestID in EOEX_var_extensionRequests) exitWith { diag_log format ["ERROR: ID %1 not found!", _requestID] };
 			
-			EXT_var_extensionResponses set [_requestID,[_data,_returnCode]];
+			EOEX_var_extensionResponses set [_requestID,[_data,_returnCode]];
 			
 		} else {
 			// IS data that we need to process (call in)
 			switch (_method) do {
 				case "ServerShutdown": {
 					diag_log format ["ServerShutdown: %1", _data#0];
-					[1, _data#0] spawn EXT_fnc_disconnect;
+					[1, _data#0] spawn EOEX_fnc_disconnect;
 				};
 				case "LoadingScreen": {
 					_enable = _data select 0;
 					_progress = _data select 1;
 					if (_enable) then {
-						if (isNil "EXT_var_loadingScreen") then {
+						if (isNil "EOEX_var_loadingScreen") then {
 							startLoadingScreen ["New client connecting..."];
 						};
-						EXT_var_loadingScreen = true;
+						EOEX_var_loadingScreen = true;
 						progressLoadingScreen _progress;
 					} else {
 						endLoadingScreen;
-						EXT_var_loadingScreen = nil;
+						EOEX_var_loadingScreen = nil;
 					};
 				};
 				case "ObjectSyncCount": {
-					EXT_var_expectedObjectSyncCount = _data select 0;
+					EOEX_var_expectedObjectSyncCount = _data select 0;
 				};
 
 				case "ObjectSyncData": {
 					private _id = _data select 0;
 					private _map = createHashMapFromArray (_data select 1);
 					private _object = create3DENEntity ["Object", _map get "ItemClass", _map get "Position"];
-					_object setVariable ["EXT_objectID",_id];
+					_object setVariable ["EOEX_var_objectID",_id];
 				};
 
 				case "ObjectCreated": {
 					private _id = _data select 0;
 					private _map = createHashMapFromArray (_data select 1);
 					private _object = create3DENEntity ["Object", _map get "ItemClass", _map get "Position"];
-					_object setVariable ["EXT_objectID",_id];
+					_object setVariable ["EOEX_var_objectID",_id];
 				};
 
 				case "ObjectUpdated": {
@@ -97,10 +97,10 @@ addMissionEventHandler ["ExtensionCallback",{
 					private _map = createHashMapFromArray (_data select 1);
 
 					{
-						private _objId = _x getVariable "EXT_objectID";
-						if (!isNil "_objId" && _objId == _id) then { // TODO Replace with exitWith when release
+						private _objId = _x getVariable "EOEX_var_objectID";
+						if (!isNil "_objId" && _objId == _id) exitWith {
 							private _object = _x;
-							_object setVariable ["EXT_updateRequested", true];
+							_object setVariable ["EOEX_updateRequested", true];
 							{
 								if (isNil "_x" || isNil "_y") then { continue };
 								_success = _object set3DENAttribute [_x, _y];
@@ -111,9 +111,9 @@ addMissionEventHandler ["ExtensionCallback",{
 				};
 
 				case "ObjectRemoved": {
-					_object setVariable ["EXT_updateRequested", true];
+					_object setVariable ["EOEX_updateRequested", true];
 					private _id = _data select 0;
-					private _objects = ((all3DENEntities # 0) select { _x getVariable ["EXT_objectID","-1"] == _id });
+					private _objects = ((all3DENEntities # 0) select { _x getVariable ["EOEX_var_objectID","-1"] == _id });
 					delete3DENEntities _objects;
 				};
 
@@ -122,7 +122,7 @@ addMissionEventHandler ["ExtensionCallback",{
 					private _position = _data select 1;
 					private _direction = _data select 2;
 					
-					_cameras = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap];
+					_cameras = uiNamespace getVariable ["EOEX_var_networkCameras", createHashMap];
 					_cameras set [_id, [_position,_direction]];
 				};
 
@@ -131,7 +131,7 @@ addMissionEventHandler ["ExtensionCallback",{
 					// [[id,"name1"],[id,"name2"]]
 
 					// Make an independent copy of the previous client list
-					private _previousClients = missionNamespace getVariable ["EXT_var_OtherClients", createHashMap];
+					private _previousClients = missionNamespace getVariable ["EOEX_var_OtherClients", createHashMap];
 
 					_previousClients = +_previousClients;
 
@@ -152,7 +152,7 @@ addMissionEventHandler ["ExtensionCallback",{
 					} forEach keys _newClients;
 
 					// Detect disconnected clients and remove their cameras
-					private _networkCameras = uiNamespace getVariable ["EXT_var_networkCameras", createHashMap];
+					private _networkCameras = uiNamespace getVariable ["EOEX_var_networkCameras", createHashMap];
 
 					{
 						private _clientId = _x;
@@ -168,18 +168,18 @@ addMissionEventHandler ["ExtensionCallback",{
 					} forEach keys _previousClients;
 
 					// Store the new client list
-					missionNamespace setVariable ["EXT_var_OtherClients", _newClients];
+					missionNamespace setVariable ["EOEX_var_OtherClients", _newClients];
 
-					uiNamespace setVariable ["EXT_var_networkCameras", _networkCameras];
+					uiNamespace setVariable ["EOEX_var_networkCameras", _networkCameras];
 
 					// Update client list UI
-					[] spawn EXT_fnc_showPlayersDialog;
+					[] spawn EOEX_fnc_showPlayersDialog;
 				};
 
 				case "SetInitialMissionAttributes": {
 					private _data = _data select 0;
 
-					diag_log format ["SetInitialMissionAttributes: Connected: %1", missionNamespace getVariable ["EXT_var_Connected",false]];
+					diag_log format ["SetInitialMissionAttributes: Connected: %1", missionNamespace getVariable ["EOEX_var_Connected",false]];
 					// TODO block this script to execute add3DENEventHandler ["OnEntityAttributeChanged", {}];
 					set3DENMissionAttributes _data;
 				};
@@ -201,4 +201,4 @@ addMissionEventHandler ["ExtensionCallback",{
 }];
 
 
-EXT_var_eventsReady = true;
+EOEX_var_eventsReady = true;

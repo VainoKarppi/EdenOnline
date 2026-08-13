@@ -69,27 +69,3 @@ public class ArmaObject
         Attributes = attributes ?? [];
     }
 }
-
-
-public class ArmaCamera
-{
-    public int Id { get; set; }
-    public object[] Position { get; set; } = [0,0,0];
-    public object[] Direction { get; set; } = [0,0,0];
-}
-
-    public class MissionAttribute
-    {
-        public string? Property { get; set; }
-        public string? Section { get; set; }
-        public object? Value { get; set; }
-
-        public MissionAttribute() {}
-        
-        public MissionAttribute(string section, string property, object? value)
-        {
-            Section = section;
-            Property = property;
-            Value = value;
-        }
-    }

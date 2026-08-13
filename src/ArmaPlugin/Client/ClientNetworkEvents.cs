@@ -6,8 +6,6 @@ using System.Threading.Tasks;
 
 using static EdenOnline.Logger;
 using EdenOnline;
-
-using EdenOnline;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -40,13 +38,13 @@ public class ClientNetworkEvents {
         Log($"[CLIENT] Other client connected: {otherClientId}");
     }
     public static void OnOtherClientDisconnected(int otherClientId, bool success, DisconnectReason reason) {
-        string username = ArmaMethods.UsernameList.ContainsKey(otherClientId) ? ArmaMethods.UsernameList[otherClientId] : "Unknown";
+        string username = ClientStateManager.UsernameList.TryGetValue(otherClientId, out string? value) ? value : "Unknown";
 
         Log($"[CLIENT] Other client disconnected: {otherClientId} ({username}). Success: {success}, Reason: {reason}");
         // Remove the user from local username list and notify Arma UI
-        ArmaMethods.UsernameList.Remove(otherClientId);
+        ClientStateManager.UsernameList.Remove(otherClientId);
         try {
-            var otherUsersArray = ArmaMethods.UsernameList
+            var otherUsersArray = ClientStateManager.UsernameList
                 .Where(x => x.Key != Client.ClientID)
                 .Select(kvp => new object[] { kvp.Key, kvp.Value })
                 .Cast<object>()

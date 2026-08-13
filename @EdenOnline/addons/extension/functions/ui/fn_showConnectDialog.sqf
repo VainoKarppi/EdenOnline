@@ -4,7 +4,7 @@
     // Create empty display 
     _display = (if (is3DEN) then {findDisplay 313} else {[] call BIS_fnc_displayMission}) createDisplay "RscDisplayEmpty"; 
     
-    if !(missionNamespace getVariable ["EXT_var_Connected", false]) then {
+    if !(missionNamespace getVariable ["EOEX_var_Connected", false]) then {
         // Background
         _bg = _display ctrlCreate ["RscText", -1];
         _bg ctrlSetPosition [0.3, 0.25, 0.42, 0.48];
@@ -28,7 +28,7 @@
         _ipLabel ctrlCommit 0;
 
         // Host edit
-        private _lastIp = profileNamespace getVariable ["EXT_fnc_lastConnect","127.0.0.1"];
+        private _lastIp = profileNamespace getVariable ["EOEX_fnc_lastConnect","127.0.0.1"];
         _hostEdit = _display ctrlCreate ["RscEdit", 645];
         _hostEdit ctrlSetPosition [0.45, 0.34, 0.2, 0.05];
         _hostEdit ctrlSetBackgroundColor [0,0,0,1];
@@ -45,7 +45,7 @@
         _portLabel ctrlCommit 0;
 
         // Port edit
-        private _lastPort = profileNamespace getVariable ["EXT_fnc_lastPort","2302"];
+        private _lastPort = profileNamespace getVariable ["EOEX_fnc_lastPort","2302"];
         _portEdit = _display ctrlCreate ["RscEdit", 646];
         _portEdit ctrlSetPosition [0.45, 0.40, 0.2, 0.05];
         _portEdit ctrlSetBackgroundColor [0,0,0,1];
@@ -91,24 +91,24 @@
         _cancelBtn ctrlCommit 0;
 
 
-        uiNamespace setVariable ["EXT_ConnectDialog_HostEdit", _hostEdit];
-        uiNamespace setVariable ["EXT_ConnectDialog_PortEdit", _portEdit];
-        uiNamespace setVariable ["EXT_ConnectDialog_PassEdit", _passEdit];
+        uiNamespace setVariable ["EOEX_ConnectDialog_HostEdit", _hostEdit];
+        uiNamespace setVariable ["EOEX_ConnectDialog_PortEdit", _portEdit];
+        uiNamespace setVariable ["EOEX_ConnectDialog_PassEdit", _passEdit];
 
         // Button actions
         _connectBtn ctrlAddEventHandler ["ButtonClick", {
-            private _hostCtrl = uiNamespace getVariable "EXT_ConnectDialog_HostEdit";
-            private _portCtrl = uiNamespace getVariable "EXT_ConnectDialog_PortEdit";
-            private _passCtrl = uiNamespace getVariable "EXT_ConnectDialog_PassEdit";
+            private _hostCtrl = uiNamespace getVariable "EOEX_ConnectDialog_HostEdit";
+            private _portCtrl = uiNamespace getVariable "EOEX_ConnectDialog_PortEdit";
+            private _passCtrl = uiNamespace getVariable "EOEX_ConnectDialog_PassEdit";
             
             private _host = ctrlText _hostCtrl;
             private _port = parseNumber (ctrlText _portCtrl);
             private _password = ctrlText _passCtrl;
 
-            [_host, _port, _password] spawn EXT_fnc_connect;
+            [_host, _port, _password] spawn EOEX_fnc_connect;
 
-            profileNamespace setVariable ["EXT_fnc_lastConnect", _host];
-            profileNamespace setVariable ["EXT_fnc_lastPort", str(_port)];
+            profileNamespace setVariable ["EOEX_fnc_lastConnect", _host];
+            profileNamespace setVariable ["EOEX_fnc_lastPort", str(_port)];
             saveProfileNamespace;
     
             _display = (if (is3DEN) then {findDisplay 313} else {[] call BIS_fnc_displayMission}) createDisplay "RscDisplayEmpty";
@@ -117,12 +117,12 @@
         }]; 
     
         _hostBtn ctrlAddEventHandler ["ButtonClick", { 
-            private _portCtrl = uiNamespace getVariable "EXT_ConnectDialog_PortEdit";
-            private _passCtrl = uiNamespace getVariable "EXT_ConnectDialog_PassEdit";
+            private _portCtrl = uiNamespace getVariable "EOEX_ConnectDialog_PortEdit";
+            private _passCtrl = uiNamespace getVariable "EOEX_ConnectDialog_PassEdit";
             private _port = parseNumber (ctrlText _portCtrl);
             private _password = ctrlText _passCtrl;
 
-            [_port, _password] spawn EXT_fnc_startServer;
+            [_port, _password] spawn EOEX_fnc_startServer;
 
             _display = (if (is3DEN) then {findDisplay 313} else {[] call BIS_fnc_displayMission}) createDisplay "RscDisplayEmpty";
     
@@ -158,11 +158,11 @@
 
         _disconnectBtn ctrlAddEventHandler ["ButtonClick", {
             
-            private _isHost = missionNamespace getVariable ["EXT_var_IsHost", false];
+            private _isHost = missionNamespace getVariable ["EOEX_var_IsHost", false];
             if (_isHost) then {
-                [0] spawn EXT_fnc_disconnect;
+                [0] spawn EOEX_fnc_disconnect;
             } else {
-                [1] spawn EXT_fnc_disconnect;
+                [1] spawn EOEX_fnc_disconnect;
             };
 
             _display = (if (is3DEN) then {findDisplay 313} else {[] call BIS_fnc_displayMission}) createDisplay "RscDisplayEmpty";

@@ -5,26 +5,26 @@ params ["_object"];
 diag_log "OBJECT CREATED";
 diag_log _object; // GROUP 
 
-if !(missionNamespace getVariable ["EXT_var_Connected",false]) exitWith {};
+if !(missionNamespace getVariable ["EOEX_var_Connected",false]) exitWith {};
 
 if (_object in allGroups) exitWith {}; // Dont sync groups for now...
 
 
 /*
 	_object = ((get3DENSelected "")#0#0);
-	_id = call EXT_fnc_getId;
+	_id = call EOEX_fnc_getId;
 	_attributes = (_object get3DENAttributes ""); 
-	["CreateObject", [_id, _attributes], true] call EXT_fnc_callExtensionAsync;
+	["CreateObject", [_id, _attributes], true] call EOEX_fnc_callExtensionAsync;
 */
 // ADD ID AND REGISTER TO LIST
 
-// Make sure EXT_objectID gets set, before testing if this object has been already added
+// Make sure EOEX_var_objectID gets set, before testing if this object has been already added
 uiSleep 0.01;
 
-_id = _object getVariable "EXT_objectID";
+_id = _object getVariable "EOEX_var_objectID";
 if !(isNil "_id") exitWith {};
 
-_id = _object call EXT_fnc_getId;
+_id = _object call EOEX_fnc_getId;
 
 
 // TODO CREW
@@ -35,7 +35,7 @@ _id = _object call EXT_fnc_getId;
 private _class = (_object get3DENAttribute "ItemClass") select 0;
 private _position = (_object get3DENAttribute "Position") select 0;
 
-["CreateObject", [_id, [["Position", _position], ["ItemClass", _class]]]] call EXT_fnc_callExtensionAsync;
+["CreateObject", [_id, [["Position", _position], ["ItemClass", _class]]]] call EOEX_fnc_callExtensionAsync;
 
 // ["UpdateObject|-1",["2IF1IFLY",[["Rotation",[0,0,92.9759]],["Position",[6347.11,4252.56,5.90472]]]]]
 // ["CreateObject|-1",["F9W55J3T",[["Positions",[62.2814,4468.31,0]],["ItemClass","B_soldier_AA_F"]]]]
