@@ -44,7 +44,8 @@ if !(_continue) exitWith {};
 
 EOEX_var_expectedObjectSyncCount = -1;
 
-private _modHashes = (getLoadedModsInfo select {_x#6 != ""})  apply {_x#6};
+//private _modHashes = (getLoadedModsInfo select {_x#6 != ""})  apply {_x#6};
+private _modHashes = [];
 _modHashes sort true;
 
 private _gameVersion = format ["%1",(productVersion#2)/100 toFixed 2];
