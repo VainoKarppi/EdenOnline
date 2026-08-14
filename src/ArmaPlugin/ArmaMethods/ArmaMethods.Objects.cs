@@ -60,7 +60,9 @@ public static partial class ArmaMethods
         if (string.IsNullOrWhiteSpace(toID)) throw new ArgumentException("Target object ID cannot be empty.", nameof(toID));
         if (string.IsNullOrWhiteSpace(type)) throw new ArgumentException("Connection type cannot be empty.", nameof(type));
 
-        ArmaSyncConnection connection = new() {
+        Log($"[CLIENT] CreateSyncConnection. From: {fromID}, To: {toID}, Type: {type}");
+
+        ArmaSyncConnection syncoConnection = new() {
             FromID = fromID,
             ToID = toID,
             Type = type
@@ -68,7 +70,7 @@ public static partial class ArmaMethods
 
         Log($"[CLIENT] Sending CreateSyncConnection: {fromID} -> {toID} ({type})");
 
-        await Client.SendTcpMessageAsync(0, "CreateSyncConnection", connection);
+        await Client.SendTcpMessageAsync(0, "CreateSyncConnection", syncoConnection);
 
         Log($"[CLIENT] CreateSyncConnection sent: {fromID} -> {toID} ({type})");
     }

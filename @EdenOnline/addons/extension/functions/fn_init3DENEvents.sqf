@@ -88,8 +88,6 @@ add3DENEventHandler ["OnEntityAttributeChanged", {
 add3DENEventHandler ["OnConnectingEnd", {
     params ["_class", "_from", "_to"];
 
-    diag_log "[EdenOnline] OnConnectingEnd fired.";
-
     if !(isNil "_to") exitWith {
         diag_log "[EdenOnline] Dispatching CREATE connection.";
 

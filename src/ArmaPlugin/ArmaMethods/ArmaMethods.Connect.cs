@@ -178,7 +178,7 @@ public static partial class ArmaMethods
             Extension.SendToArma("UpdateClientList", [otherUsersArray]);
         }
 
-        Log($"[CLIENT] Received {ClientStateManager.UsernameList?.Count - 1 ?? 0} other users.");
+        Log($"[CLIENT] Received {Math.Max(0, (ClientStateManager.UsernameList?.Count ?? 0) - 1)} other users.");
     }
 
     private static async Task SyncMissionAttributes()
