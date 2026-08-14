@@ -3,7 +3,8 @@ bin/
 obj/
 [Tt]ools/callExtension/
 
-
+**/[P]ublish/
+**/EdenOnline_**
 **/EdenOnline_Logs
 
 *.dll
