@@ -105,6 +105,7 @@ Write-Host ""
 # ============================================================
 
 if (-not (Test-Path -Path $modFolder)) {
+
     New-Item `
         -Path $modFolder `
         -ItemType Directory `
@@ -121,6 +122,7 @@ if (-not (Test-Path -Path $modFolder)) {
 # ============================================================
 
 if (Test-Path -Path $releaseFolder) {
+
     Write-Host "Removing existing release folder..." -ForegroundColor Yellow
 
     Remove-Item `
@@ -130,6 +132,7 @@ if (Test-Path -Path $releaseFolder) {
 }
 
 if (Test-Path -Path $zipPath) {
+
     Write-Host "Removing existing ZIP..." -ForegroundColor Yellow
 
     Remove-Item `
@@ -201,11 +204,44 @@ if (-not (Test-Path -Path $releaseFolder)) {
 Write-Host "Created: $releaseFolder" -ForegroundColor Green
 
 # ============================================================
+# Remove unbinarized addon folders from release copy
+# ============================================================
+
+Write-Host ""
+Write-Host "Cleaning unbinarized addon folders from release..." -ForegroundColor Cyan
+Write-Host ""
+
+$releaseAddonsFolder = Join-Path $releaseFolder "@$assemblyName\addons"
+
+if (Test-Path -Path $releaseAddonsFolder) {
+
+    $addonDirectories = Get-ChildItem `
+        -Path $releaseAddonsFolder `
+        -Directory
+
+    foreach ($addonDirectory in $addonDirectories) {
+
+        Write-Host "Removing: $($addonDirectory.Name)" -ForegroundColor Yellow
+
+        Remove-Item `
+            -Path $addonDirectory.FullName `
+            -Recurse `
+            -Force
+    }
+
+    Write-Host "Release addon folders cleaned." -ForegroundColor Green
+}
+else {
+    Write-Host "No release addons folder found. Skipping cleanup." -ForegroundColor Yellow
+}
+
+# ============================================================
 # Create ZIP
 # ============================================================
 
 Write-Host ""
 Write-Host "Creating ZIP archive..." -ForegroundColor Cyan
+Write-Host ""
 
 Compress-Archive `
     -Path "$releaseFolder\*" `
@@ -293,4 +329,4 @@ Write-Host ""
 Write-Host "Version : $version" -ForegroundColor Cyan
 Write-Host "ZIP     : $publishZipPath" -ForegroundColor Cyan
 Write-Host "Size    : $zipSizeMB MB" -ForegroundColor Cyan
-Write-Host ""1.2.
+Write-Host ""
