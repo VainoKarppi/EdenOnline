@@ -111,8 +111,6 @@ public class ServerNetworkMethods {
     /// </summary>
     public static void CreateSyncConnection(ArmaSyncConnection connection)
     {
-        Log($"[SERVER] Received CreateSyncConnection: {connection.FromID} -> {connection.ToID} ({connection.Type})");
-        
         if (connection == null) throw new ArgumentNullException(nameof(connection));
 
         if (string.IsNullOrWhiteSpace(connection.FromID)) throw new ArgumentException("Connection source ID cannot be empty.", nameof(connection));
