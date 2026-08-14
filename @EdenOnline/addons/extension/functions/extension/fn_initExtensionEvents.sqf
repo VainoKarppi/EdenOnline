@@ -56,10 +56,19 @@ addMissionEventHandler ["ExtensionCallback",{
 		} else {
 			// IS data that we need to process (call in)
 			switch (_method) do {
+				case "CreateSyncConnection": {
+					[_data select 0, _data select 1, _data select 2] call EOEX_fnc_onReceiveCreateSyncConnection;
+				};
+
+				case "RemoveSyncConnection": {
+					[_data select 0, _data select 1, _data select 2] call EOEX_fnc_onReceiveRemoveSyncConnection;
+				};
+
 				case "ServerShutdown": {
 					diag_log format ["ServerShutdown: %1", _data#0];
 					[1, _data#0] spawn EOEX_fnc_disconnect;
 				};
+
 				case "LoadingScreen": {
 					_enable = _data select 0;
 					_progress = _data select 1;
@@ -74,6 +83,7 @@ addMissionEventHandler ["ExtensionCallback",{
 						EOEX_var_loadingScreen = nil;
 					};
 				};
+				
 				case "ObjectSyncCount": {
 					EOEX_var_expectedObjectSyncCount = _data select 0;
 				};

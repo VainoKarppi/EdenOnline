@@ -43,7 +43,9 @@ public static partial class ArmaMethods
             await ShowLoadingScreen(true, 30);
             await SyncObjects();
 
-            await ShowLoadingScreen(true, 50);
+            await ShowLoadingScreen(true, 70);
+            await SyncConnections();
+            
 
             Log($"[CLIENT] Connect finished: {host}:{port}, clientID: {clientID}");
             await ShowLoadingScreen(false, 100);
@@ -188,14 +190,11 @@ public static partial class ArmaMethods
 
         Log($"[CLIENT] Received {missionAttributes.Count} mission attributes from server.");
 
-        object?[] attributes = missionAttributes
-            .Select(kvp => (object?)new object?[]
-            {
+        object?[] attributes = missionAttributes.Select(kvp => (object?)new object?[] {
                 kvp.Key.Length > 0 ? kvp.Key[0] : "",
                 kvp.Key.Length > 1 ? kvp.Key[1] : "",
                 kvp.Value
-            })
-            .ToArray();
+            }).ToArray();
 
         Extension.SendToArma("SetInitialMissionAttributes", [attributes]);
     }
@@ -206,8 +205,7 @@ public static partial class ArmaMethods
         int objectCount = await Client.RequestTcpDataAsync<int>(1, "GetObjectCount");
         Extension.SendToArma("ObjectSyncCount", [objectCount]);
 
-        if (objectCount > 0)
-        {
+        if (objectCount > 0) {
             List<ArmaObject>? objects = await Client.RequestTcpDataAsync<List<ArmaObject>>(1, "GetAllObjects");
 
             if (objects == null || objects.Count == 0)
@@ -218,6 +216,20 @@ public static partial class ArmaMethods
         }
 
         Log($"[CLIENT] Object sync complete. Total objects synced: {objectCount}");
+    }
+
+    private static async Task SyncConnections() {
+        Log("[CLIENT] Requesting connections from server...");
+
+        List<ArmaSyncConnection>? connections = await Client.RequestTcpDataAsync<List<ArmaSyncConnection>>(1, "GetAllConnections");
+
+        if (connections == null) throw new Exception("Failed to sync connections: Received null from server");
+
+        foreach (var connection in connections) {
+            Extension.SendToArma("ConnectionSyncData", [connection.FromID, connection.ToID, connection.Type]);
+        }
+
+        Log($"[CLIENT] Connection sync complete. Total connections synced: {connections.Count}");
     }
 
     private static object[] BuildOtherUsersArray()

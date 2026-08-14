@@ -86,8 +86,21 @@ add3DENEventHandler ["OnEntityAttributeChanged", {
 
 // * CONNECTIONS
 add3DENEventHandler ["OnConnectingEnd", {
-	params ["_class", "_from", "_to"];
+    params ["_class", "_from", "_to"];
+
+    diag_log "[EdenOnline] OnConnectingEnd fired.";
+
+    if !(isNil "_to") exitWith {
+        diag_log "[EdenOnline] Dispatching CREATE connection.";
+
+        [_class, _from, _to] spawn EOEX_fnc_createSyncConnection;
+    };
+
+    diag_log "[EdenOnline] Dispatching REMOVE connection.";
+
+    [_class, _from] spawn EOEX_fnc_removeSyncConnection;
 }];
+
 
 // * MISSION SETTINGS
 remove3DENEventHandler ["OnMissionAttributeChanged", uiNamespace getVariable ["EOEX_var_OnMissionAttributeChangedId", -1]];
