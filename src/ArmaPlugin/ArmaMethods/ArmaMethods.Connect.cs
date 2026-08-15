@@ -226,7 +226,7 @@ public static partial class ArmaMethods
         if (connections == null) throw new Exception("Failed to sync connections: Received null from server");
 
         foreach (var connection in connections) {
-            Extension.SendToArma("ConnectionSyncData", [connection.FromID, connection.ToID, connection.Type]);
+            Extension.SendToArma("CreateSyncConnection", [connection.FromID, connection.ToID, connection.Type]);
         }
 
         Log($"[CLIENT] Connection sync complete. Total connections synced: {connections.Count}");
