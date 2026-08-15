@@ -99,4 +99,72 @@ public class ServerNetworkMethods {
             return [];
         }
     }
+
+
+
+    // ============================================================
+    // CONNECTIONS
+    // ============================================================
+
+    /// <summary>
+    /// Creates and stores a synchronization connection.
+    /// </summary>
+    public static void CreateSyncConnection(ArmaSyncConnection connection)
+    {
+        if (connection == null) throw new ArgumentNullException(nameof(connection));
+
+        if (string.IsNullOrWhiteSpace(connection.FromID)) throw new ArgumentException("Connection source ID cannot be empty.", nameof(connection));
+        if (string.IsNullOrWhiteSpace(connection.ToID))throw new ArgumentException("Connection target ID cannot be empty.", nameof(connection));
+        if (string.IsNullOrWhiteSpace(connection.Type)) throw new ArgumentException("Connection type cannot be empty.", nameof(connection));
+
+        Log($"[SERVER] Received CreateSyncConnection: " + $"{connection.FromID} -> {connection.ToID} ({connection.Type})");
+
+        // Prevent duplicate connections.
+        bool exists = ServerStateManager.SyncConnections.Any(x =>
+            string.Equals(x.FromID, connection.FromID, StringComparison.Ordinal) &&
+            string.Equals(x.ToID, connection.ToID, StringComparison.Ordinal) &&
+            string.Equals(x.Type, connection.Type, StringComparison.Ordinal)
+        );
+
+        if (exists) {
+            Log($"[SERVER] Connection already exists: " + $"{connection.FromID} -> {connection.ToID} ({connection.Type})");
+            return;
+        }
+
+        ServerStateManager.SyncConnections.Add(connection);
+
+        Log($"[SERVER] Connection created: " + $"{connection.FromID} -> {connection.ToID} ({connection.Type})");
+    }
+
+    /// <summary>
+    /// Removes an existing synchronization connection.
+    /// </summary>
+    public static bool RemoveSyncConnection(ArmaSyncConnection connection)
+    {
+        Log($"[SERVER] Received RemoveSyncConnection: " + $"{connection.FromID} -> {connection.ToID} ({connection.Type})");
+
+        if (connection == null) throw new ArgumentNullException(nameof(connection));
+
+        if (string.IsNullOrWhiteSpace(connection.FromID)) throw new ArgumentException("Connection source ID cannot be empty.", nameof(connection));
+        if (string.IsNullOrWhiteSpace(connection.ToID)) throw new ArgumentException( "Connection target ID cannot be empty.", nameof(connection));
+        if (string.IsNullOrWhiteSpace(connection.Type)) throw new ArgumentException( "Connection type cannot be empty.", nameof(connection));
+
+        int removed = ServerStateManager.SyncConnections.RemoveAll(x => x.FromID == connection.FromID && x.ToID == connection.ToID && x.Type == connection.Type);
+
+        if (removed == 0) {
+            Log($"[SERVER] Connection not found: " + $"{connection.FromID} -> {connection.ToID} ({connection.Type})");
+            return false;
+        }
+
+        Log($"[SERVER] Connection removed: " + $"{connection.FromID} -> {connection.ToID} ({connection.Type})");
+
+        return true;
+    }
+
+    /// <summary>
+    /// Gets all currently synchronized connections.
+    /// </summary>
+    public static List<ArmaSyncConnection> GetAllConnections() {
+        return [.. ServerStateManager.SyncConnections];
+    }
 }

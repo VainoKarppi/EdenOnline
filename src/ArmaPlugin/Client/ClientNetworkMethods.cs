@@ -54,6 +54,14 @@ public class ClientNetworkMethods {
         Extension.SendToArma("ObjectRemoved", [objectID]);
     }
 
+    public static void CreateSyncConnection(ArmaSyncConnection connection) {
+        Extension.SendToArma("CreateSyncConnection", [connection.FromID, connection.ToID, connection.Type]);
+    }
+
+    public static void RemoveSyncConnection(ArmaSyncConnection connection) {
+        Extension.SendToArma("RemoveSyncConnection", [connection.FromID, connection.ToID, connection.Type]);
+    }
+
     public static void LoadingScreen(bool enable, int progress = 1) {
         progress = Math.Clamp(progress, 1, 100);
     

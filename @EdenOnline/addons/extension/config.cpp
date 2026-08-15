@@ -42,6 +42,12 @@ class CfgFunctions
             class deleteObject {};
             class updateObjectAttributes {};
 
+            class createSyncConnection {};
+            class removeSyncConnection {};
+
+            class onReceiveCreateSyncConnection {};
+            class onReceiveRemoveSyncConnection {};
+
 			class getId {};
 		};
         class Functions_Mission
