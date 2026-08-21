@@ -86,7 +86,7 @@ class Cfg3DEN
             // TODO Run disconnect when exiting from 3DEN
             init = "call EOEX_fnc_initExtension";
             onTerrainNew = "[1] call EOEX_fnc_disconnect; call EOEX_fnc_initExtension";
-            onMissionPreviewEnd = "diag_log str([2])";
+            OnMissionPreviewEnd = "call EOEX_fnc_initExtension";
             onMissionLoad = "diag_log str([3])";
             onMissionNew = "call EOEX_fnc_initExtension";
             onMissionPreview = "diag_log str([5])";

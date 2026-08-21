@@ -31,32 +31,50 @@ if (Build-Project -projectPath $projectPath -destinationPath $modFolder) {
             # E:\SteamLibrary\steamapps\common\Arma 3\EdenOnline_Logs
 
             $armaPath = Get-ArmaPath
-            
 
-            # TODO FIX WHERE ONLY RPT IS LOGGED
-            Start-Job -ScriptBlock {
+            # Start extension log watcher
+            $extensionJob = Start-Job -ScriptBlock {
                 . "$using:functionsScript"
-                Watch-ExtensionLog | ForEach-Object { Write-Host "[EXT] $_" }
+                Watch-ExtensionLog
             }
 
-            Watch-RPTLog | ForEach-Object { Write-Host "[RPT] $_" }
-
-            # Ask if the user wants to terminate Arma 3 before exit
-            $userInput = Read-Host "Do you want to terminate Arma 3 before exiting? (Y/N)"
-
-            if ($userInput -eq 'Y' -or $userInput -eq 'y') {
-                # Terminate Arma 3 process
-                $armaProcess = Get-Process -Name "arma3_x64" -ErrorAction SilentlyContinue
-                if ($armaProcess) {
-                    Write-Host "Terminating Arma 3..."
-                    Stop-Process -Name "arma3_x64" -Force
-                }
-            } else {
-                Write-Host "Arma 3 will remain running."
+            # Start RPT log watcher
+            $rptJob = Start-Job -ScriptBlock {
+                . "$using:functionsScript"
+                Watch-RPTLog
             }
 
-            # Stop the background job
-            Get-Job | Stop-Job | Remove-Job
+            # Monitor both watchers while Arma is running
+            while (Get-Process -Name "arma3_x64" -ErrorAction SilentlyContinue) {
+
+                # Read extension log output
+                Receive-Job $extensionJob -ErrorAction SilentlyContinue |
+                    ForEach-Object {
+                        Write-Host "[EXT] $_"
+                    }
+
+                Start-Sleep -Milliseconds 50
+
+                # Read RPT log output
+                Receive-Job $rptJob -ErrorAction SilentlyContinue |
+                    ForEach-Object {
+                        Write-Host "[RPT] $_"
+                    }
+
+                Start-Sleep -Milliseconds 50
+            }
+
+            # Arma 3 has exited
+            Write-Host ""
+            Write-Host "Arma 3 has exited. Stopping log watchers..."
+
+            Stop-Job $extensionJob -ErrorAction SilentlyContinue
+            Stop-Job $rptJob -ErrorAction SilentlyContinue
+
+            Remove-Job $extensionJob -Force -ErrorAction SilentlyContinue
+            Remove-Job $rptJob -Force -ErrorAction SilentlyContinue
+
+            Write-Host "Log watching stopped."
         }
     }
 }
