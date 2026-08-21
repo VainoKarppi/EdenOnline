@@ -26,7 +26,7 @@ public static class ServerStateManager
     public static Dictionary<int, string> UsernameList { get; set; } = [];
     public static ClientStateManager ServerObjectManager { get; } = new ClientStateManager();
     public static MissionAttributeManager MissionAttributeManager { get; } = new MissionAttributeManager();
-    public static readonly List<ArmaSyncConnection> SyncConnections = [];
+    public static List<ArmaSyncConnection> SyncConnections { get; set; } = [];
 
     public static void Reset()
     {

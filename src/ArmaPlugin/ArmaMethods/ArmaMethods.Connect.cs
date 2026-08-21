@@ -224,7 +224,7 @@ public static partial class ArmaMethods
         List<ArmaSyncConnection>? connections = await Client.RequestTcpDataAsync<List<ArmaSyncConnection>>(1, "GetAllConnections");
 
         if (connections == null) throw new Exception("Failed to sync connections: Received null from server");
-
+        
         foreach (var connection in connections) {
             Extension.SendToArma("CreateSyncConnection", [connection.FromID, connection.ToID, connection.Type]);
         }
