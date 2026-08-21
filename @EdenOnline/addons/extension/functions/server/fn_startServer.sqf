@@ -124,8 +124,7 @@ while {EOEX_var_expectedObjectSyncCount == -1 || (count (all3DENEntities # 0)) <
 
 
 call EOEX_fnc_init3DENEvents;
-[] spawn EOEX_fnc_drawCameras;
-[] spawn EOEX_fnc_showPlayersDialog;
+
 
 [("CONNECTED TO SERVER WITH ID: " + str(_id)), 0,5] call BIS_fnc_3DENNotification;
 
@@ -134,6 +133,9 @@ missionNamespace setVariable ["EOEX_var_IsHost", true];
 
 // Disable ability to preview the mission
 [false] call EOEX_fnc_togglePlayButtons;
+
+[] spawn EOEX_fnc_drawCameras;
+call EOEX_fnc_showPlayersDialog;
 
 endLoadingScreen;
 

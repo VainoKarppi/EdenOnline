@@ -8,8 +8,13 @@ uiNamespace setVariable ["EOEX_var_networkCameras", _cameras];
 EOEX_var_OtherClients = createHashMapFromArray [[2,"Razer"]];
 */
 
-if (isNil {uiNamespace getVariable "EOEX_var_networkCameras"} || isNil {missionNamespace getVariable "EOEX_var_OtherClients"}) exitWith {
-    diag_log "ERROR: Unable to create player list GUI. >> Invalid variables!"
+// Make sure variables exist
+if (isNil {uiNamespace getVariable "EOEX_var_networkCameras"}) then {
+    uiNamespace setVariable ["EOEX_var_networkCameras", createHashMap];
+};
+
+if (isNil {missionNamespace getVariable "EOEX_var_OtherClients"}) then {
+    missionNamespace setVariable ["EOEX_var_OtherClients", createHashMap];
 };
 
 // Clear existing list, and create new

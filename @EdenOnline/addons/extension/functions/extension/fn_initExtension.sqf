@@ -32,6 +32,8 @@ EOEX_var_extensionResponses = createHashMap;
 EOEX_var_extensionRequests = createHashMap;
 EOEX_var_Objects = createHashMap;
 EOEX_var_OtherClients = createHashMap;
+EOEX_var_SkipAttributeChange = createHashMap;
+
 EOEX_var_IsHost = false;
 
 diag_log formatText ["VERSION: %1",_data];

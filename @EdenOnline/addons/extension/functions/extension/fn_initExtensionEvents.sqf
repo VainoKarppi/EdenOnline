@@ -32,14 +32,15 @@ addMissionEventHandler ["ExtensionCallback",{
 		};
 		
 
-		if (_function != "CameraUpdate" && _function != "ASYNC_RESPONSE") then {
+		(_function splitString "|") params ["_method",["_requestID","-1"],["_returnCode","1"]];
+
+
+		if (_method != "CameraUpdate" && _method != "ASYNC_RESPONSE") then {
 			diag_log "=========================================================================================";
 			diag_log _function;
 			diag_log _data;
 			diag_log "=========================================================================================";
 		};
-
-		(_function splitString "|") params ["_method",["_requestID","-1"],["_returnCode","1"]];
 
 
 		// Is data to be returned
@@ -197,6 +198,8 @@ addMissionEventHandler ["ExtensionCallback",{
 					private _section = _data select 0;
 					private _property = _data select 1;
 					private _value = _data select 2;
+
+					EOEX_var_SkipAttributeChange set [[_section, _property], _value];
 
 					_section set3DENMissionAttribute [_property, _value];
 				};
