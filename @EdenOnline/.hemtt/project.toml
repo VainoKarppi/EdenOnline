@@ -5,6 +5,7 @@ mainprefix = "z"
 
 [files]
 include = [
+    "logo.paa",
     "hash.txt",
     "EdenOnline_x64.dll",
 ]
