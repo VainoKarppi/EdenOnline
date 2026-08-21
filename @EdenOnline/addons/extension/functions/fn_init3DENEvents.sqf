@@ -56,7 +56,6 @@ add3DENEventHandler ["OnPaste", {
 }];
 */
 
-// TODO keeps spamming the message to server sometimes, and cosntantly sending the object update again and again... This might only happen, because of the mirror?
 add3DENEventHandler ["OnEditableEntityAdded", {
 	params ["_entity"];
 	
@@ -107,10 +106,18 @@ if (missionNamespace getVariable ["EOEX_var_syncMissionAttributes", false]) then
 	
 	private _id = add3DENEventHandler ["OnMissionAttributeChanged", {
 		params ["_section", "_property"];
-		_value = (_section get3DENMissionAttribute _property);
 
-		[_section,_property,_value] call EOEX_fnc_updateMissionAttributes;
-		
+		private _value = _section get3DENMissionAttribute _property;
+		private _key = [_section, _property];
+
+		private _skipValue = EOEX_var_SkipAttributeChange getOrDefault [_key, nil];
+
+		// Prevent echo/feedback loop
+		if (!isNil "_skipValue" && {_skipValue isEqualTo _value}) then {
+			EOEX_var_SkipAttributeChange deleteAt _key;
+		} else {
+			[_section, _property, _value] call EOEX_fnc_updateMissionAttributes;
+		};
 	}];
 
 	uiNamespace setVariable ["EOEX_var_OnMissionAttributeChangedId", _id];

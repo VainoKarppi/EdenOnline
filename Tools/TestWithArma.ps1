@@ -26,10 +26,35 @@ Write-Host ""
 
 if (Build-Project -projectPath $projectPath -destinationPath $modFolder) {
     if (Pack-Addons -modFolder $modFolder) {
-        if (Start-Arma) {
-            # Combine Watch-ExtensionLog and Watch-RPTLog in the same console
-            # E:\SteamLibrary\steamapps\common\Arma 3\EdenOnline_Logs
+        function Write-LogLine {
+            param (
+                [string]$Type,
+                [string]$Message
+            )
 
+            $prefix = "[$Type] "
+
+            # Log-level colors take priority
+            if ($Message -match "ERROR:\s*") {
+                $color = "Red"
+            } elseif ($Message -match "DEBUG:\s*") {
+                $color = "DarkGray"
+            } elseif ($Message -match "INFO:\s*") {
+                $color = "Cyan"
+            } elseif ($Type -eq "EXT") {
+                $color = "Yellow"
+            } elseif ($Type -eq "RPT") {
+                $color = "Green"
+            } else {
+                $color = "White"
+            }
+
+            Write-Host $prefix -NoNewline -ForegroundColor $color
+            Write-Host $Message -ForegroundColor $color
+        }
+
+
+        if (Start-Arma) {
             $armaPath = Get-ArmaPath
 
             # Start extension log watcher
@@ -47,18 +72,18 @@ if (Build-Project -projectPath $projectPath -destinationPath $modFolder) {
             # Monitor both watchers while Arma is running
             while (Get-Process -Name "arma3_x64" -ErrorAction SilentlyContinue) {
 
-                # Read extension log output
+                # Extension log
                 Receive-Job $extensionJob -ErrorAction SilentlyContinue |
                     ForEach-Object {
-                        Write-Host "[EXT] $_"
+                        Write-LogLine -Type "EXT" -Message $_
                     }
-
+                
                 Start-Sleep -Milliseconds 50
 
-                # Read RPT log output
+                # RPT log
                 Receive-Job $rptJob -ErrorAction SilentlyContinue |
                     ForEach-Object {
-                        Write-Host "[RPT] $_"
+                        Write-LogLine -Type "RPT" -Message $_
                     }
 
                 Start-Sleep -Milliseconds 50
@@ -66,7 +91,7 @@ if (Build-Project -projectPath $projectPath -destinationPath $modFolder) {
 
             # Arma 3 has exited
             Write-Host ""
-            Write-Host "Arma 3 has exited. Stopping log watchers..."
+            Write-Host "Arma 3 has exited. Stopping log watchers..." -ForegroundColor Yellow
 
             Stop-Job $extensionJob -ErrorAction SilentlyContinue
             Stop-Job $rptJob -ErrorAction SilentlyContinue
@@ -74,7 +99,7 @@ if (Build-Project -projectPath $projectPath -destinationPath $modFolder) {
             Remove-Job $extensionJob -Force -ErrorAction SilentlyContinue
             Remove-Job $rptJob -Force -ErrorAction SilentlyContinue
 
-            Write-Host "Log watching stopped."
+            Write-Host "Log watching stopped." -ForegroundColor Yellow
         }
     }
 }

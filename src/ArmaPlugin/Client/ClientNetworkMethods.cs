@@ -68,8 +68,8 @@ public class ClientNetworkMethods {
         Extension.SendToArma("LoadingScreen", [enable, progress / 100.0]);
     }
 
-    public static void SetMissionAttribute(string section, string property, object? value) {
-        Log($"[CLIENT] Received SetMissionAttribute for section: {section}, property: {property}, value: {value}");
-        Extension.SendToArma("MissionAttributeUpdated", [section, property, value]);
+    public static void SetMissionAttribute(MissionAttribute missionAttribute) {
+        Log($"[CLIENT] Received SetMissionAttribute: [{missionAttribute.Section}, {missionAttribute.Property}, {missionAttribute.Value}]");
+        Extension.SendToArma("SetMissionAttribute", [missionAttribute.Section!, missionAttribute.Property!, missionAttribute.Value!]);
     }
 }

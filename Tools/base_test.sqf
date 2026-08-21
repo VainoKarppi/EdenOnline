@@ -32,37 +32,12 @@ sleep 1;
 
 //"XXXX" callExtension ["Disconnect|222",[]];
 
-"XXXX" callExtension ["Connect|1",["84.250.208.125",2302,"Legodev","Stratis","2.20.152984",["1ae484ae","322ac721","32cfcb0d","46981d1a","640e771a","6a67d97a","7a3fd23a","8152a08e","82d83132","8b4af371","9f4e6826","eb442c52","f9bd46ab"],""]];
+"XXXX" callExtension ["Connect|1",["84.250.208.125",2302,"Legodev","VR","2.22",[],""]];
 
-sleep 3;
-
-
-"XXXX" callExtension ["CreateObject|79996", ["CBN1DT70",[["Position",[5086.52,4906.72,0]],["ItemClass","B_soldier_M_F"]]]];
 
 sleep 1;
 
-"XXXX" callExtension ["UpdateObject|71111", ["CBN1DT70",[["Position",[5086.52,4906.72,100]]]]];
-
-sleep 1;
-
-
-"XXXX" callExtension ["CameraUpdate|-1",[[4593.98,5088.45,10],[0.704759,0.687867,-0.173648]]];
-
-sleep 1;
-
-"XXXX" callExtension ["CameraUpdate|-1",[[4593.98,5088.45,100],[0.704759,0.687867,-0.173648]]];
-
-sleep 1;
-
-"XXXX" callExtension ["CameraUpdate|-1",[[4593.98,5088.45,200],[0.704759,0.687867,-0.173648]]];
-
-sleep 1;
-
-"XXXX" callExtension ["CameraUpdate|-1",[[4593.98,5088.45,300],[0.704759,0.687867,-0.173648]]];
-
-sleep 1;
-
-"XXXX" callExtension ["CameraUpdate|-1",[[4593.98,5088.45,400],[0.704759,0.687867,-0.173648]]];
+"XXXX" callExtension ["SetMissionAttribute|20",["Scenario","IntelBriefingName","123123"]];
 
 sleep 3;
 
