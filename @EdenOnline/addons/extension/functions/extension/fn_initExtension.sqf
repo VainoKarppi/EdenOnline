@@ -1,3 +1,4 @@
+// EOEX_fnc_initExtension
 if !(isNil "EOEX_var_extensionRequests") exitWith { true }; // Extension already initialized
 
 

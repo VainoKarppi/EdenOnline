@@ -1,3 +1,4 @@
+// EOEX_fnc_createSyncConnection
 params ["_class", "_from", "_to"];
 
 if !(missionNamespace getVariable ["EOEX_var_Connected", false]) exitWith {};

@@ -1,3 +1,4 @@
+// EOEX_fnc_onReceiveRemoveSyncConnection
 params ["_fromID", "_toID", "_type"];
 
 

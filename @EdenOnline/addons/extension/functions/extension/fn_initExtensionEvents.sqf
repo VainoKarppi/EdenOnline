@@ -1,3 +1,4 @@
+// EOEX_fnc_initExtensionEvents
 
 
 if (isNil "EOEX_var_extensionName" || isNil "EOEX_var_extensionResponses") exitWith {

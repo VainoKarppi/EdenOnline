@@ -1,3 +1,4 @@
+// EOEX_fnc_getId
 params ["_object"];
 
 

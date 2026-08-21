@@ -1,3 +1,4 @@
+// EOEX_fnc_togglePlayButtons
 params [["_enable", false, [true]]];
 
 disableSerialization;

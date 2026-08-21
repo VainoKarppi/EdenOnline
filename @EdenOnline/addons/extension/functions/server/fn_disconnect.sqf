@@ -1,3 +1,4 @@
+// EOEX_fnc_disconnect
 
 // 0 == server shutdown
 // 1 == user shutdown

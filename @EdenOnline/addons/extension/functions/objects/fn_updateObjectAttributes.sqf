@@ -1,3 +1,4 @@
+// EOEX_fnc_updateObjectAttributes
 
 
 params ["_entity", "_property"];

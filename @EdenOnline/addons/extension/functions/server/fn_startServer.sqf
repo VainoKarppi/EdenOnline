@@ -1,3 +1,4 @@
+// EOEX_fnc_startServer
 
 params [["_port",2302,[0]], ["_password","",[""]]];
 
@@ -84,15 +85,59 @@ if (missionNamespace getVariable ["EOEX_var_syncMissionAttributes", false]) then
 };
 
 
+private _allObjects = (all3DENEntities # 0);
 // Send current world edits to server
 {
     private _attributes = (_x get3DENAttributes "");
     private _id = _x call EOEX_fnc_getId;
 
     ["CreateObject", [_id, _attributes]] call EOEX_fnc_callExtensionAsync;
-} forEach (all3DENEntities # 0);
+} forEach _allObjects;
 
 uiSleep 0.1;
+
+
+
+// Send initial synced items list to server
+private _sentConnections = createHashMap;
+
+{
+    private _object = _x;
+    private _connections = get3DENConnections _object;
+
+    if (isNil "_connections") then { continue };
+
+    private _id = _object call EOEX_fnc_getId;
+
+    if (isNil "_id") then { continue};
+
+    {
+        private _connectionType = _x#0;
+        private _targetObject = _x#1;
+
+        // TODO FIX GROUPS
+        if (_connectionType != "Sync") then { continue };
+
+        private _toID = _targetObject call EOEX_fnc_getId;
+
+        if (isNil "_toID") then { continue };
+
+        // Create direction-independent key
+        private _ids = [_id, _toID];
+        _ids sort true;
+
+        private _key = format ["%1|%2|%3", _ids#0, _ids#1, _connectionType];
+
+        // Already sent this connection
+        if (_sentConnections getOrDefault [_key, false]) then { continue };
+
+        _sentConnections set [_key, true];
+
+        ["CreateSyncConnection", [_id, _toID, _connectionType]] call EOEX_fnc_callExtensionAsync;
+
+    } forEach _connections;
+
+} forEach _allObjects;
 
 
 private _timeoutSeconds = 30;

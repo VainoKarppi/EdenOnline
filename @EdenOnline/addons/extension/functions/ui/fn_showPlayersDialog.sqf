@@ -1,3 +1,4 @@
+// EOEX_fnc_showPlayersDialog
 
 /*
 _cameras = uiNamespace getVariable ["EOEX_var_networkCameras", createHashMap];

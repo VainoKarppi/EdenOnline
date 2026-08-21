@@ -1,3 +1,4 @@
+// EOEX_fnc_connect
 
 params [["_host","127.0.0.1",[""]], ["_port",2302,[0]], ["_password","",[""]]];
 

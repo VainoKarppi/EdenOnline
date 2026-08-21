@@ -4,6 +4,7 @@ namespace DynTypeNetwork;
 
 public static class Settings
 {
+    public static bool EnableVersionCheck { get; set; } = true;
     public static class Logging
     {
         public enum LogLevel

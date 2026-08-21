@@ -1,3 +1,4 @@
+// EOEX_fnc_updateMissionAttributes
 
 params ["_section","_property","_value"];
 

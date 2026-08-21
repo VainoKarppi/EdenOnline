@@ -42,6 +42,8 @@ class CfgFunctions
             class deleteObject {};
             class updateObjectAttributes {};
 
+            class getObjectType {};
+
             class createSyncConnection {};
             class removeSyncConnection {};
 

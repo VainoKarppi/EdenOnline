@@ -1,3 +1,4 @@
+// EOEX_fnc_init3DENEvents
 
 
 diag_log "3DEN Online Events Initialized";

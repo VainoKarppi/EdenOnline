@@ -1,3 +1,4 @@
+// EOEX_fnc_showConnectDialog
 0 spawn { 
     disableSerialization; 
  

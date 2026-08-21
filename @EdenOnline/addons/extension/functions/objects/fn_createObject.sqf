@@ -1,3 +1,4 @@
+// EOEX_fnc_createObject
 
 params ["_object"];
 

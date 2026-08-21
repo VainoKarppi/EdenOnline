@@ -1,3 +1,4 @@
+// EOEX_fnc_drawCameras
 
 // Initialize the last update time
 if (isNil "EOEX_var_networkCameras") then {

@@ -1,3 +1,4 @@
+// EOEX_fnc_onReceiveCreateSyncConnection
 params ["_fromID", "_toID", "_type"];
 
 

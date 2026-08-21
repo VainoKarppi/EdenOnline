@@ -25,6 +25,8 @@ public static partial class ExtensionPlugin
         CurrentLogLevel = LogLevel.Info;
         DynTypeNetwork.Settings.Logging.CurrentLogLevel = DynTypeNetwork.Settings.Logging.LogLevel.Info;
 
+        DynTypeNetwork.Settings.EnableVersionCheck = false;
+
         // Register all extension methods callable from Arma
         MethodSystem.RegisterMethods(typeof(ArmaMethods));
 

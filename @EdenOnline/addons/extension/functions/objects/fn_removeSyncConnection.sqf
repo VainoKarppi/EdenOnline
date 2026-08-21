@@ -1,3 +1,4 @@
+// EOEX_fnc_removeSyncConnection
 params ["_class", "_from"];
 
 diag_log format ["[EdenOnline] fn_removeSyncConnection called: class=%1 from=%2", _class, _from];

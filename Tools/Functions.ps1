@@ -582,3 +582,95 @@ function Start-Arma {
         return $false
     }
 }
+
+
+
+function Add-SQFFunctionTags {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$ModFolder
+    )
+
+    if (-not (Test-Path -LiteralPath $ModFolder -PathType Container)) {
+        throw "Mod folder does not exist: $ModFolder"
+    }
+
+    $addedCount = 0
+
+    $configFiles = Get-ChildItem -LiteralPath $ModFolder -Recurse -File -Filter "config.cpp"
+
+    if ($configFiles.Count -eq 0) {
+        throw "No config.cpp found in: $ModFolder"
+    }
+
+    foreach ($configFile in $configFiles) {
+
+        $configContent = Get-Content -LiteralPath $configFile.FullName -Raw
+
+        $tagMatch = [regex]::Match(
+            $configContent,
+            '(?m)^\s*tag\s*=\s*"([^"]+)"\s*;'
+        )
+
+        if (-not $tagMatch.Success) {
+            continue
+        }
+
+        $tag = $tagMatch.Groups[1].Value
+        $addonFolder = $configFile.Directory.FullName
+
+        $sqfFiles = Get-ChildItem `
+            -LiteralPath $addonFolder `
+            -Recurse `
+            -File `
+            -Filter "*.sqf"
+
+        foreach ($file in $sqfFiles) {
+
+            $lines = [System.IO.File]::ReadAllLines($file.FullName)
+
+            # Remove old automatically generated EOEX_fnc_* tags
+            $lines = @(
+                $lines | Where-Object {
+                    $_.Trim() -notmatch '^//\s+[A-Za-z0-9_]+_fnc_fn_[A-Za-z0-9_]+$'
+                }
+            )
+
+            $functionName = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
+
+            # Remove "fn_" from the filename
+            if ($functionName.StartsWith("fn_")) {
+                $functionName = $functionName.Substring(3)
+            }
+
+            $expectedTag = "// $($tag)_fnc_$functionName"
+
+            # Check whether the correct tag already exists
+            $tagExists = $lines | Where-Object {
+                $_.Trim() -eq $expectedTag
+            }
+
+            if ($tagExists) {
+                [System.IO.File]::WriteAllLines(
+                    $file.FullName,
+                    $lines,
+                    [System.Text.UTF8Encoding]::new($false)
+                )
+                continue
+            }
+
+            # Add tag at the beginning
+            $newLines = @($expectedTag) + $lines
+
+            [System.IO.File]::WriteAllLines(
+                $file.FullName,
+                $newLines,
+                [System.Text.UTF8Encoding]::new($false)
+            )
+
+            $addedCount++
+        }
+    }
+
+    Write-Host "Added $addedCount SQF function tags." -ForegroundColor Green
+}
