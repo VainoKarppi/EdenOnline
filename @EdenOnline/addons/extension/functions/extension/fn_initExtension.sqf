@@ -24,7 +24,7 @@ if (_result isEqualType []) then { // Params used
 
 private _data = (_return select 1) select 0;
 
-if (_return select 0 == "ERROR") exitWith { diag_log format ["ERROR: ", _data]; false };
+if (_return select 0 == "ERROR") exitWith { diag_log format ["ERROR: %1", _data]; false };
 
 EOEX_var_extensionVersion = _data;
 

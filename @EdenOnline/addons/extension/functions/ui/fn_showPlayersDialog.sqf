@@ -141,7 +141,7 @@ _display displayAddEventHandler ["MouseButtonDown", {
 
 
 _list ctrlAddEventHandler ["MouseButtonDown", {
-    params ["_ctrl", "_button", "_xPos", "_yPos"];
+    params ["_list", "_button", "_xPos", "_yPos"];
 
     // Right mouse button
     if (_button != 1) exitWith {};
@@ -152,13 +152,13 @@ _list ctrlAddEventHandler ["MouseButtonDown", {
         ctrlDelete _oldMenu;
     };
 
-    private _display = ctrlParent _ctrl;
+    private _display = ctrlParent _list;
 
     // Create menu
     private _menu = _display ctrlCreate ["RscListbox", 33901];
     uiNamespace setVariable ["PlayerContextMenu", _menu];
 
-	_ctrl lbSetValue [10,9999];
+	_list lbSetValue [10,9999];
 
 	_list lbSetCurSel -1;
 
@@ -172,7 +172,7 @@ _list ctrlAddEventHandler ["MouseButtonDown", {
     // Remember selected player
     uiNamespace setVariable [
         "PlayerContextSelection",
-        lbCurSel _ctrl
+        lbCurSel _list
     ];
 
     _menu ctrlAddEventHandler ["LBSelChanged", {

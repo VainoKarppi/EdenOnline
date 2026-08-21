@@ -9,7 +9,7 @@ if (missionNamespace getVariable ["EOEX_var_Connected",false]) exitWith {
 
 
 private _continue = true;
-if !((all3DENEntities) isEqualTo [[],[],[],[],[],[],[],[-999]]) then {
+if ((all3DENEntities) isNotEqualTo [[],[],[],[],[],[],[],[-999]]) then {
     uiNamespace setVariable ["EOEX_var_ButtonConfirmed", nil];
 
     [

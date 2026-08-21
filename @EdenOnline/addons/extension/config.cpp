@@ -5,7 +5,7 @@ class CfgPatches
 		units[] = {};
 		weapons[] = {};
 		requiredAddons[] = { "A3_Functions_F", "3DEN"};
-		requiredVersion = 1.0;
+		requiredVersion = 2.22;
 		fileName = "extension.pbo";
 		author[]= {"Razer"};
 	};

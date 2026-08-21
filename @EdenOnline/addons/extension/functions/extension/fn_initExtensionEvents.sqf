@@ -121,7 +121,6 @@ addMissionEventHandler ["ExtensionCallback",{
 				};
 
 				case "ObjectRemoved": {
-					_object setVariable ["EOEX_updateRequested", true];
 					private _id = _data select 0;
 					private _objects = ((all3DENEntities # 0) select { _x getVariable ["EOEX_var_objectID","-1"] == _id });
 					delete3DENEntities _objects;

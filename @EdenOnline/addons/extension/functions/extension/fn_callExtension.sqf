@@ -4,7 +4,7 @@
 params [["_function","",[""]],["_arguments",[],[[]]],["_fireAndForget",false,[false]]];
 
 if (isNil "EOEX_var_extensionRequests") then {
-	private _initSuccess = call EOEX_fnc_init;
+	private _initSuccess = call EOEX_fnc_initExtension;
 	if (!_initSuccess) exitWith {};
 };
 

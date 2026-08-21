@@ -19,10 +19,10 @@ if (isNull _object || _object in allGroups) exitWith {};
 */
 
 // Event was triggered by incoming update from another client
-if (_entity getVariable ["EOEX_updateRequested", false]) exitWith {
-	_entity setVariable ["EOEX_updateRequested", nil];
+if (_object getVariable ["EOEX_updateRequested", false]) exitWith {
+	_object setVariable ["EOEX_updateRequested", nil];
 };
-_entity setVariable ["EOEX_updateRequested", nil];
+_object setVariable ["EOEX_updateRequested", nil];
 
 
 _id = _object call EOEX_fnc_getId;

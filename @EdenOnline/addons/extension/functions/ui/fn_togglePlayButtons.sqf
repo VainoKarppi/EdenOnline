@@ -25,13 +25,7 @@ _ctrl ctrlEnable _enable;
 
 
 // Tooltip for control 1023
-_ctrl ctrlSetTooltip (
-    if (_enable) then {
-        ""
-    } else {
-        "You cannot preview the mission while connected to EdenOnline."
-    }
-);
+_ctrl ctrlSetTooltip (["You cannot preview the mission while connected to EdenOnline.", ""] select (_enable));
 
 
 // Enable/disable Play menu

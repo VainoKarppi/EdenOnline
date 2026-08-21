@@ -1,0 +1,22 @@
+name = "@EdenOnline"
+author = "Razer"
+prefix = "EOEX"
+mainprefix = "z"
+
+[files]
+include = [
+    "hash.txt",
+    "EdenOnline_x64.dll",
+]
+
+[hemtt.launch.default]
+parameters = [
+    "-noBattleEye",
+    "-window"
+]
+
+[version]
+major = 1
+minor = 1
+patch = 0
+build = 0
