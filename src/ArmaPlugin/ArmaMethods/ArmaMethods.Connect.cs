@@ -14,6 +14,9 @@ namespace EdenOnline;
 /// </summary>
 public static partial class ArmaMethods
 {
+    private const int ObjectSyncBatchSize = 64;
+    private const int ObjectSyncPageSize = 1024;
+    private const int ConnectionSyncBatchSize = 128;
 
 
     /// <summary>
@@ -204,26 +207,74 @@ public static partial class ArmaMethods
 
     private static async Task SyncObjects()
     {
-        Log("[CLIENT] Requesting object count from server...");
-        int objectCount = await Client.RequestTcpDataAsync<int>(1, "GetObjectCount");
-        Extension.SendToArma("ObjectSyncCount", [objectCount]);
-
-        Log($"[CLIENT] Syncing {objectCount} objects...");
-
+        Log("[CLIENT] Starting paged object synchronization...");
+        bool snapshotStarted = false;
+        int objectCount = 0;
         int finalCount = 0;
-        if (objectCount > 0) {
-            List<ArmaObject>? objects = await Client.RequestTcpDataAsync<List<ArmaObject>>(1, "GetAllObjects");
-            finalCount = objects?.Count ?? 0;
+        try {
+            objectCount = await Client.RequestTcpDataAsync<int>(1, "BeginObjectSync");
+            snapshotStarted = true;
+            Extension.SendToArma("ObjectSyncCount", [objectCount]);
 
-            if (objects == null || objects.Count == 0)
-                throw new Exception("Failed to sync objects: Received null from server");
+            Log($"[CLIENT] Syncing {objectCount} objects in pages of up to {ObjectSyncPageSize}...");
 
-            foreach (var obj in objects)
-                Extension.SendToArma("ObjectSyncData", [obj.Id, obj.Attributes]);
+            while (finalCount < objectCount) {
+                List<ArmaObject>? page = await Client.RequestTcpDataAsync<List<ArmaObject>>(
+                    1,
+                    "GetObjectSyncPage",
+                    finalCount,
+                    ObjectSyncPageSize
+                );
+
+                if (page == null || page.Count == 0)
+                    throw new Exception($"Failed to sync objects: Empty page at offset {finalCount} of {objectCount}");
+
+                if (page.Count > objectCount - finalCount)
+                    throw new Exception($"Failed to sync objects: Page at offset {finalCount} exceeded the snapshot count");
+
+                foreach (object?[] batch in BuildObjectSyncBatches(page))
+                    Extension.SendToArma("ObjectSyncBatch", [batch]);
+
+                finalCount += page.Count;
+            }
+        } finally {
+            if (snapshotStarted) {
+                try {
+                    await Client.RequestTcpDataAsync<bool>(1, "EndObjectSync");
+                } catch (Exception ex) {
+                    Warning($"[CLIENT] Failed to release object synchronization snapshot: {ex.Message}");
+                }
+            }
         }
 
         if (objectCount != finalCount) Error($"[CLIENT] Object sync failed! ExpectedSyncCount: {objectCount}, Received: {finalCount}");
         Log($"[CLIENT] Object sync complete. Total objects synced: {finalCount}");
+    }
+
+    /// <summary>
+    /// Packs initial object synchronization into bounded callback payloads.
+    /// Arma only accepts a limited number of extension callbacks per frame, so
+    /// sending one callback per object makes load time scale with frame time.
+    /// </summary>
+    internal static IReadOnlyList<object?[]> BuildObjectSyncBatches(IReadOnlyList<ArmaObject> objects)
+    {
+        var batches = new List<object?[]>((objects.Count + ObjectSyncBatchSize - 1) / ObjectSyncBatchSize);
+
+        for (int offset = 0; offset < objects.Count; offset += ObjectSyncBatchSize)
+        {
+            int batchLength = Math.Min(ObjectSyncBatchSize, objects.Count - offset);
+            var batch = new object?[batchLength];
+
+            for (int index = 0; index < batchLength; index++)
+            {
+                ArmaObject obj = objects[offset + index];
+                batch[index] = new object?[] { obj.Id, obj.Attributes };
+            }
+
+            batches.Add(batch);
+        }
+
+        return batches;
     }
 
     private static async Task SyncConnections() {
@@ -233,11 +284,31 @@ public static partial class ArmaMethods
 
         if (connections == null) throw new Exception("Failed to sync connections: Received null from server");
         
-        foreach (var connection in connections) {
-            Extension.SendToArma("CreateSyncConnection", [connection.FromID, connection.ToID, connection.Type]);
-        }
+        foreach (object?[] batch in BuildConnectionSyncBatches(connections))
+            Extension.SendToArma("CreateSyncConnectionBatch", [batch]);
 
         Log($"[CLIENT] Connection sync complete. Total connections synced: {connections.Count}");
+    }
+
+    internal static IReadOnlyList<object?[]> BuildConnectionSyncBatches(IReadOnlyList<ArmaSyncConnection> connections)
+    {
+        var batches = new List<object?[]>((connections.Count + ConnectionSyncBatchSize - 1) / ConnectionSyncBatchSize);
+
+        for (int offset = 0; offset < connections.Count; offset += ConnectionSyncBatchSize)
+        {
+            int batchLength = Math.Min(ConnectionSyncBatchSize, connections.Count - offset);
+            var batch = new object?[batchLength];
+
+            for (int index = 0; index < batchLength; index++)
+            {
+                ArmaSyncConnection connection = connections[offset + index];
+                batch[index] = new object?[] { connection.FromID, connection.ToID, connection.Type };
+            }
+
+            batches.Add(batch);
+        }
+
+        return batches;
     }
 
     private static object[] BuildOtherUsersArray()

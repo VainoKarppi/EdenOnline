@@ -93,6 +93,7 @@ private _removedConnections = [];
 {
     private _index = _connections find _x;
     if (_index != -1) then { _connections deleteAt _index };
+    EOEX_var_SyncConnectionKeys deleteAt (str _x);
 } forEach _removedConnections;
 
 

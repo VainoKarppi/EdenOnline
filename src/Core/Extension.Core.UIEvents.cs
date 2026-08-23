@@ -139,15 +139,15 @@ public static class UIEvents
     }
 
     // Trigger Methods
-    public static void RaiseLButtonDown(object? obj, float x, float y) => OnLButtonDown.FireAndForget(obj, x, y);
-    public static void RaiseLButtonUp(object? obj, float x, float y) => OnLButtonUp.FireAndForget(obj, x, y);
-    public static void RaiseLButtonClick(object? obj, float x, float y) => OnLButtonClick.FireAndForget(obj, x, y);
-    public static void RaiseLButtonDblClick(object? obj, float x, float y) => OnLButtonDblClick.FireAndForget(obj, x, y);
+    public static void RaiseLButtonDown(object? obj, float x, float y) { if (OnLButtonDown != null) OnLButtonDown.FireAndForget(obj, x, y); }
+    public static void RaiseLButtonUp(object? obj, float x, float y) { if (OnLButtonUp != null) OnLButtonUp.FireAndForget(obj, x, y); }
+    public static void RaiseLButtonClick(object? obj, float x, float y) { if (OnLButtonClick != null) OnLButtonClick.FireAndForget(obj, x, y); }
+    public static void RaiseLButtonDblClick(object? obj, float x, float y) { if (OnLButtonDblClick != null) OnLButtonDblClick.FireAndForget(obj, x, y); }
 
-    public static void RaiseRButtonDown(object? obj, float x, float y) => OnRButtonDown.FireAndForget(obj, x, y);
-    public static void RaiseRButtonUp(object? obj, float x, float y) => OnRButtonUp.FireAndForget(obj, x, y);
-    public static void RaiseRButtonClick(object? obj, float x, float y) => OnRButtonClick.FireAndForget(obj, x, y);
-    public static void RaiseMouseMove(object? obj, float x, float y) => OnMouseMove.FireAndForget(obj, x, y);
+    public static void RaiseRButtonDown(object? obj, float x, float y) { if (OnRButtonDown != null) OnRButtonDown.FireAndForget(obj, x, y); }
+    public static void RaiseRButtonUp(object? obj, float x, float y) { if (OnRButtonUp != null) OnRButtonUp.FireAndForget(obj, x, y); }
+    public static void RaiseRButtonClick(object? obj, float x, float y) { if (OnRButtonClick != null) OnRButtonClick.FireAndForget(obj, x, y); }
+    public static void RaiseMouseMove(object? obj, float x, float y) { if (OnMouseMove != null) OnMouseMove.FireAndForget(obj, x, y); }
     public static bool RaiseMouseZChanged(object? obj, float dz)
     {
         if (OnMouseZChanged == null) return false;
@@ -161,8 +161,8 @@ public static class UIEvents
         return handled;
     }
 
-    public static void RaiseMouseEnter(object? obj, float x, float y) => OnMouseEnter.FireAndForget(obj, x, y);
-    public static void RaiseMouseExit(object? obj, float x, float y) => OnMouseExit.FireAndForget(obj, x, y);
+    public static void RaiseMouseEnter(object? obj, float x, float y) { if (OnMouseEnter != null) OnMouseEnter.FireAndForget(obj, x, y); }
+    public static void RaiseMouseExit(object? obj, float x, float y) { if (OnMouseExit != null) OnMouseExit.FireAndForget(obj, x, y); }
 
     public static bool RaiseKeyDown(object? obj, int key) => RaiseKeyEvent(OnKeyDown, obj, key);
     public static bool RaiseKeyUp(object? obj, int key) => RaiseKeyEvent(OnKeyUp, obj, key);

@@ -45,43 +45,43 @@ public static partial class Events {
     }
 
     internal static void RaiseVersionCalled(string version) {
-        OnVersionCalled.InvokeFireAndForget(version);
+        if (OnVersionCalled != null) OnVersionCalled.InvokeFireAndForget(version);
     }
 
 
     internal static void RaiseMethodCalled(string method) {
-        OnMethodCalled.InvokeFireAndForget(method);
+        if (OnMethodCalled != null) OnMethodCalled.InvokeFireAndForget(method);
     }
     internal static void RaiseMethodCalledResponse(string method, object?[]? response, bool success) {
-        OnMethodCalledResponse.InvokeFireAndForget(method, response ?? [], success);
+        if (OnMethodCalledResponse != null) OnMethodCalledResponse.InvokeFireAndForget(method, response ?? [], success);
     }
 
 
     internal static void RaiseMethodCalledWithArgs(string method, object?[]? unserializedData) {
-        OnMethodCalledWithArgs.InvokeFireAndForget(method, unserializedData ?? []);
+        if (OnMethodCalledWithArgs != null) OnMethodCalledWithArgs.InvokeFireAndForget(method, unserializedData ?? []);
     }
     internal static void RaiseMethodCalledWithArgsResponse(string method, object?[]? response, bool success) {
-        OnMethodCalledWithArgsResponse.InvokeFireAndForget(method, response ?? [], success);
+        if (OnMethodCalledWithArgsResponse != null) OnMethodCalledWithArgsResponse.InvokeFireAndForget(method, response ?? [], success);
     }
 
 
     internal static void RaiseAsyncTaskStartd(string method, int asyncKey, object?[] unserializedData) {
-        OnAsyncTaskStarted.InvokeFireAndForget(method, asyncKey, unserializedData);
+        if (OnAsyncTaskStarted != null) OnAsyncTaskStarted.InvokeFireAndForget(method, asyncKey, unserializedData);
     }
     internal static void RaiseAsyncTaskCompleted(string method, int asyncKey, bool success, object?[]? unserializedData = null) {
-        OnAsyncTaskCompleted.InvokeFireAndForget(method, asyncKey, unserializedData ?? [], success);
+        if (OnAsyncTaskCompleted != null) OnAsyncTaskCompleted.InvokeFireAndForget(method, asyncKey, unserializedData ?? [], success);
     }
     internal static void RaiseAsyncTaskCancelled(int asyncKey, bool success) {
-        OnAsyncTaskCancelled.InvokeFireAndForget(asyncKey, success);
+        if (OnAsyncTaskCancelled != null) OnAsyncTaskCancelled.InvokeFireAndForget(asyncKey, success);
     }
 
 
     internal static void RaiseSendToArma(string method, object?[] data) {
-        OnSendToArma.InvokeFireAndForget(method, data);
+        if (OnSendToArma != null) OnSendToArma.InvokeFireAndForget(method, data);
     }
 
 
     internal static void RaiseErrorOccurred(Exception ex) {
-        OnErrorOccurred.InvokeFireAndForget(ex);
+        if (OnErrorOccurred != null) OnErrorOccurred.InvokeFireAndForget(ex);
     }
 }

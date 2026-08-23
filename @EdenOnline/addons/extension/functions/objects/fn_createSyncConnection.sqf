@@ -41,16 +41,23 @@ if (isNil "_toID") exitWith {
     } else {
         private _connection = [_fromID, _toID, _type];
 
-        // Prevent duplicate local registrations.
-        if !(_connection in EOEX_var_SyncConnections) then {
+        private _connectionKey = str _connection;
+
+        // Prevent duplicate local registrations with an O(1) lookup.
+        if !(EOEX_var_SyncConnectionKeys getOrDefault [_connectionKey, false]) then {
             ["CreateSyncConnection", [_fromID, _toID, _type]] call EOEX_fnc_callExtensionAsync;
 
             EOEX_var_SyncConnections pushBack _connection;
+            EOEX_var_SyncConnectionKeys set [_connectionKey, true];
 
-            diag_log format ["[EdenOnline] Connection created: %1 -> %2 (%3)", _fromID, _toID, _type];
+            if (EOEX_var_DEBUG) then {
+                diag_log format ["[EdenOnline] Connection created: %1 -> %2 (%3)", _fromID, _toID, _type];
+            };
 
         } else {
-            diag_log format ["[EdenOnline] Connection already registered: %1 -> %2 (%3)", _fromID, _toID, _type];
+            if (EOEX_var_DEBUG) then {
+                diag_log format ["[EdenOnline] Connection already registered: %1 -> %2 (%3)", _fromID, _toID, _type];
+            };
         };
     };
 

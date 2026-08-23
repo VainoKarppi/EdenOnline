@@ -28,7 +28,9 @@ addMissionEventHandler ["ExtensionCallback",{
 		// Extension is requesting for data from arma
 		if (_function select [0,8] == "REQUEST|") exitWith {
 			(_function splitString "|") params ["_request", "_method",["_requestID","-1"]];
-			diag_log format ["EXTENSION REQUESTING DATA > _method=%1, _requestID:%2, _data=%3", _method, _requestID, _data];
+			if (EOEX_var_DEBUG) then {
+				diag_log format ["EXTENSION REQUESTING DATA > _method=%1, _requestID:%2, _data=%3", _method, _requestID, _data];
+			};
 
 			// TODO if method does not contain _fnc_, then its a raw code to be executed getVariable _method;
 			_code = missionNamespace getVariable _method;
@@ -45,7 +47,7 @@ addMissionEventHandler ["ExtensionCallback",{
 		(_function splitString "|") params ["_method",["_requestID","-1"],["_returnCode","1"]];
 
 
-		if (_method != "CameraUpdate" && _method != "ASYNC_RESPONSE") then {
+		if (EOEX_var_DEBUG && {!(_method in ["CameraUpdate", "ASYNC_RESPONSE", "ObjectSyncBatch", "CreateSyncConnectionBatch"])}) then {
 			diag_log "=========================================================================================";
 			diag_log _function;
 			diag_log _data;
@@ -68,11 +70,24 @@ addMissionEventHandler ["ExtensionCallback",{
 			// IS data that we need to process (call in)
 			switch (_method) do {
 				case "CreateSyncConnection": {
+					EOEX_var_ApplyingRemoteChanges = true;
 					[_data select 0, _data select 1, _data select 2] call EOEX_fnc_onReceiveCreateSyncConnection;
+					EOEX_var_ApplyingRemoteChanges = false;
+				};
+
+				case "CreateSyncConnectionBatch": {
+					EOEX_var_ApplyingRemoteChanges = true;
+					{
+						_x params ["_fromID", "_toID", "_type"];
+						[_fromID, _toID, _type, true] call EOEX_fnc_onReceiveCreateSyncConnection;
+					} forEach (_data select 0);
+					EOEX_var_ApplyingRemoteChanges = false;
 				};
 
 				case "RemoveSyncConnection": {
+					EOEX_var_ApplyingRemoteChanges = true;
 					[_data select 0, _data select 1, _data select 2] call EOEX_fnc_onReceiveRemoveSyncConnection;
+					EOEX_var_ApplyingRemoteChanges = false;
 				};
 
 				case "ServerShutdown": {
@@ -100,6 +115,7 @@ addMissionEventHandler ["ExtensionCallback",{
 				};
 
 				case "ObjectSyncData": {
+					EOEX_var_ApplyingRemoteChanges = true;
 					private _id = _data select 0;
 					private _attributeMap = createHashMapFromArray (_data select 1);
 					private _object = create3DENEntity ["Object", _attributeMap get "ItemClass", _attributeMap get "Position"];
@@ -109,37 +125,74 @@ addMissionEventHandler ["ExtensionCallback",{
 					} foreach _attributeMap;
 
 					_object setVariable ["EOEX_var_objectID",_id];
+					EOEX_var_Objects set [_id, _object];
+					EOEX_var_ApplyingRemoteChanges = false;
+				};
+
+				case "ObjectSyncBatch": {
+					EOEX_var_ApplyingRemoteChanges = true;
+					{
+						_x params ["_id", "_attributes"];
+						private _attributeMap = createHashMapFromArray _attributes;
+						private _object = create3DENEntity ["Object", _attributeMap get "ItemClass", _attributeMap get "Position"];
+
+						{
+							_object set3DENAttribute [_x, _y];
+						} forEach _attributeMap;
+
+						_object setVariable ["EOEX_var_objectID", _id];
+						EOEX_var_Objects set [_id, _object];
+					} forEach (_data select 0);
+					EOEX_var_ApplyingRemoteChanges = false;
 				};
 
 				case "ObjectCreated": {
+					EOEX_var_ApplyingRemoteChanges = true;
 					private _id = _data select 0;
 					private _map = createHashMapFromArray (_data select 1);
 					private _object = create3DENEntity ["Object", _map get "ItemClass", _map get "Position"];
 					_object setVariable ["EOEX_var_objectID",_id];
+					EOEX_var_Objects set [_id, _object];
+					EOEX_var_ApplyingRemoteChanges = false;
 				};
 
 				case "ObjectUpdated": {
 					private _id = _data select 0;
 					private _map = createHashMapFromArray (_data select 1);
 
-					{
-						private _objId = _x getVariable "EOEX_var_objectID";
-						if (!isNil "_objId" && _objId == _id) exitWith {
-							private _object = _x;
-							_object setVariable ["EOEX_updateRequested", true];
-							{
-								if (isNil "_x" || isNil "_y") then { continue };
-								_success = _object set3DENAttribute [_x, _y];
-								if !(_success) then { diag_log "ERROR: INVALID ATTRIBUTES" };
-							} forEach _map;
+					private _object = EOEX_var_Objects getOrDefault [_id, objNull];
+					if (isNull _object) then {
+						private _matches = (all3DENEntities # 0) select { _x getVariable ["EOEX_var_objectID", ""] == _id };
+						if (_matches isNotEqualTo []) then {
+							_object = _matches # 0;
+							EOEX_var_Objects set [_id, _object];
 						};
-					} forEach (all3DENEntities # 0);
+					};
+
+					if (!isNull _object) then {
+						EOEX_var_ApplyingRemoteChanges = true;
+						_object setVariable ["EOEX_updateRequested", true];
+						{
+							if (isNil "_x" || isNil "_y") then { continue };
+							private _success = _object set3DENAttribute [_x, _y];
+							if !(_success) then { diag_log "ERROR: INVALID ATTRIBUTES" };
+						} forEach _map;
+						EOEX_var_ApplyingRemoteChanges = false;
+					};
 				};
 
 				case "ObjectRemoved": {
+					EOEX_var_ApplyingRemoteChanges = true;
 					private _id = _data select 0;
-					private _objects = ((all3DENEntities # 0) select { _x getVariable ["EOEX_var_objectID","-1"] == _id });
-					delete3DENEntities _objects;
+					private _object = EOEX_var_Objects getOrDefault [_id, objNull];
+					if (isNull _object) then {
+						private _objects = ((all3DENEntities # 0) select { _x getVariable ["EOEX_var_objectID", ""] == _id });
+						delete3DENEntities _objects;
+					} else {
+						delete3DENEntities [_object];
+					};
+					EOEX_var_Objects deleteAt _id;
+					EOEX_var_ApplyingRemoteChanges = false;
 				};
 
 				case "CameraUpdate": {

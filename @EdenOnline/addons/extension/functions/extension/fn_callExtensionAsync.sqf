@@ -24,7 +24,7 @@ private _request = _function + "|" + str(_requestId); // Add ASYNC key to reques
 // Call Extension
 
 // TODO Temp
-if (_function != "CameraUpdate" && _function != "SetMissionAttribute") then {
+if (EOEX_var_DEBUG && {!(_function in ["CameraUpdate", "SetMissionAttribute", "CreateObjectsBatch", "CreateSyncConnectionsBatch"])}) then {
 	diag_log formatText ["REQUEST ASYNC: (%1|%2) WITH ARGS: %3", _function, _requestId, _arguments];
 };
 
@@ -89,7 +89,7 @@ if !(_success) exitWith {
 
 
 
-if (_function != "SetMissionAttribute") then {
+if (EOEX_var_DEBUG && {!(_function in ["SetMissionAttribute", "CreateObjectsBatch", "CreateSyncConnectionsBatch"])}) then {
 	diag_log formatText ["SUCCESS: (%1|%2): WITH DATA: %3", _function, _requestId, _returnData];
 };
 

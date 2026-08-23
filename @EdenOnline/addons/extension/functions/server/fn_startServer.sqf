@@ -17,6 +17,7 @@ if !((all3DENEntities) isEqualto [[],[],[],[],[],[],[],[-999]]) exitWith {
 */
 
 EOEX_var_expectedObjectSyncCount = -1;
+EOEX_var_Objects = createHashMap;
 
 //private _modHashes = (getLoadedModsInfo select {_x#6 != ""})  apply {_x#6};
 private _modHashes = [];
@@ -87,12 +88,22 @@ if (missionNamespace getVariable ["EOEX_var_syncMissionAttributes", false]) then
 
 private _allObjects = (all3DENEntities # 0);
 // Send current world edits to server
+private _objectBatch = [];
 {
     private _attributes = (_x get3DENAttributes "");
     private _id = _x call EOEX_fnc_getId;
 
-    ["CreateObject", [_id, _attributes]] call EOEX_fnc_callExtensionAsync;
+    _objectBatch pushBack [_id, _attributes];
+
+    if ((count _objectBatch) >= 64) then {
+        ["CreateObjectsBatch", [_objectBatch], false, 10] call EOEX_fnc_callExtensionAsync;
+        _objectBatch = [];
+    };
 } forEach _allObjects;
+
+if (_objectBatch isNotEqualTo []) then {
+    ["CreateObjectsBatch", [_objectBatch], false, 10] call EOEX_fnc_callExtensionAsync;
+};
 
 uiSleep 0.1;
 
@@ -100,6 +111,7 @@ uiSleep 0.1;
 
 // Send initial synced items list to server
 private _sentConnections = createHashMap;
+private _connectionBatch = [];
 
 {
     private _object = _x;
@@ -133,11 +145,20 @@ private _sentConnections = createHashMap;
 
         _sentConnections set [_key, true];
 
-        ["CreateSyncConnection", [_id, _toID, _connectionType]] call EOEX_fnc_callExtensionAsync;
+        _connectionBatch pushBack [_id, _toID, _connectionType];
+
+        if ((count _connectionBatch) >= 128) then {
+            ["CreateSyncConnectionsBatch", [_connectionBatch], false, 10] call EOEX_fnc_callExtensionAsync;
+            _connectionBatch = [];
+        };
 
     } forEach _connections;
 
 } forEach _allObjects;
+
+if (_connectionBatch isNotEqualTo []) then {
+    ["CreateSyncConnectionsBatch", [_connectionBatch], false, 10] call EOEX_fnc_callExtensionAsync;
+};
 
 
 private _timeoutSeconds = 30;

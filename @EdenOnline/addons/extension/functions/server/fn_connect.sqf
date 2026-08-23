@@ -44,6 +44,7 @@ if !(_continue) exitWith {};
 
 
 EOEX_var_expectedObjectSyncCount = -1;
+EOEX_var_Objects = createHashMap;
 
 //private _modHashes = (getLoadedModsInfo select {_x#6 != ""})  apply {_x#6};
 private _modHashes = [];

@@ -2,7 +2,11 @@
 params ["_object"];
 
 
-if (_object getVariable ["EOEX_var_objectID",""] != "") exitWith {_object getVariable ["EOEX_var_objectID",""]};
+private _existingID = _object getVariable ["EOEX_var_objectID", ""];
+if (_existingID != "") exitWith {
+    EOEX_var_Objects set [_existingID, _object];
+    _existingID
+};
 
 /*
     Generates a random ID like: "A9F3K2ZQ"
@@ -23,5 +27,6 @@ generateRandomId = {
 
 private _id = call generateRandomId;
 _object setVariable ["EOEX_var_objectID",_id];
+EOEX_var_Objects set [_id, _object];
 
 _id

@@ -36,10 +36,15 @@ public static partial class Extension {
     // message is dropped unless retried. Rather than retrying inline (which
     // would block/spin the calling thread), every outbound message is queued
     // and drained by a single dedicated worker thread. This keeps ordering
-    // intact, works fine with tens of thousands of queued calls, and never
-    // gives up on a message unless the callback pointer itself throws.
+    // intact and applies bounded backpressure during very large bursts instead
+    // of retaining every serialized payload in memory. Delivery never gives
+    // up on a message unless the callback pointer itself throws.
     // ---------------------------------------------------------------------
-    private static readonly BlockingCollection<(string method, string data)> _outbox = new(new ConcurrentQueue<(string, string)>());
+    private const int OutboundQueueCapacity = 256;
+    private static readonly BlockingCollection<(string method, string data)> _outbox = new(
+        new ConcurrentQueue<(string, string)>(),
+        OutboundQueueCapacity
+    );
 
     private static readonly Thread _outboxWorker = CreateOutboxWorker();
 
@@ -225,8 +230,8 @@ public static partial class Extension {
     /// Queues a response to be sent back to Arma 3. Delivery happens
     /// asynchronously on a dedicated worker thread, which automatically
     /// waits for the next frame and retries if Arma's callback buffer is
-    /// full - there is no cap on how many calls can be queued this way, so
-    /// this is safe to call in bursts of thousands.
+    /// full. The bounded queue applies backpressure to large producers so
+    /// bursts do not retain unbounded serialized payloads in memory.
     /// </summary>
     /// <param name="method"></param>
     /// <param name="data"></param>
@@ -241,7 +246,7 @@ public static partial class Extension {
 
         string dataString = Serializer.PrintArray(data);
 
-        Log(@$"EXTENSION >> ARMA >> [""{ExtensionName}"", ""{method}"", ""{dataString}""] (queued)");
+        Debug($"EXTENSION >> ARMA >> method={method}, payloadChars={dataString.Length} (queued)");
 
         _outbox.Add((method, dataString));
 
@@ -259,7 +264,7 @@ public static partial class Extension {
 
         string returnData = Serializer.PrintArray(data);
 
-        Log(@$"EXTENSION CALLBACK >> ARMA >> [""{ExtensionName}"", ""{method}"", ""{returnData}""] (queued)");
+        Debug($"EXTENSION CALLBACK >> ARMA >> method={method}, payloadChars={returnData.Length} (queued)");
 
         _outbox.Add((method, returnData));
     }

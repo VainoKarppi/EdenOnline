@@ -290,30 +290,65 @@ internal static class Serializer
     internal static string PrintArray(object?[]? array)
     {
         if (array == null) return "[]";
-        return "[" + string.Join(",", array.Select(PrintItem)) + "]";
+
+        var builder = new StringBuilder(Math.Max(2, array.Length * 4));
+        AppendArray(builder, array);
+        return builder.ToString();
     }
 
-    private static string PrintItem(object? item) => item switch
-    {
-        null => "nil",
-        bool b => b.ToString().ToLower(),
-        string s => $"\"{s}\"",
-        object[] arr => PrintArray(arr),
-        IDictionary<string, object?> dict => PrintDictionary(dict),
-        IEnumerable<object?> list => PrintArray(list.ToArray()),
-        _ => Convert.ToString(item, CultureInfo.InvariantCulture)!
-    };
+    private static void AppendArray(StringBuilder builder, IEnumerable<object?> array) {
+        builder.Append('[');
+
+        bool first = true;
+        foreach (object? item in array) {
+            if (!first) builder.Append(',');
+            AppendItem(builder, item);
+            first = false;
+        }
+
+        builder.Append(']');
+    }
+
+    private static void AppendItem(StringBuilder builder, object? item) {
+        switch (item) {
+            case null:
+                builder.Append("nil");
+                break;
+            case bool value:
+                builder.Append(value ? "true" : "false");
+                break;
+            case string value:
+                builder.Append('"').Append(value).Append('"');
+                break;
+            case object?[] array:
+                AppendArray(builder, array);
+                break;
+            case IDictionary<string, object?> dictionary:
+                AppendDictionary(builder, dictionary);
+                break;
+            case IEnumerable<object?> list:
+                AppendArray(builder, list);
+                break;
+            default:
+                builder.Append(Convert.ToString(item, CultureInfo.InvariantCulture));
+                break;
+        }
+    }
 
     // Converts Dictionary<string, object?> to Arma array format
-    private static string PrintDictionary(IDictionary<string, object?> dict)
-    {
-        if (dict.Count == 0) return "[]";
+    private static void AppendDictionary(StringBuilder builder, IDictionary<string, object?> dictionary) {
+        builder.Append('[');
 
-        var items = dict.Select(kvp =>
-            $"[\"{kvp.Key}\",{PrintItem(kvp.Value)}]"
-        );
+        bool first = true;
+        foreach ((string key, object? value) in dictionary) {
+            if (!first) builder.Append(',');
+            builder.Append("[\"").Append(key).Append("\",");
+            AppendItem(builder, value);
+            builder.Append(']');
+            first = false;
+        }
 
-        return "[" + string.Join(",", items) + "]";
+        builder.Append(']');
     }
     #endregion
 }

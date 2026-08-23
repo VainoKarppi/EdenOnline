@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
@@ -18,6 +19,7 @@ public static partial class MethodSystem {
     }
 
     private static readonly List<AnnotatedType> MethodContainers = [];
+    private static readonly ConcurrentDictionary<string, MethodInfo> MethodCache = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Registers a static class containing methods to be called by the extension.
@@ -49,8 +51,11 @@ public static partial class MethodSystem {
             int asyncKey = -1;
             bool async = pipeIndex >= 0 && int.TryParse(method[(pipeIndex + 1)..], out asyncKey);
 
-            // Add method info to context
-            ExtensionContext = (ExtensionContext ?? new ExtensionCallContext()) with { MethodName = method, AsyncKey = null };
+            // RVExtensionContext already creates the call context. Update that
+            // instance instead of cloning the full record for every method.
+            ExtensionCallContext context = ExtensionContext ??= new ExtensionCallContext();
+            context.MethodName = method;
+            context.AsyncKey = async ? asyncKey : null;
 
             // Handle internal tool requests
             if (Enum.TryParse<ExtensionResultCode>(originalMethod, true, out var code)) {
@@ -423,13 +428,7 @@ public static partial class MethodSystem {
     }
     
     private static bool MethodExists(string method) {
-        if (string.IsNullOrEmpty(method)) return false;
-
-        foreach (var container in MethodContainers) {
-            MethodInfo? methodInfo = container.Type.GetMethod(method, BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase);
-            if (methodInfo != null) return true;
-        }
-        return false;
+        return TryGetMethod(method, out _);
     }
 
     internal static bool IsVoidMethod(MethodInfo methodInfo) {
@@ -458,11 +457,26 @@ public static partial class MethodSystem {
     internal static MethodInfo GetMethod(string method) {
         if (string.IsNullOrEmpty(method)) throw new ArgumentException("Method name is null or empty.", nameof(method));
 
-        foreach (var container in MethodContainers) {
-            MethodInfo? methodInfo = container.Type.GetMethod(method, BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase);
-            if (methodInfo != null) return methodInfo;
-        }
+        if (TryGetMethod(method, out MethodInfo? methodInfo)) return methodInfo;
+
         throw new MissingMethodException($"Method '{method}' not found in registered method containers.");
+    }
+
+    private static bool TryGetMethod(string method, [NotNullWhen(true)] out MethodInfo? methodInfo) {
+        methodInfo = null;
+        if (string.IsNullOrEmpty(method)) return false;
+
+        if (MethodCache.TryGetValue(method, out methodInfo)) return true;
+
+        foreach (var container in MethodContainers) {
+            methodInfo = container.Type.GetMethod(method, BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase);
+            if (methodInfo == null) continue;
+
+            MethodCache.TryAdd(method, methodInfo);
+            return true;
+        }
+
+        return false;
     }
 
     // ----------------------------

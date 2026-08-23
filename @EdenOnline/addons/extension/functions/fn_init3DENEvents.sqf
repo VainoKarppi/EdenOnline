@@ -8,6 +8,9 @@ if (isNil "EOEX_var_AttributeQueues") then {
     EOEX_var_AttributeQueues = createHashMap;          // object --> [ [property, value], ... ]
     EOEX_var_AttributeTimers  = createHashMap;         // object --> scriptHandle (for terminate)
 };
+if (isNil "EOEX_var_ApplyingRemoteChanges") then { EOEX_var_ApplyingRemoteChanges = false };
+if (isNil "EOEX_var_SyncConnections") then { EOEX_var_SyncConnections = [] };
+if (isNil "EOEX_var_SyncConnectionKeys") then { EOEX_var_SyncConnectionKeys = createHashMap };
 
 // * OBJECTS
 
@@ -59,9 +62,12 @@ add3DENEventHandler ["OnPaste", {
 removeAll3DENEventHandlers "OnEditableEntityAdded";
 add3DENEventHandler ["OnEditableEntityAdded", {
 	params ["_entity"];
+	if (missionNamespace getVariable ["EOEX_var_ApplyingRemoteChanges", false]) exitWith {};
 	
-	diag_log typeName _entity;
-	diag_log _entity;
+	if (EOEX_var_DEBUG) then {
+		diag_log typeName _entity;
+		diag_log _entity;
+	};
 
 	// Object, Trigger, System
 	if (_entity isEqualType objNull) exitWith {
@@ -73,7 +79,7 @@ add3DENEventHandler ["OnEditableEntityAdded", {
 			private _id = _entity getVariable "EOEX_var_objectID";
 			if !(isNil "_id") exitWith {};
 
-			diag_log "NEW OBJECT CREATED";
+			if (EOEX_var_DEBUG) then { diag_log "NEW OBJECT CREATED" };
 
 			[_entity] spawn EOEX_fnc_createObject;
 		}
@@ -81,29 +87,37 @@ add3DENEventHandler ["OnEditableEntityAdded", {
 
 	// Group
 	if (_entity isEqualType grpNull) exitWith {
-		diag_log _entity;
-		diag_log "GROUP CREATED";
+		if (EOEX_var_DEBUG) then {
+			diag_log _entity;
+			diag_log "GROUP CREATED";
+		};
 	};
 
 	// Marker
 	if (_entity isEqualType "") exitWith {
-		diag_log _entity;
-		diag_log "MARKER CREATED";
+		if (EOEX_var_DEBUG) then {
+			diag_log _entity;
+			diag_log "MARKER CREATED";
+		};
 
 		[_entity] spawn EOEX_fnc_createMarker
 	};
 
 	// Waypoint
 	if (_entity isEqualType []) exitWith {
-		diag_log _entity;
-		diag_log "WAYPOINT CREATED";
+		if (EOEX_var_DEBUG) then {
+			diag_log _entity;
+			diag_log "WAYPOINT CREATED";
+		};
 	};
 
 	// LAYER OR COMMENT
 	if (_entity isEqualType 0) exitWith {
 		// TODO Comment runs: updateObjectAttributes for some reason?
-		diag_log _entity;
-		diag_log "LAYER OR COMMENT CREATED";
+		if (EOEX_var_DEBUG) then {
+			diag_log _entity;
+			diag_log "LAYER OR COMMENT CREATED";
+		};
 	};
 
 
@@ -111,6 +125,7 @@ add3DENEventHandler ["OnEditableEntityAdded", {
 
 add3DENEventHandler ["OnEditableEntityRemoved", {
 	params ["_entity"];
+	if (missionNamespace getVariable ["EOEX_var_ApplyingRemoteChanges", false]) exitWith {};
 
 	// FIX UNTIL THIS GETS FIXED BY BI (single object)
 	if (_entity isEqualType grpNull) exitWith {
@@ -127,20 +142,22 @@ add3DENEventHandler ["OnEditableEntityRemoved", {
 
 
 add3DENEventHandler ["OnEntityAttributeChanged", {
+	if (missionNamespace getVariable ["EOEX_var_ApplyingRemoteChanges", false]) exitWith {};
 	_this spawn EOEX_fnc_updateObjectAttributes;
 }];
 
 // * CONNECTIONS
 add3DENEventHandler ["OnConnectingEnd", {
     params ["_class", "_from", "_to"];
+    if (missionNamespace getVariable ["EOEX_var_ApplyingRemoteChanges", false]) exitWith {};
 
     if !(isNil "_to") exitWith {
-        diag_log "[EdenOnline] Dispatching CREATE connection.";
+        if (EOEX_var_DEBUG) then { diag_log "[EdenOnline] Dispatching CREATE connection." };
 
         [_class, _from, _to] spawn EOEX_fnc_createSyncConnection;
     };
 
-    diag_log "[EdenOnline] Dispatching REMOVE connection.";
+    if (EOEX_var_DEBUG) then { diag_log "[EdenOnline] Dispatching REMOVE connection." };
 
     [_class, _from] spawn EOEX_fnc_removeSyncConnection;
 }];

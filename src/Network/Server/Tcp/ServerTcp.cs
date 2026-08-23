@@ -163,7 +163,7 @@ public static partial class Server
             
             // If MessageId > 0, we expect a response from each client, which we will aggregate and send back to the sender once all responses are received or timeout occurs.
 
-            if (LogItem(LogLevel.Info)) Console.WriteLine($"[NETWORK] Broadcasting message {message.MessageId} from {message.SenderId} to client {client.Id} and waiting for response");
+            if (LogItem(LogLevel.Debug)) Console.WriteLine($"[NETWORK] Broadcasting message {message.MessageId} from {message.SenderId} to client {client.Id} and waiting for response");
 
             tasks.Add(Task.Run(async () =>
             {
@@ -184,7 +184,7 @@ public static partial class Server
 
                 NetworkMessage? returnMessage = await WaitWithTimeout(requestId);
 
-                if (LogItem(LogLevel.Info)) Console.WriteLine($"[NETWORK] Received response for broadcast message {message.MessageId} from client {client.Id}");
+                if (LogItem(LogLevel.Debug)) Console.WriteLine($"[NETWORK] Received response for broadcast message {message.MessageId} from client {client.Id}");
                 if (returnMessage == null || returnMessage.Payload == null) return null;
 
                 return MessageBuilder.UnpackPayload<object>(returnMessage.Payload);
@@ -232,7 +232,7 @@ public static partial class Server
     /// </summary>
     private static async Task ForwardTcpMessageToTarget(Connection sender, NetworkMessage message)
     {
-        if (LogItem(LogLevel.Info)) Console.WriteLine($"[NETWORK] Forwarding message {message.MessageId} from {message.SenderId} to {message.TargetId}");
+        if (LogItem(LogLevel.Debug)) Console.WriteLine($"[NETWORK] Forwarding message {message.MessageId} from {message.SenderId} to {message.TargetId}");
 
         Connection? target = null;
         int targetId = message.TargetId.FirstOrDefault(t => t > 0);

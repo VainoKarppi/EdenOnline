@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
@@ -26,7 +27,8 @@ public static class ServerStateManager
     public static Dictionary<int, string> UsernameList { get; set; } = [];
     public static ClientStateManager ServerObjectManager { get; } = new ClientStateManager();
     public static MissionAttributeManager MissionAttributeManager { get; } = new MissionAttributeManager();
-    public static List<ArmaSyncConnection> SyncConnections { get; set; } = [];
+    public static ConcurrentDictionary<(string FromID, string ToID, string Type), ArmaSyncConnection> SyncConnections { get; } = new();
+    public static ConcurrentDictionary<int, List<ArmaObject>> ObjectSyncSnapshots { get; } = new();
 
     public static void Reset()
     {
@@ -34,5 +36,6 @@ public static class ServerStateManager
         ServerObjectManager.Clear();
         MissionAttributeManager.Clear();
         SyncConnections.Clear();
+        ObjectSyncSnapshots.Clear();
     }
 }

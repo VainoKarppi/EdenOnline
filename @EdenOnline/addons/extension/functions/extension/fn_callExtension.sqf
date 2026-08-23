@@ -13,7 +13,7 @@ if (_fireAndForget) then {_function = _function + "|-1"};
 
 
 // TODO Temp
-if (_function != "CameraUpdate" && _function != "SetMissionAttribute") then {
+if (EOEX_var_DEBUG && {_function != "CameraUpdate" && _function != "SetMissionAttribute"}) then {
 	diag_log formatText ["REQUEST: %1 WITH ARGS: %2", _function, _arguments];
 };
 
@@ -31,6 +31,8 @@ if (isNil "_data") exitWith {};
 
 if (_return select 0 == "ERROR") exitWith { diag_log formatText ["ERROR: %1", _data select 0] };
 
-diag_log formatText ["SUCCESS WITH DATA: %1", _data select 0];
+if (EOEX_var_DEBUG) then {
+	diag_log formatText ["SUCCESS WITH DATA: %1", _data select 0];
+};
 
 _data select 0

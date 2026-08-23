@@ -5,8 +5,10 @@
 params ["_object"];
 
 // When object is removed via UNDO, this event will only run twice. once for group, once for unit
-diag_log "OBJECT REMOVED";
-diag_log _object;
+if (EOEX_var_DEBUG) then {
+	diag_log "OBJECT REMOVED";
+	diag_log _object;
+};
 
 if !(missionNamespace getVariable ["EOEX_var_Connected",false]) exitWith {};
 

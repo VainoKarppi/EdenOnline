@@ -28,6 +28,50 @@ public static partial class ArmaMethods
     }
 
     /// <summary>
+    /// Creates an initial group of synchronized objects with one extension and
+    /// one network call instead of one request/response cycle per object.
+    /// </summary>
+    public static async Task CreateObjectsBatch(object[] objectData)
+    {
+        if (!Client.IsTcpConnected())
+            throw new Exception("Client is not connected. Cannot create objects.");
+
+        List<ArmaObject> objects = ParseObjectBatch(objectData);
+        await Client.SendTcpMessageAsync(0, "CreateObjectsBatch", objects);
+    }
+
+    internal static List<ArmaObject> ParseObjectBatch(object[] objectData)
+    {
+        var objects = new List<ArmaObject>(objectData.Length);
+
+        foreach (object? item in objectData)
+        {
+            if (item is not object[] objectEntry || objectEntry.Length != 2)
+                throw new ArgumentException("Every object batch entry must contain an ID and an attribute array.", nameof(objectData));
+
+            string objectId = objectEntry[0]?.ToString() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(objectId))
+                throw new ArgumentException("Object batch entries must have a non-empty ID.", nameof(objectData));
+
+            if (objectEntry[1] is not object[] attributeEntries)
+                throw new ArgumentException($"Object '{objectId}' has an invalid attribute array.", nameof(objectData));
+
+            var attributes = new Dictionary<string, object?>();
+            foreach (object? attribute in attributeEntries)
+            {
+                if (attribute is not object[] pair || pair.Length != 2 || pair[0] is not string key)
+                    throw new ArgumentException($"Object '{objectId}' contains an invalid attribute entry.", nameof(objectData));
+
+                attributes[key] = pair[1];
+            }
+
+            objects.Add(new ArmaObject(objectId, attributes));
+        }
+
+        return objects;
+    }
+
+    /// <summary>
     /// Updates an existing synchronized object and sends the changes to the server.
     /// </summary>
     public static async Task UpdateObject(string objectID, Dictionary<string, object?> metadata)
@@ -73,6 +117,36 @@ public static partial class ArmaMethods
         await Client.SendTcpMessageAsync(0, "CreateSyncConnection", syncoConnection);
 
         Log($"[CLIENT] CreateSyncConnection sent: {fromID} -> {toID} ({type})");
+    }
+
+    public static async Task CreateSyncConnectionsBatch(object[] connectionData)
+    {
+        if (!Client.IsTcpConnected())
+            throw new Exception("Client is not connected. Cannot create connections.");
+
+        List<ArmaSyncConnection> connections = ParseConnectionBatch(connectionData);
+        await Client.SendTcpMessageAsync(0, "CreateSyncConnectionsBatch", connections);
+    }
+
+    internal static List<ArmaSyncConnection> ParseConnectionBatch(object[] connectionData)
+    {
+        var connections = new List<ArmaSyncConnection>(connectionData.Length);
+
+        foreach (object? item in connectionData)
+        {
+            if (item is not object[] entry || entry.Length != 3)
+                throw new ArgumentException("Every connection batch entry must contain source, target, and type.", nameof(connectionData));
+
+            string fromId = entry[0]?.ToString() ?? string.Empty;
+            string toId = entry[1]?.ToString() ?? string.Empty;
+            string type = entry[2]?.ToString() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(fromId) || string.IsNullOrWhiteSpace(toId) || string.IsNullOrWhiteSpace(type))
+                throw new ArgumentException("Connection batch values cannot be empty.", nameof(connectionData));
+
+            connections.Add(new ArmaSyncConnection(fromId, toId, type));
+        }
+
+        return connections;
     }
 
     /// <summary>

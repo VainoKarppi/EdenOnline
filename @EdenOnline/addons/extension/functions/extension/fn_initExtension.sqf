@@ -34,6 +34,9 @@ EOEX_var_extensionRequests = createHashMap;
 EOEX_var_Objects = createHashMap;
 EOEX_var_OtherClients = createHashMap;
 EOEX_var_SkipAttributeChange = createHashMap;
+EOEX_var_ApplyingRemoteChanges = false;
+EOEX_var_SyncConnections = [];
+EOEX_var_SyncConnectionKeys = createHashMap;
 
 EOEX_var_IsHost = false;
 
