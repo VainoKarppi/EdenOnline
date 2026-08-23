@@ -2,25 +2,22 @@
 
 params ["_object"];
 
-// When object is copied, this event will only run for the created unit group (not twice)
-diag_log "OBJECT CREATED";
-diag_log _object; // GROUP 
-
 if !(missionNamespace getVariable ["EOEX_var_Connected",false]) exitWith {};
 
-if (_object in allGroups) exitWith {}; // Dont sync groups for now...
-
-
 /*
-	_object = ((get3DENSelected "")#0#0);
-	_id = call EOEX_fnc_getId;
-	_attributes = (_object get3DENAttributes ""); 
-	["CreateObject", [_id, _attributes], true] call EOEX_fnc_callExtensionAsync;
-*/
-// ADD ID AND REGISTER TO LIST
+TODO WHEN CREATING A TRIGGER:
 
-// Make sure EOEX_var_objectID gets set, before testing if this object has been already added
-uiSleep 0.01;
+[RPT] 21:10:06 REQUEST ASYNC: (CreateObject|88000) WITH ARGS: ["LM1FJHVI",[["Position",[3931.03,3273.39,0]],["ItemClass",<null>]]]
+[RPT] 21:10:06 Error in expression <[["Position", _position], ["ItemClass", _class]]]] call EOEX_fnc_callExtensionAs>
+[RPT] 21:10:06   Error position: <_class]]]] call EOEX_fnc_callExtensionAs>
+[RPT] 21:10:06   Error Undefined variable in expression: _class
+[RPT] 21:10:06 File extension\functions\objects\fn_createObject.sqf..., line 20
+[RPT] 21:10:06 SUCCESS: (CreateObject|88000): WITH DATA: ["LM1FJHVI"]
+*/
+
+// Make sure EOEX_var_objectID gets set, before testing if this object has been already added (created by incoming packet)
+// TODO add similiar system as EOEX_var_SkipAttributeChange
+uiSleep 0.02;
 
 _id = _object getVariable "EOEX_var_objectID";
 if !(isNil "_id") exitWith {};
@@ -28,18 +25,7 @@ if !(isNil "_id") exitWith {};
 _id = _object call EOEX_fnc_getId;
 
 
-// TODO CREW
-
-
-// hint format ["Entity %1 is in layer %2", typeOf _entity, get3DENLayer _entity];
-
 private _class = (_object get3DENAttribute "ItemClass") select 0;
 private _position = (_object get3DENAttribute "Position") select 0;
 
 ["CreateObject", [_id, [["Position", _position], ["ItemClass", _class]]]] call EOEX_fnc_callExtensionAsync;
-
-// ["UpdateObject|-1",["2IF1IFLY",[["Rotation",[0,0,92.9759]],["Position",[6347.11,4252.56,5.90472]]]]]
-// ["CreateObject|-1",["F9W55J3T",[["Positions",[62.2814,4468.31,0]],["ItemClass","B_soldier_AA_F"]]]]
-
-// _data=[""2IF1IFLY"",[[""Rotation"",[0,0,92.9759]],[""Position"",[6347.11,4252.56,5.90472]]]]"
-// _data=[""S3R3WTJX"",[[""Positions"",[6912.68,2208.78,0]],[""ItemClass"",""B_soldier_M_F""]]]"

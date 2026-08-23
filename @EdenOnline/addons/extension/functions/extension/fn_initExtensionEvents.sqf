@@ -92,8 +92,13 @@ addMissionEventHandler ["ExtensionCallback",{
 
 				case "ObjectSyncData": {
 					private _id = _data select 0;
-					private _map = createHashMapFromArray (_data select 1);
-					private _object = create3DENEntity ["Object", _map get "ItemClass", _map get "Position"];
+					private _attributeMap = createHashMapFromArray (_data select 1);
+					private _object = create3DENEntity ["Object", _attributeMap get "ItemClass", _attributeMap get "Position"];
+					
+					{
+						_object set3DENAttribute [_x, _y];
+					} foreach _attributeMap;
+
 					_object setVariable ["EOEX_var_objectID",_id];
 				};
 
@@ -138,53 +143,7 @@ addMissionEventHandler ["ExtensionCallback",{
 				};
 
 				case "UpdateClientList": {
-					// Updates player list and their names.
-					// [[id,"name1"],[id,"name2"]]
-
-					// Make an independent copy of the previous client list
-					private _previousClients = missionNamespace getVariable ["EOEX_var_OtherClients", createHashMap];
-
-					_previousClients = +_previousClients;
-
-					// Create the new client list
-					private _otherClients = _data select 0;
-					private _newClients = createHashMapFromArray _otherClients;
-
-					// Detect newly connected clients
-					{
-						private _clientId = _x;
-
-						if !(_clientId in _previousClients) then {
-							private _username = _newClients get _clientId;
-
-							diag_log format ["[EXTENSION] Client connected: %1 (%2)", _clientId, _username];
-							systemChat format ["Client connected: %1 (%2)", _clientId, _username];
-						};
-					} forEach keys _newClients;
-
-					// Detect disconnected clients and remove their cameras
-					private _networkCameras = uiNamespace getVariable ["EOEX_var_networkCameras", createHashMap];
-
-					{
-						private _clientId = _x;
-
-						if !(_clientId in _newClients) then {
-							private _username = _previousClients getOrDefault [_clientId, format ["Client %1", _clientId]];
-
-							_networkCameras deleteAt _clientId;
-
-							diag_log format ["[EXTENSION] Client disconnected: %1 (%2)", _clientId, _username];
-							systemChat format ["Client disconnected: %1 (%2)", _clientId, _username];
-						};
-					} forEach keys _previousClients;
-
-					// Store the new client list
-					missionNamespace setVariable ["EOEX_var_OtherClients", _newClients];
-
-					uiNamespace setVariable ["EOEX_var_networkCameras", _networkCameras];
-
-					// Update client list UI
-					[] spawn EOEX_fnc_showPlayersDialog;
+					[_data select 0] spawn EOEX_fnc_updateClientList;
 				};
 
 				case "SetInitialMissionAttributes": {

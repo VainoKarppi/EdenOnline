@@ -35,6 +35,8 @@ public static partial class ArmaMethods
             SubscribeClientEvents();
 
             await ShowLoadingScreen(true, 10);
+            await Task.Delay(500); // Give receivers some time to process the changes (ping)
+
             await SyncUsernames(clientID, username);
 
             await ShowLoadingScreen(true, 20);
@@ -48,6 +50,8 @@ public static partial class ArmaMethods
             
 
             Log($"[CLIENT] Connect finished: {host}:{port}, clientID: {clientID}");
+
+            // TODO Make client send the message, that all objects were synced from Arma 3. 
             await ShowLoadingScreen(false, 100);
 
             return clientID;
@@ -162,7 +166,6 @@ public static partial class ArmaMethods
     private static async Task ShowLoadingScreen(bool enable, int progress)
     {
         await Client.SendTcpMessageAsync(-1, "LoadingScreen", [enable, progress]);
-        await Task.Delay(50);
     }
 
     private static async Task SyncUsernames(int clientID, string username)
@@ -205,17 +208,22 @@ public static partial class ArmaMethods
         int objectCount = await Client.RequestTcpDataAsync<int>(1, "GetObjectCount");
         Extension.SendToArma("ObjectSyncCount", [objectCount]);
 
+        Log($"[CLIENT] Syncing {objectCount} objects...");
+
+        int finalCount = 0;
         if (objectCount > 0) {
             List<ArmaObject>? objects = await Client.RequestTcpDataAsync<List<ArmaObject>>(1, "GetAllObjects");
+            finalCount = objects?.Count ?? 0;
 
             if (objects == null || objects.Count == 0)
                 throw new Exception("Failed to sync objects: Received null from server");
 
-            foreach (var obj in objects)
+            foreach (var obj in objects) 
                 Extension.SendToArma("ObjectSyncData", [obj.Id, obj.Attributes]);
         }
 
-        Log($"[CLIENT] Object sync complete. Total objects synced: {objectCount}");
+        if (objectCount != finalCount) Error($"[CLIENT] Object sync failed! ExpectedSyncCount: {objectCount}, Received: {finalCount}");
+        Log($"[CLIENT] Object sync complete. Total objects synced: {finalCount}");
     }
 
     private static async Task SyncConnections() {

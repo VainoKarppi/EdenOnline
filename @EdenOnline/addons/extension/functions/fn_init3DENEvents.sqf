@@ -56,14 +56,57 @@ add3DENEventHandler ["OnPaste", {
 	systemChat str(_this);
 }];
 */
-
+removeAll3DENEventHandlers "OnEditableEntityAdded";
 add3DENEventHandler ["OnEditableEntityAdded", {
 	params ["_entity"];
 	
-	_id = _entity getVariable "EOEX_var_objectID";
-	if !(isNil "_id") exitWith {};
+	diag_log typeName _entity;
+	diag_log _entity;
 
-	[_entity] spawn EOEX_fnc_createObject;
+	// Object, Trigger, System
+	if (_entity isEqualType objNull) exitWith {
+		if (_entity isKindOf "EmptyDetector") then {
+			// TRIGGER
+			[_entity] spawn EOEX_fnc_createTrigger;
+		} else {
+			// OBJECT AND SYSTEM
+			private _id = _entity getVariable "EOEX_var_objectID";
+			if !(isNil "_id") exitWith {};
+
+			diag_log "NEW OBJECT CREATED";
+
+			[_entity] spawn EOEX_fnc_createObject;
+		}
+	};
+
+	// Group
+	if (_entity isEqualType grpNull) exitWith {
+		diag_log _entity;
+		diag_log "GROUP CREATED";
+	};
+
+	// Marker
+	if (_entity isEqualType "") exitWith {
+		diag_log _entity;
+		diag_log "MARKER CREATED";
+
+		[_entity] spawn EOEX_fnc_createMarker
+	};
+
+	// Waypoint
+	if (_entity isEqualType []) exitWith {
+		diag_log _entity;
+		diag_log "WAYPOINT CREATED";
+	};
+
+	// LAYER OR COMMENT
+	if (_entity isEqualType 0) exitWith {
+		// TODO Comment runs: updateObjectAttributes for some reason?
+		diag_log _entity;
+		diag_log "LAYER OR COMMENT CREATED";
+	};
+
+
 }];
 
 add3DENEventHandler ["OnEditableEntityRemoved", {
@@ -76,7 +119,10 @@ add3DENEventHandler ["OnEditableEntityRemoved", {
 		} forEach get3DENSelected "object";
 	};
 
-	[_entity] call EOEX_fnc_deleteObject;
+	// OBJECT
+	if (_entity isEqualType objNull) exitWith {
+		[_entity] call EOEX_fnc_deleteObject;
+	};
 }];
 
 

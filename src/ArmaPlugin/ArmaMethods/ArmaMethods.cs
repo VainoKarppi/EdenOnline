@@ -21,4 +21,14 @@ public static partial class ArmaMethods
     /// Computes a SHA-256 hash of the given object for verification purposes.
     /// </summary>
     public static string GetHash(object item) => HashUtils.GetHash(item);
+
+    public static async Task StartApiServerAsync()
+    {
+        await ArmaApiServer.StartAsync();
+    }
+
+    public static void StopApiServer()
+    {
+        ArmaApiServer.Stop();
+    }
 }

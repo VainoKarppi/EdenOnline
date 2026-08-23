@@ -1,1 +1,91 @@
 
+
+
+// OBJECT
+[RPT] 21:25:05 "GROUP"
+[RPT] 21:25:05 B Alpha 1-5
+[RPT] 21:25:05 B Alpha 1-5
+[RPT] 21:25:05 "GROUP CREATED"
+
+
+[EXT] 21:25:06.051 | [Info] ARMA >> EXTENSION | ASYNC >> ["CreateObject|92378", ["JFFGIN27",[["Position",[2732.79,4148.78,0]],["ItemClass","B_soldier_AAR_F"]]]]
+[EXT] 21:25:06.051 | [Info] EXTENSION CALLBACK >> ARMA >> ["EdenOnline", "ASYNC_RESPONSE|92378|0", "["JFFGIN27"]"]
+[RPT] 21:25:06 "OBJECT"
+[RPT] 21:25:06 B Alpha 1-5:1
+[RPT] 21:25:06 "NEW OBJECT CREATED"
+[RPT] 21:25:06 REQUEST ASYNC: (CreateObject|92378) WITH ARGS: ["JFFGIN27",[["Position",[2732.79,4148.78,0]],["ItemClass","B_soldier_AAR_F"]]]
+[RPT] 21:25:06 SUCCESS: (CreateObject|92378): WITH DATA: ["JFFGIN27"]
+
+
+
+
+// TRIGGER
+[EXT] 21:42:27.642 | [Info] ARMA >> EXTENSION | ASYNC >> ["CreateObject|62661", ["O0PP5D0M",[["Position",[4365.46,3116.55,0]],["ItemClass",nil]]]]
+[EXT] 21:42:27.643 | [Info] EXTENSION CALLBACK >> ARMA >> ["EdenOnline", "ASYNC_RESPONSE|62661|0", "["O0PP5D0M"]"]
+[RPT] 21:42:27 "OBJECT"
+[RPT] 21:42:27 57: <no shape> EmptyDetector
+[RPT] 21:42:27 "NEW OBJECT CREATED"
+[RPT] 21:42:27 REQUEST ASYNC: (CreateObject|62661) WITH ARGS: ["O0PP5D0M",[["Position",[4365.46,3116.55,0]],["ItemClass",<null>]]]
+[RPT] 21:42:27 Error in expression <[["Position", _position], ["ItemClass", _class]]]] call EOEX_fnc_callExtensionAs>
+[RPT] 21:42:27   Error position: <_class]]]] call EOEX_fnc_callExtensionAs>
+[RPT] 21:42:27   Error Undefined variable in expression: _class
+[RPT] 21:42:27 File extension\functions\objects\fn_createObject.sqf..., line 20
+[RPT] 21:42:27 SUCCESS: (CreateObject|62661): WITH DATA: ["O0PP5D0M"]
+
+
+
+// SYSTEM
+[EXT] 21:43:00.335 | [Info] ARMA >> EXTENSION | ASYNC >> ["CreateObject|354", ["C4UOMIOD",[["Position",[4363.86,2933.83,0]],["ItemClass","ModuleRadio_F"]]]]
+[EXT] 21:43:00.336 | [Info] EXTENSION CALLBACK >> ARMA >> ["EdenOnline", "ASYNC_RESPONSE|354|0", "["C4UOMIOD"]"]
+[RPT] 21:43:00 "OBJECT"
+[RPT] 21:43:00 L Bravo 2-3:4
+[RPT] 21:43:00 "NEW OBJECT CREATED"
+[RPT] 21:43:00 REQUEST ASYNC: (CreateObject|354) WITH ARGS: ["C4UOMIOD",[["Position",[4363.86,2933.83,0]],["ItemClass","ModuleRadio_F"]]]
+[RPT] 21:43:00 SUCCESS: (CreateObject|354): WITH DATA: ["C4UOMIOD"]
+
+
+
+// WAYPOINT
+[RPT] 21:43:52 "ARRAY"
+[RPT] 21:43:52 [B Alpha 1-2,3]
+[RPT] 21:43:52 [B Alpha 1-2,3]
+[RPT] 21:43:52 "WAYPOINT CREATED"
+
+
+// MARKER
+[RPT] 21:44:11 "STRING"
+[RPT] 21:44:11 "marker_2"
+[RPT] 21:44:11 "marker_2"
+[RPT] 21:44:11 "MARKER CREATED"
+
+
+
+// LAYER
+[RPT] 21:44:41 "SCALAR"
+[RPT] 21:44:41 34
+[RPT] 21:44:41 34
+[RPT] 21:44:41 "LAYER OR COMMENT CREATED"
+
+
+
+// COMMENT
+[RPT] 21:45:27 "SCALAR"
+[RPT] 21:45:27 37
+[RPT] 21:45:27 37
+[RPT] 21:45:27 "LAYER OR COMMENT CREATED"
+
+
+[RPT] 21:45:30 Error in expression <n allGroups) exitWith {};
+[RPT] 
+[RPT] 
+[RPT] if (_entity getVariable ["EOEX_updateRequested", fal>
+[RPT] 21:45:30   Error position: <getVariable ["EOEX_updateRequested", fal>
+[RPT] 21:45:30   Error getvariable: Type Number, expected Namespace,Object,Group,Display (dialog),Control,Team member,Task,Location
+[RPT] 21:45:30 File extension\functions\objects\fn_updateObjectAttributes.sqf..., line 11
+[RPT] 21:45:30 Error in expression <n allGroups) exitWith {};
+[RPT] 
+[RPT] 
+[RPT] if (_entity getVariable ["EOEX_updateRequested", fal>
+[RPT] 21:45:30   Error position: <getVariable ["EOEX_updateRequested", fal>
+[RPT] 21:45:30   Error getvariable: Type Number, expected Namespace,Object,Group,Display (dialog),Control,Team member,Task,Location
+[RPT] 21:45:30 File extension\functions\objects\fn_updateObjectAttributes.sqf..., line 11

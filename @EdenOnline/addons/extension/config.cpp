@@ -52,6 +52,20 @@ class CfgFunctions
 
 			class getId {};
 		};
+        class Functions_Markers
+		{
+			file = "\extension\functions\markers";
+            class createMarker {};
+            class deleteMarker {};
+            class updateMarker {};
+		};
+        class Functions_Triggers
+		{
+			file = "\extension\functions\triggers";
+            class createTrigger {};
+            class deleteTrigger {};
+            class updateTrigger {};
+		};
         class Functions_Mission
 		{
 			file = "\extension\functions\mission";
@@ -70,6 +84,7 @@ class CfgFunctions
 			class showConnectDialog {};
             class showPlayersDialog {};
             class togglePlayButtons {};
+            class updateClientList {};
 		};
 	};
 };

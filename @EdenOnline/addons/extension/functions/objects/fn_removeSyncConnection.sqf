@@ -99,4 +99,4 @@ private _removedConnections = [];
 missionNamespace setVariable ["EOEX_var_SyncConnections", _connections];
 
 
-diag_log format ["[EdenOnline] RemoveSyncConnection complete. Removed %1 connection(s).",count _removedConnections];
+diag_log format ["[EdenOnline] RemoveSyncConnection complete. Removed %1 connection(s).", count _removedConnections];
