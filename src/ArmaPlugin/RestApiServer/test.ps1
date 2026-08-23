@@ -1,7 +1,7 @@
 $body = @{
     type = "function"
     method = "MYTAG_fnc_test"
-    code = 'hint "Hello from PowerShell";'
+    code = "params [\"_unit\"];\n\ndiag_log format [\n    \"Hello %1\",\n    _unit\n];"
 } | ConvertTo-Json
 
 Invoke-RestMethod `

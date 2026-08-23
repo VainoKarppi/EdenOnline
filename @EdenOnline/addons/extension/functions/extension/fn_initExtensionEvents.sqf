@@ -11,6 +11,7 @@ addMissionEventHandler ["ExtensionCallback",{
 
 	
 	if (_name == EOEX_var_extensionName) then {
+		_data = parseSimpleArray _data;
 
 		// Rest API requests
 		if (_function == "ApiServerCommand") exitWith {
@@ -22,8 +23,6 @@ addMissionEventHandler ["ExtensionCallback",{
 				missionNamespace setVariable [_function, compile _code];
 			};
 		};
-
-		_data = parseSimpleArray _data;
 
 		// Extension is requesting for data from arma
 		if (_function select [0,8] == "REQUEST|") exitWith {
