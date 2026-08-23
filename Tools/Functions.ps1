@@ -574,6 +574,7 @@ function Start-Arma {
         $launchArgs = "-window -mod=$modFolder -noBattleEye -nosplash -skipIntro -noPause -enableHT -hugePages -filePatching"
 
         Write-Host "Launching Arma 3..." -ForegroundColor Green
+        Write-Host "Parameters: $launchArgs"
         Start-Process -FilePath $armaExe -ArgumentList $launchArgs -NoNewWindow
 
         return $true
