@@ -76,7 +76,8 @@ public static partial class Server {
         NetworkMessage? returnMessage = await WaitWithTimeout(requestId);
         if (returnMessage == null || returnMessage.Payload == null) return default;
 
-        return MessageBuilder.UnpackPayload<TResult>(returnMessage.Payload);
+        string methodName = MessageBuilder.GetRequestMethodName(payload, type);
+        return MessageBuilder.UnpackResponsePayload<TResult>(returnMessage.Payload, targetId, methodName);
     }
 
 

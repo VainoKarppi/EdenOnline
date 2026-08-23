@@ -280,5 +280,166 @@ long unhandledEventAllocatedBytes = GC.GetAllocatedBytesForCurrentThread() - unh
 Console.WriteLine($"core event probe: unhandledCalls=100000, allocatedBytes={unhandledEventAllocatedBytes}, elapsedMs={unhandledEventStopwatch.ElapsedMilliseconds}");
 Assert(unhandledEventAllocatedBytes < 1_000_000, "Unsubscribed core events must not allocate argument arrays.");
 
+MethodBuilder.RegisterServerMethods(new ReflectionFallbackRpcMethods());
+MethodInfo callServerMethod = typeof(MethodBuilder)
+    .GetMethod("CallServerMethod", BindingFlags.NonPublic | BindingFlags.Static)!
+    .MakeGenericMethod(typeof(int));
+object[] fallbackArguments = Enumerable.Range(1, 16).Cast<object>().ToArray();
+var fallbackRequest = new NetworkMessage { SenderId = 68_195 };
+int fallbackResult = (int)callServerMethod.Invoke(null,
+    [nameof(ReflectionFallbackRpcMethods.SumWithRequestContext), fallbackRequest, fallbackArguments])!;
+Assert(fallbackResult == 68_331,
+    "Reflection-fallback RPC methods must receive the hidden NetworkMessage before their public arguments.");
+
+MethodInfo? createRemoteErrorPayloadMethod = typeof(MessageBuilder).GetMethod(
+    "CreateRemoteErrorPayload",
+    BindingFlags.NonPublic | BindingFlags.Static
+);
+MethodInfo? unpackResponsePayloadMethod = typeof(MessageBuilder).GetMethod(
+    "UnpackResponsePayload",
+    BindingFlags.NonPublic | BindingFlags.Static
+);
+Assert(createRemoteErrorPayloadMethod is not null && unpackResponsePayloadMethod is not null,
+    "RPC responses must expose a structured remote-error decoding seam.");
+
+const string remoteFailureMessage = "No object synchronization snapshot exists for client 68195.";
+string remoteErrorPayload = (string)createRemoteErrorPayloadMethod!.Invoke(null,
+    ["GetObjectSyncPage", new InvalidOperationException(remoteFailureMessage)])!;
+MethodInfo unpackObjectPageResponseMethod = unpackResponsePayloadMethod!
+    .MakeGenericMethod(typeof(List<ArmaObject>));
+
+RemoteMethodException? decodedRemoteFailure = null;
+try
+{
+    _ = unpackObjectPageResponseMethod.Invoke(null,
+        [remoteErrorPayload, 1, "GetObjectSyncPage"]);
+}
+catch (TargetInvocationException ex) when (ex.InnerException is RemoteMethodException remoteException)
+{
+    decodedRemoteFailure = remoteException;
+}
+
+Assert(decodedRemoteFailure is not null,
+    "A failed RPC response must throw RemoteMethodException instead of deserializing null.");
+Assert(decodedRemoteFailure!.TargetId == 1 && decodedRemoteFailure.MethodName == "GetObjectSyncPage",
+    "Remote RPC failures must identify their target and method.");
+Assert(decodedRemoteFailure.RemoteMessage == remoteFailureMessage,
+    "Remote RPC failures must preserve the actionable server error message.");
+Assert(decodedRemoteFailure.Message.Contains("GetObjectSyncPage", StringComparison.Ordinal)
+    && decodedRemoteFailure.Message.Contains("System.InvalidOperationException", StringComparison.Ordinal),
+    "Remote RPC failure messages exposed to Arma must include method and exception context.");
+
+string successfulPagePayload = DynTypeSerializer.Serializer.Serialize(new List<ArmaObject> { objectsToSync[0] });
+var decodedSuccessfulPage = (List<ArmaObject>)unpackObjectPageResponseMethod.Invoke(null,
+    [successfulPagePayload, 1, "GetObjectSyncPage"])!;
+Assert(decodedSuccessfulPage.Count == 1 && decodedSuccessfulPage[0].Id == "object-0",
+    "Successful RPC payloads must retain their existing wire format.");
+
+const int failingClientId = 68_195;
+KeyExchange.InitializeClientKeyExchange();
+KeyExchange.InitializeServerKeyExchange(
+    failingClientId,
+    Convert.ToBase64String(KeyExchange.ClientPublicKey!)
+);
+KeyExchange.ComputeClientSharedSecret(KeyExchange.GetServerPublicKey(failingClientId)!);
+
+var failingRequest = new NetworkMessage
+{
+    SenderId = failingClientId,
+    TargetId = [Server.SERVER_ID],
+    MessageType = MessageType.Custom,
+    MessageId = 7,
+    Payload = DynTypeSerializer.Serializer.Serialize(new RpcRequestFixture
+    {
+        MethodName = nameof(ReflectionFallbackRpcMethods.AlwaysFails),
+        Args = []
+    })
+};
+
+var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+listener.Start();
+int loopbackPort = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+using var responseReader = new System.Net.Sockets.TcpClient();
+await responseReader.ConnectAsync(System.Net.IPAddress.Loopback, loopbackPort);
+using System.Net.Sockets.TcpClient responseWriter = await listener.AcceptTcpClientAsync();
+listener.Stop();
+
+MethodInfo handleCustomMessageMethod = typeof(MessageBuilder).GetMethod(
+    "HandleCustomMessage",
+    BindingFlags.NonPublic | BindingFlags.Static
+)!;
+await (Task)handleCustomMessageMethod.Invoke(null,
+    [responseWriter.GetStream(), failingRequest, CancellationToken.None])!;
+
+MethodInfo readTcpMessageMethod = typeof(MessageBuilder).GetMethod(
+    "ReadTcpMessage",
+    BindingFlags.NonPublic | BindingFlags.Static,
+    binder: null,
+    types: [typeof(System.Net.Sockets.NetworkStream), typeof(int?)],
+    modifiers: null
+)!;
+var failedResponse = (NetworkMessage)readTcpMessageMethod.Invoke(null,
+    [responseReader.GetStream(), null])!;
+
+RemoteMethodException? transportedRemoteFailure = null;
+try
+{
+    _ = unpackObjectPageResponseMethod.Invoke(null,
+        [failedResponse.Payload, Server.SERVER_ID, nameof(ReflectionFallbackRpcMethods.AlwaysFails)]);
+}
+catch (TargetInvocationException ex) when (ex.InnerException is RemoteMethodException remoteException)
+{
+    transportedRemoteFailure = remoteException;
+}
+finally
+{
+    KeyExchange.RemoveServerKeyExchange(failingClientId);
+}
+
+Assert(transportedRemoteFailure?.RemoteMessage == ReflectionFallbackRpcMethods.FailureMessage,
+    "Thrown RPC methods must transport their server error instead of a null response.");
+
 Logger.CloseWriter();
 Console.WriteLine("Smoke tests passed.");
+
+public sealed class ReflectionFallbackRpcMethods
+{
+    public const string FailureMessage = "object synchronization page failed on the server";
+
+    public static int AlwaysFails(NetworkMessage request)
+    {
+        throw new InvalidOperationException(FailureMessage);
+    }
+
+    public static int SumWithRequestContext(
+        NetworkMessage request,
+        int value01,
+        int value02,
+        int value03,
+        int value04,
+        int value05,
+        int value06,
+        int value07,
+        int value08,
+        int value09,
+        int value10,
+        int value11,
+        int value12,
+        int value13,
+        int value14,
+        int value15,
+        int value16)
+    {
+        return request.SenderId
+            + value01 + value02 + value03 + value04
+            + value05 + value06 + value07 + value08
+            + value09 + value10 + value11 + value12
+            + value13 + value14 + value15 + value16;
+    }
+}
+
+public sealed class RpcRequestFixture
+{
+    public string? MethodName { get; init; }
+    public object?[] Args { get; init; } = [];
+}

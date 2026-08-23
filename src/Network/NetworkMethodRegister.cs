@@ -9,6 +9,12 @@ namespace DynTypeNetwork;
 
 
 public static class MethodBuilder {
+    private sealed class RegisteredRpcMethod(Delegate invoker, MethodInfo? method, bool invokeWithArgumentArray) {
+        public Delegate Invoker { get; } = invoker;
+        public MethodInfo? Method { get; } = method;
+        public bool InvokeWithArgumentArray { get; } = invokeWithArgumentArray;
+    }
+
     public class RpcMethodParameter {
         public string Name { get; set; } = null!;
         public Type Type { get; set; } = null!;
@@ -20,8 +26,8 @@ public static class MethodBuilder {
         public Type? ReturnType { get; set; }
     }
 
-    private static readonly Dictionary<string, Delegate> _serverDelegates = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly Dictionary<string, Delegate> _clientDelegates = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, RegisteredRpcMethod> _serverMethods = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, RegisteredRpcMethod> _clientMethods = new(StringComparer.OrdinalIgnoreCase);
 
     private static readonly Dictionary<string, RpcMethodInfo> _clientMethodInfos = [];
     private static readonly Dictionary<string, RpcMethodInfo> _serverMethodInfos = [];
@@ -62,9 +68,9 @@ public static class MethodBuilder {
             }
 
             if (!isServer)
-                _serverDelegates[rpcInfo.Name] = del;
+                _serverMethods[rpcInfo.Name] = new RegisteredRpcMethod(del, null, invokeWithArgumentArray: true);
             else
-                _clientDelegates[rpcInfo.Name] = del;
+                _clientMethods[rpcInfo.Name] = new RegisteredRpcMethod(del, null, invokeWithArgumentArray: true);
 
             dictInfos[rpcInfo.Name] = rpcInfo;
             registeredCount++;
@@ -80,6 +86,7 @@ public static class MethodBuilder {
             if (method.IsSpecialName) continue;
 
             Delegate del;
+            bool invokeWithArgumentArray = false;
             try {
                 // Try creating a strongly-typed delegate
                 var paramTypes = method.GetParameters().Select(p => p.ParameterType).ToArray();
@@ -91,6 +98,7 @@ public static class MethodBuilder {
             } catch (Exception ex) when (ex is ArgumentException || ex is NotSupportedException) {
                 // Fallback: use DynamicInvoke wrapper when native delegate creation is not supported in AOT/trimming builds.
                 del = new Func<object?[], object?>(args => method.Invoke(null, args));
+                invokeWithArgumentArray = true;
             }
 
             var rpcInfo = new RpcMethodInfo {
@@ -102,29 +110,31 @@ public static class MethodBuilder {
                 ReturnType = method.ReturnType == typeof(void) ? null : method.ReturnType
             };
 
+            var registeredMethod = new RegisteredRpcMethod(del, method, invokeWithArgumentArray);
+
             if (isServer) {
-                _serverDelegates[method.Name] = del;
+                _serverMethods[method.Name] = registeredMethod;
                 _serverMethodInfos[method.Name] = rpcInfo;
             } else {
-                _clientDelegates[method.Name] = del;
+                _clientMethods[method.Name] = registeredMethod;
                 _clientMethodInfos[method.Name] = rpcInfo;
             }
         }
     }
 
     internal static T? CallServerMethod<T>(string methodName, NetworkMessage message, params object[] args) =>
-        CallWithNetworkMessage<T>(_serverDelegates, methodName, message, args);
+        CallWithNetworkMessage<T>(_serverMethods, methodName, message, args);
 
     internal static T? CallClientMethod<T>(string methodName, NetworkMessage message, params object[] args) =>
-        CallWithNetworkMessage<T>(_clientDelegates, methodName, message, args);
+        CallWithNetworkMessage<T>(_clientMethods, methodName, message, args);
 
     // Helper for both server and client
-    private static T? CallWithNetworkMessage<T>(Dictionary<string, Delegate> delegates, string methodName, NetworkMessage message, object[] args)
+    private static T? CallWithNetworkMessage<T>(Dictionary<string, RegisteredRpcMethod> methods, string methodName, NetworkMessage message, object[] args)
     {
-        if (!delegates.TryGetValue(methodName, out var del))
+        if (!methods.TryGetValue(methodName, out RegisteredRpcMethod? registeredMethod))
             throw new InvalidOperationException($"{methodName} not registered.");
-        
-        MethodInfo method = del.Method;
+
+        MethodInfo method = registeredMethod.Method ?? registeredMethod.Invoker.Method;
         ParameterInfo[] parameters = method.GetParameters();
 
         object?[] finalArgs;
@@ -142,16 +152,12 @@ public static class MethodBuilder {
             finalArgs = args;
         }
         
-        bool isReflectionWrapper = !method.IsStatic
-            && parameters.Length == 1
-            && parameters[0].ParameterType == typeof(object[]);
-
         if (LogItem(LogLevel.Debug)) Console.WriteLine($"Invoking:{methodName} with args: [{string.Join(", ", finalArgs.Select(a => a?.ToString() ?? "null"))}] ({finalArgs.Length})");
         
-        if (isReflectionWrapper)
-            return (T?)del.DynamicInvoke([finalArgs]);
+        if (registeredMethod.InvokeWithArgumentArray)
+            return (T?)registeredMethod.Invoker.DynamicInvoke([finalArgs]);
 
-        return (T?)del.DynamicInvoke(finalArgs);
+        return (T?)registeredMethod.Invoker.DynamicInvoke(finalArgs);
     }
 
     private static bool FirstParameterIsNetworkMessage(MethodInfo method, out bool isOptional) {

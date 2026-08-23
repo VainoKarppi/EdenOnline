@@ -15,9 +15,22 @@ namespace DynTypeNetwork;
 
 
 
-public class RemoteMethodException(int targetId, string methodName, string message) : Exception(message) {
-    public int TargetId { get; } = targetId;
-    public string MethodName { get; } = methodName;
+public class RemoteMethodException : Exception {
+    public int TargetId { get; }
+    public string MethodName { get; }
+    public string RemoteMessage { get; }
+    public string? RemoteExceptionType { get; }
+
+    public RemoteMethodException(int targetId, string methodName, string message, string? remoteExceptionType = null)
+        : base($"Remote method '{methodName}' on target {targetId} failed"
+            + (string.IsNullOrWhiteSpace(remoteExceptionType) ? "" : $" ({remoteExceptionType})")
+            + $": {message}")
+    {
+        TargetId = targetId;
+        MethodName = methodName;
+        RemoteMessage = message;
+        RemoteExceptionType = remoteExceptionType;
+    }
 }
 
 public static class MethodResponseExtensions {
@@ -115,7 +128,8 @@ public static partial class Client {
         NetworkMessage? returnMessage = await WaitWithTimeout(requestId, TIMEOUT_MS);
         if (returnMessage?.Payload == null) throw new Exception($"No response received data for request {requestId}");
 
-        return MessageBuilder.UnpackPayload<TResult>(returnMessage.Payload);
+        string methodName = MessageBuilder.GetRequestMethodName(payload, type);
+        return MessageBuilder.UnpackResponsePayload<TResult>(returnMessage.Payload, targetId, methodName);
     }
 
     // ── HELPER OVERLOAD FOR SIMPLE CASE ───────

@@ -8,9 +8,6 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using DynTypeSerializer;
@@ -83,6 +80,15 @@ internal sealed class MethodResponse<T>
 {
     public bool Success { get; set; }
     public T? Result { get; set; }
+}
+
+internal sealed class RemoteMethodErrorPayload
+{
+    internal const string ProtocolPrefix = "DynTypeNetwork.RemoteMethodError.v1:";
+
+    public string MethodName { get; set; } = "<unknown>";
+    public string ExceptionType { get; set; } = nameof(Exception);
+    public string Message { get; set; } = "Remote method failed.";
 }
 
 public enum MessageType
@@ -345,6 +351,50 @@ public static class MessageBuilder
         if (string.IsNullOrEmpty(data)) return default;
         return Serializer.Deserialize<T>(data);
     }
+
+    internal static string CreateRemoteErrorPayload(string methodName, Exception exception)
+    {
+        Exception remoteException = exception.GetBaseException();
+        return RemoteMethodErrorPayload.ProtocolPrefix
+            + Serializer.Serialize(new RemoteMethodErrorPayload
+            {
+                MethodName = string.IsNullOrWhiteSpace(methodName) ? "<unknown>" : methodName,
+                ExceptionType = remoteException.GetType().FullName ?? remoteException.GetType().Name,
+                Message = remoteException.Message
+            });
+    }
+
+    internal static T? UnpackResponsePayload<T>(string? data, int targetId, string methodName)
+    {
+        if (TryUnpackRemoteError(data, out RemoteMethodErrorPayload? error) && error is not null)
+        {
+            string remoteMethodName = string.IsNullOrWhiteSpace(error.MethodName)
+                ? methodName
+                : error.MethodName;
+            throw new RemoteMethodException(targetId, remoteMethodName, error.Message, error.ExceptionType);
+        }
+
+        return UnpackPayload<T>(data);
+    }
+
+    internal static string GetRequestMethodName(object? payload, MessageType fallbackType)
+    {
+        return payload is MethodRequest methodRequest
+            ? methodRequest.MethodName ?? fallbackType.ToString()
+            : fallbackType.ToString();
+    }
+
+    private static bool TryUnpackRemoteError(string? data, out RemoteMethodErrorPayload? error)
+    {
+        error = null;
+        if (string.IsNullOrWhiteSpace(data)
+            || !data.StartsWith(RemoteMethodErrorPayload.ProtocolPrefix, StringComparison.Ordinal))
+            return false;
+
+        error = Serializer.Deserialize<RemoteMethodErrorPayload>(data[RemoteMethodErrorPayload.ProtocolPrefix.Length..]);
+        return error is not null;
+    }
+
     internal static byte[] CreatePacket(NetworkMessage msg)
     {
         return CreateTcpMessage(msg);
@@ -376,40 +426,46 @@ public static class MessageBuilder
 
     internal static async Task HandleCustomMessage(NetworkStream stream, NetworkMessage msg, CancellationToken token)
     {
-        // TODO handle errors. (Also dont waitForReturn on sender, if target method in opposite end is void, and returns nothing)
         object? result = null;
-        bool success = true;
+        string methodName = "<unknown>";
+        Exception? failure = null;
         try {
             MethodRequest? request = UnpackPayload<MethodRequest>(msg.Payload);
             if (request == null) throw new Exception("Unable to UnpackPayload"); // SHOULD NEVER HAPEN??
+            methodName = request.MethodName ?? throw new InvalidOperationException("Method name was not provided.");
 
             if (msg.TargetsServer) {
                 if (msg.MessageId > 0) {
                     // Is request (send response back to client)
-                    result = MethodBuilder.CallServerMethod<object>(request.MethodName!, msg, request.Args!);
+                    result = MethodBuilder.CallServerMethod<object>(methodName, msg, request.Args!);
                 } else {
                     // Is fire and forget
-                    _ = Task.Run(() => MethodBuilder.CallServerMethod<object>(request.MethodName!, msg, request.Args!), token);
+                    _ = Task.Run(() => MethodBuilder.CallServerMethod<object>(methodName, msg, request.Args!), token);
                     return; // Dont send response
                 }
             } else {
                 if (msg.MessageId > 0) {
                     // Is request (send response back to client)
-                    result = MethodBuilder.CallClientMethod<object>(request.MethodName!, msg, request.Args!);
+                    result = MethodBuilder.CallClientMethod<object>(methodName, msg, request.Args!);
                 } else {
                     // Is fire and forget
                     // Already validated on sender (Synced Method lists)
-                    _ = Task.Run(() => MethodBuilder.CallClientMethod<object>(request.MethodName!, msg, request.Args!), token);
+                    _ = Task.Run(() => MethodBuilder.CallClientMethod<object>(methodName, msg, request.Args!), token);
                     return; // Dont send response
                 }
             }
 
-            bool isVoidMethod = MethodBuilder.GetAvailableServerMethods().FirstOrDefault(m => m.Name.Equals(request.MethodName, StringComparison.OrdinalIgnoreCase))?.ReturnType == null;
+            MethodBuilder.RpcMethodInfo[] availableMethods = msg.TargetsServer
+                ? MethodBuilder.GetAvailableServerMethods()
+                : MethodBuilder.GetAvailableClientMethods();
+            bool isVoidMethod = availableMethods
+                .FirstOrDefault(m => m.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase))
+                ?.ReturnType == null;
             if (result == null && !isVoidMethod) throw new Exception("Result was expected, but not returned");
         } catch (Exception ex) {
-            if (LogItem(LogLevel.Debug)) Console.WriteLine(ex);
-            success = false;
-            //result = ex.Message;
+            failure = ex.GetBaseException();
+            if (LogItem(LogLevel.Error))
+                Console.WriteLine($"[NETWORK] Remote method '{methodName}' failed: {failure}");
         }
 
 
@@ -440,9 +496,15 @@ public static class MessageBuilder
         await stream.WriteAsync(packet, token);
         */
 
-        if (LogItem(LogLevel.Debug)) Console.WriteLine($"{(responseMessage.SenderId == Server.SERVER_ID ? "[SERVER]" : "[CLIENT]")} Sending response for method: SUCCESS:{success}, ({(result == null ? "null" : result.GetType().Name)}):{Serializer.Serialize(result)}");
-        
-        byte[] packet = CreatePacket(responseMessage, result);
+        byte[] packet;
+        if (failure is null) {
+            if (LogItem(LogLevel.Debug)) Console.WriteLine($"{(responseMessage.SenderId == Server.SERVER_ID ? "[SERVER]" : "[CLIENT]")} Sending response for method: SUCCESS, ({(result == null ? "null" : result.GetType().Name)}):{Serializer.Serialize(result)}");
+            packet = CreatePacket(responseMessage, result);
+        } else {
+            responseMessage.Payload = CreateRemoteErrorPayload(methodName, failure);
+            packet = CreatePacket(responseMessage);
+        }
+
         await stream.WriteAsync(packet, token);
     }
     internal static ushort GenerateRequestId(ref int requestId)

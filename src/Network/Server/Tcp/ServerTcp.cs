@@ -187,7 +187,7 @@ public static partial class Server
                 if (LogItem(LogLevel.Debug)) Console.WriteLine($"[NETWORK] Received response for broadcast message {message.MessageId} from client {client.Id}");
                 if (returnMessage == null || returnMessage.Payload == null) return null;
 
-                return MessageBuilder.UnpackPayload<object>(returnMessage.Payload);
+                return MessageBuilder.UnpackResponsePayload<object>(returnMessage.Payload, client.Id, "<broadcast>");
             }));
         }
         
