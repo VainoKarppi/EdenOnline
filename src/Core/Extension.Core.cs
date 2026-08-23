@@ -43,17 +43,12 @@ public static partial class Extension {
 
     private static readonly Thread _outboxWorker = CreateOutboxWorker();
 
-    // When the buffer is full we don't know exactly when it'll be drained,
-    // so instead of sleeping a flat amount every time, we spin first (cheap,
-    // catches the buffer clearing faster than a frame) and only fall back to
-    // sleeping - with a small growing backoff - if it stays full. This keeps
-    // large bursts (tens of thousands of queued calls) moving as fast as
-    // Arma can actually drain them instead of being capped at one retry per
-    // fixed interval.
-    private const int SpinRetriesBeforeSleep = 20;
-    private const int InitialBackoffMs = 1;
-    private const int MaxBackoffMs = 16; // one frame at 60 fps, as a ceiling
-
+    // The callback's return value is a definitive, real-time signal: >= 0
+    // means accepted, negative means the buffer is currently full. There's
+    // nothing to predict here, so retries are purely reactive - ask again
+    // immediately rather than guessing how long to wait. Thread.Yield() (not
+    // Sleep) is used between attempts so the retry loop doesn't peg a CPU
+    // core at 100%, while still re-checking essentially as fast as possible.
     private static Thread CreateOutboxWorker() {
         Thread t = new(ProcessOutbox) {
             IsBackground = true,
@@ -94,41 +89,26 @@ public static partial class Extension {
 
     /// <summary>
     /// Delivers a single message to Arma, retrying indefinitely whenever the
-    /// callback buffer is full. Retries start as a tight spin (no delay) and
-    /// only escalate to a small, growing sleep if the buffer stays full, so
-    /// throughput adapts to how fast Arma is actually draining the buffer
-    /// instead of assuming a fixed frame interval. Only stops if the
-    /// callback itself throws.
+    /// callback buffer is full. Purely reactive to the callback's own return
+    /// value - no fixed or estimated delay is used, since the return value
+    /// already tells us in real time whether the buffer had room. Only
+    /// stops if the callback itself throws.
     /// </summary>
     private static void DeliverToArma(string method, string data) {
-        int spinAttempts = 0;
-        int backoffMs = InitialBackoffMs;
-
         while (true) {
             try {
                 if (!TryInvokeCallback(method, data, out int remainingSlots)) {
-                    // Not registered yet (or unregistered) - wait and retry
+                    // Not registered yet (or unregistered) - yield and retry
                     // instead of dropping the message.
-                    Thread.Sleep(MaxBackoffMs);
+                    Thread.Yield();
                     continue;
                 }
 
-                if (remainingSlots >= 0) return; // accepted this frame
+                if (remainingSlots >= 0) return; // accepted
 
-                // Negative return = buffer was full. Spin a handful of times
-                // with no delay first, since the buffer may clear well
-                // before a full frame elapses (especially when calling from
-                // a background thread, per Arma's own docs). Only once
-                // spinning fails to find room do we start sleeping, and even
-                // then we ramp the delay up gradually instead of jumping
-                // straight to a full frame's worth of wait.
-                if (spinAttempts < SpinRetriesBeforeSleep) {
-                    spinAttempts++;
-                    Thread.SpinWait(200);
-                } else {
-                    Thread.Sleep(backoffMs);
-                    backoffMs = Math.Min(backoffMs * 2, MaxBackoffMs);
-                }
+                // Negative return = buffer was full right now. The buffer
+                // could clear at any point, so just ask again immediately.
+                Thread.Yield();
             } catch (Exception ex) {
                 Events.RaiseErrorOccurred(ex);
                 Error(ex.Message);
@@ -241,7 +221,7 @@ public static partial class Extension {
 
         string dataString = Serializer.PrintArray(data);
 
-        Log(@$"EXTENSION >> ARMA >> [""{ExtensionName}"", ""{method}"", ""{dataString}""] (queued)");
+        Debug(@$"EXTENSION >> ARMA >> [""{ExtensionName}"", ""{method}"", ""{dataString}""] (queued)");
 
         _outbox.Add((method, dataString));
 
@@ -259,7 +239,7 @@ public static partial class Extension {
 
         string returnData = Serializer.PrintArray(data);
 
-        Log(@$"EXTENSION CALLBACK >> ARMA >> [""{ExtensionName}"", ""{method}"", ""{returnData}""] (queued)");
+        Debug(@$"EXTENSION CALLBACK >> ARMA >> [""{ExtensionName}"", ""{method}"", ""{returnData}""] (queued)");
 
         _outbox.Add((method, returnData));
     }
