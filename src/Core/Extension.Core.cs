@@ -49,11 +49,9 @@ public static partial class Extension {
     private static readonly Thread _outboxWorker = CreateOutboxWorker();
 
     // The callback's return value is a definitive, real-time signal: >= 0
-    // means accepted, negative means the buffer is currently full. There's
-    // nothing to predict here, so retries are purely reactive - ask again
-    // immediately rather than guessing how long to wait. Thread.Yield() (not
-    // Sleep) is used between attempts so the retry loop doesn't peg a CPU
-    // core at 100%, while still re-checking essentially as fast as possible.
+    // means accepted, negative means the current frame's buffer is full. A
+    // capped exponential backoff avoids spinning a CPU core while converging
+    // on roughly one retry per normal frame when Arma stays unavailable.
     private static Thread CreateOutboxWorker() {
         Thread t = new(ProcessOutbox) {
             IsBackground = true,
@@ -100,20 +98,22 @@ public static partial class Extension {
     /// stops if the callback itself throws.
     /// </summary>
     private static void DeliverToArma(string method, string data) {
+        int retryDelayMs = 1;
         while (true) {
             try {
                 if (!TryInvokeCallback(method, data, out int remainingSlots)) {
-                    // Not registered yet (or unregistered) - yield and retry
+                    // Not registered yet (or unregistered) - back off and retry
                     // instead of dropping the message.
-                    Thread.Yield();
+                    Thread.Sleep(retryDelayMs);
+                    retryDelayMs = Math.Min(16, retryDelayMs * 2);
                     continue;
                 }
 
                 if (remainingSlots >= 0) return; // accepted
 
-                // Negative return = buffer was full right now. The buffer
-                // could clear at any point, so just ask again immediately.
-                Thread.Yield();
+                // Negative return = this frame's callback buffer is full.
+                Thread.Sleep(retryDelayMs);
+                retryDelayMs = Math.Min(16, retryDelayMs * 2);
             } catch (Exception ex) {
                 Events.RaiseErrorOccurred(ex);
                 Error(ex.Message);

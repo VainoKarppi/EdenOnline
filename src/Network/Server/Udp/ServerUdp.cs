@@ -42,7 +42,7 @@ public static partial class Server
                     int? senderId = Clients.Values.FirstOrDefault(c => c.UdpEndpoint != null && c.UdpEndpoint.Equals(result.RemoteEndPoint))?.Id;
                     NetworkMessage msg = MessageBuilder.ReadUdpMessage(result.Buffer, includeData: true, senderId: senderId);
 
-                    if (!Clients.TryGetValue(msg.SenderId, out var senderClient)) continue;
+                    if (!Clients.TryGetValue(msg.SenderId, out var senderClient) || !senderClient.Authenticated) continue;
 
                     if (msg.MessageType == MessageType.UdpRegister)
                     {
@@ -79,7 +79,7 @@ public static partial class Server
                     {
                         foreach (var targetId in msg.TargetId.Where(t => t > 0))
                         {
-                            if (!Clients.TryGetValue(targetId, out var targetClient) || targetClient.UdpEndpoint == null)
+                            if (!Clients.TryGetValue(targetId, out var targetClient) || !targetClient.Authenticated || targetClient.UdpEndpoint == null)
                             {
                                 if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER UDP] Cannot forward, target {targetId} not available.");
                                 continue;
@@ -123,7 +123,7 @@ public static partial class Server
 
         foreach (var client in Clients.Values)
         {
-            if (!client.Connected || client.Id == sender.Id || client.UdpEndpoint == null) continue;
+            if (!client.Connected || !client.Authenticated || client.Id == sender.Id || client.UdpEndpoint == null) continue;
 
             if (message.TargetId.Any(t => t < 0) && message.TargetId.Any(t => Math.Abs(t) == client.Id)) continue;
 

@@ -13,8 +13,19 @@ if (isNil "EOEX_var_extensionRequests") then {
 	if (!_initSuccess) exitWith {};
 };
 
-// Insert request id to function
-private _requestId = if (_fireAndForget) then {-1} else {ceil(random 99999)};
+// Use collision-free monotonic IDs. Random IDs collide quickly when thousands
+// of objects are created at once and can route a response to the wrong waiter.
+private _requestId = -1;
+if !(_fireAndForget) then {
+	private _nextRequestId = missionNamespace getVariable ["EOEX_var_extensionRequestId", 0];
+	while {true} do {
+		_nextRequestId = _nextRequestId + 1;
+		if (_nextRequestId > 2000000000) then { _nextRequestId = 1 };
+		if !(_nextRequestId in EOEX_var_extensionRequests) exitWith {};
+	};
+	EOEX_var_extensionRequestId = _nextRequestId;
+	_requestId = _nextRequestId;
+};
 
 EOEX_var_extensionRequests set [_requestId, _function];
 
@@ -77,10 +88,10 @@ while {(diag_tickTime - _startTime) < _timeout} do {
 	_loop = _loop + 1;
 };
 
-if !(EOEX_var_DEBUG) then {
-	EOEX_var_extensionResponses deleteAt _requestId;
-	EOEX_var_extensionRequests deleteAt _requestId;
-};
+// Always release completed and timed-out requests. Debug mode controls logging,
+// not lifetime; retaining these maps makes long sessions progressively slower.
+EOEX_var_extensionResponses deleteAt _requestId;
+EOEX_var_extensionRequests deleteAt _requestId;
 
 if !(_success) exitWith {
 	diag_log formatText ["ERROR: (%1|%2): %3", _function, _requestId, _returnData];

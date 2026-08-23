@@ -81,6 +81,183 @@ var parsedObjectBatch = (List<ArmaObject>)parseObjectBatchMethod!.Invoke(null, [
 Assert(parsedObjectBatch.Count == 1 && parsedObjectBatch[0].Id == "host-object-1", "Host object batches must preserve object IDs.");
 Assert(parsedObjectBatch[0].Attributes.Count == 2, "Host object batches must preserve all attributes.");
 
+var beginInitialSyncMethod = typeof(ServerStateManager).GetMethod("BeginInitialSync", BindingFlags.Public | BindingFlags.Static);
+var initialSyncReadyProperty = typeof(ServerStateManager).GetProperty("IsInitialSyncReady", BindingFlags.Public | BindingFlags.Static);
+var completeInitialSyncMethod = typeof(ServerNetworkMethods).GetMethod("CompleteInitialSync", BindingFlags.Public | BindingFlags.Static);
+Assert(beginInitialSyncMethod is not null && initialSyncReadyProperty is not null && completeInitialSyncMethod is not null,
+    "Host startup must expose an explicit initial-sync readiness contract.");
+
+const int hostClientId = 2;
+beginInitialSyncMethod!.Invoke(null, [hostClientId]);
+Assert(!(bool)initialSyncReadyProperty!.GetValue(null)!, "Starting host initialization must close the server readiness gate.");
+
+ServerStateManager.ServerObjectManager.Clear();
+ServerStateManager.SyncConnections.Clear();
+ServerStateManager.ServerObjectManager.AddOrUpdateObject(parsedObjectBatch[0]);
+var readinessConnection = new ArmaSyncConnection("host-object-1", "host-object-2", "Sync");
+ServerStateManager.SyncConnections.TryAdd(
+    (readinessConnection.FromID, readinessConnection.ToID, readinessConnection.Type),
+    readinessConnection
+);
+
+bool unauthorizedCompletionRejected = false;
+try
+{
+    _ = completeInitialSyncMethod!.Invoke(null, [new NetworkMessage { SenderId = hostClientId + 1 }, 1, 1]);
+}
+catch (TargetInvocationException ex) when (ex.InnerException is InvalidOperationException)
+{
+    unauthorizedCompletionRejected = true;
+}
+Assert(unauthorizedCompletionRejected, "Only the host may open the initial-sync readiness gate.");
+
+bool incompleteSnapshotRejected = false;
+try
+{
+    _ = completeInitialSyncMethod!.Invoke(null, [new NetworkMessage { SenderId = hostClientId }, 2, 1]);
+}
+catch (TargetInvocationException ex) when (ex.InnerException is InvalidOperationException)
+{
+    incompleteSnapshotRejected = true;
+}
+Assert(incompleteSnapshotRejected, "The host must not become ready when uploaded counts do not match.");
+Assert(!(bool)initialSyncReadyProperty.GetValue(null)!, "A rejected completion must leave the readiness gate closed.");
+
+Assert((bool)completeInitialSyncMethod!.Invoke(null, [new NetworkMessage { SenderId = hostClientId }, 1, 1])!,
+    "A complete host snapshot should open the readiness gate.");
+Assert((bool)initialSyncReadyProperty.GetValue(null)!, "A verified host snapshot must make the server ready for joins.");
+
+var registerServerAuthenticationMethod = typeof(ArmaMethods).GetMethod(
+    "RegisterServerAuthentication",
+    BindingFlags.NonPublic | BindingFlags.Static
+);
+Assert(registerServerAuthenticationMethod is not null, "Host authentication must be configurable for the readiness check.");
+object[] expectedModHashes = ["mod-a", "mod-b"];
+registerServerAuthenticationMethod!.Invoke(null, ["Altis", "2.22", expectedModHashes, "secret"]);
+object[] validAuthentication = ["Altis", "2.22", new object[] { "mod-b", "mod-a" }, "secret"];
+
+beginInitialSyncMethod.Invoke(null, [hostClientId]);
+Client.ClientID = hostClientId;
+(bool remoteJoinWhileLoading, string? remoteJoinError) = await Authentication.ServerValidateAsync(hostClientId + 1, validAuthentication);
+Assert(!remoteJoinWhileLoading && remoteJoinError?.Contains("still loading", StringComparison.OrdinalIgnoreCase) == true,
+    "Remote clients must receive an actionable rejection while the host snapshot is incomplete.");
+(bool hostJoinWhileLoading, string? hostJoinError) = await Authentication.ServerValidateAsync(hostClientId, validAuthentication);
+Assert(hostJoinWhileLoading && hostJoinError is null, "The local host must be admitted while publishing initial state.");
+
+Assert((bool)completeInitialSyncMethod.Invoke(null, [new NetworkMessage { SenderId = hostClientId }, 1, 1])!,
+    "The host should be able to open the admission gate after authentication.");
+(bool remoteJoinAfterReady, string? remoteJoinAfterReadyError) = await Authentication.ServerValidateAsync(hostClientId + 1, validAuthentication);
+Assert(remoteJoinAfterReady && remoteJoinAfterReadyError is null,
+    "Remote clients must be admitted after the verified host snapshot is ready.");
+Client.ClientID = 0;
+ServerStateManager.Reset();
+
+// Exercise the real handshake/authentication ordering, not only the validator.
+// Rejected clients must never enter the server's broadcast-visible collection.
+var admissionPortProbe = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+admissionPortProbe.Start();
+int admissionPort = ((System.Net.IPEndPoint)admissionPortProbe.LocalEndpoint).Port;
+admissionPortProbe.Stop();
+
+Authentication.Enabled = true;
+Authentication.ServerDropOnFail = true;
+Authentication.SetClientAuthentication(() => Task.FromResult<object[]?>([]));
+Authentication.SetServerValidator((int _, object[]? _) => Task.FromResult(false));
+await Server.StartAsync(admissionPort);
+
+bool rejectedClientFailedToConnect = false;
+try
+{
+    await Client.ConnectAsync("127.0.0.1", admissionPort);
+}
+catch
+{
+    rejectedClientFailedToConnect = true;
+}
+
+await Task.Delay(50);
+Assert(rejectedClientFailedToConnect, "A rejected client connection must fail.");
+Assert(Server.Clients.IsEmpty, "A rejected client must never become visible to server broadcasts.");
+
+Authentication.SetServerValidator((int _, object[]? _) => Task.FromResult(true));
+int admittedClientId = await Client.ConnectAsync("127.0.0.1", admissionPort);
+for (int attempt = 0; attempt < 100 && !Server.Clients.ContainsKey(admittedClientId); attempt++)
+    await Task.Delay(10);
+Assert(Server.Clients.TryGetValue(admittedClientId, out Server.Connection? admittedClient)
+    && admittedClient.Authenticated,
+    "A successful client must become visible only after authentication.");
+
+await Client.DisconnectAsync();
+await Server.StopAsync();
+Authentication.ClientAuthenticated = null;
+
+MethodInfo? writeTcpPacketMethod = typeof(MessageBuilder).GetMethod(
+    "WriteTcpPacketAsync",
+    BindingFlags.NonPublic | BindingFlags.Static
+);
+MethodInfo? createRawPacketMethod = typeof(MessageBuilder).GetMethod(
+    "CreatePacket",
+    BindingFlags.NonPublic | BindingFlags.Static,
+    binder: null,
+    types: [typeof(NetworkMessage)],
+    modifiers: null
+);
+MethodInfo? readSerializedPacketMethod = typeof(MessageBuilder).GetMethod(
+    "ReadTcpMessage",
+    BindingFlags.NonPublic | BindingFlags.Static,
+    binder: null,
+    types: [typeof(System.Net.Sockets.NetworkStream), typeof(int?)],
+    modifiers: null
+);
+Assert(writeTcpPacketMethod is not null && createRawPacketMethod is not null && readSerializedPacketMethod is not null,
+    "TCP transport must expose one serialized packet writer per stream.");
+
+var serializedWriterListener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+serializedWriterListener.Start();
+int serializedWriterPort = ((System.Net.IPEndPoint)serializedWriterListener.LocalEndpoint).Port;
+using var serializedPacketReader = new System.Net.Sockets.TcpClient();
+await serializedPacketReader.ConnectAsync(System.Net.IPAddress.Loopback, serializedWriterPort);
+using System.Net.Sockets.TcpClient serializedPacketWriter = await serializedWriterListener.AcceptTcpClientAsync();
+serializedWriterListener.Stop();
+
+const int concurrentPacketCount = 128;
+byte[][] concurrentPackets = Enumerable.Range(1, concurrentPacketCount)
+    .Select(index => (byte[])createRawPacketMethod!.Invoke(null, [new NetworkMessage
+    {
+        SenderId = 2,
+        TargetId = [Server.SERVER_ID],
+        MessageType = MessageType.Handshake,
+        MessageId = (ushort)index,
+        Payload = new string((char)('A' + index % 26), 32_768)
+    }])!)
+    .ToArray();
+
+Task<HashSet<ushort>> packetReaderTask = Task.Run(() =>
+{
+    var receivedIds = new HashSet<ushort>();
+    for (int index = 0; index < concurrentPacketCount; index++)
+    {
+        var received = (NetworkMessage)readSerializedPacketMethod!.Invoke(null,
+            [serializedPacketReader.GetStream(), null])!;
+        receivedIds.Add(received.MessageId);
+        Assert(received.Payload?.Length == 32_768, "Concurrent TCP writes must preserve complete packet payloads.");
+    }
+    return receivedIds;
+});
+
+Task[] concurrentWrites = concurrentPackets.Select(async packet =>
+{
+    object? pendingWrite = writeTcpPacketMethod!.Invoke(null,
+        [serializedPacketWriter.GetStream(), new ReadOnlyMemory<byte>(packet), CancellationToken.None]);
+    Assert(pendingWrite is ValueTask, "Serialized TCP writer must return a ValueTask.");
+    await ((ValueTask)pendingWrite!);
+}).ToArray();
+
+await Task.WhenAll(concurrentWrites);
+HashSet<ushort> concurrentPacketIds = await packetReaderTask.WaitAsync(TimeSpan.FromSeconds(10));
+Assert(concurrentPacketIds.Count == concurrentPacketCount,
+    "Concurrent TCP producers must deliver every framed packet exactly once.");
+
 const int largeObjectCount = 50_000;
 const int tcpMessageLimitBytes = 10_000_000;
 const int objectSyncPageSize = 1024;
@@ -143,6 +320,20 @@ Assert(callbackSerializationAllocatedBytes < 150_000_000, "50,000-object callbac
 string unpagedObjectPayload = DynTypeSerializer.Serializer.Serialize(largeObjectSet);
 int unpagedObjectPayloadBytes = Encoding.UTF8.GetByteCount(unpagedObjectPayload);
 Assert(unpagedObjectPayloadBytes > tcpMessageLimitBytes, "The 50,000-object fixture must exercise the TCP message-size failure mode.");
+
+var buildObjectUploadPagesMethod = typeof(ArmaMethods).GetMethod(
+    "BuildObjectUploadPages",
+    BindingFlags.NonPublic | BindingFlags.Static
+);
+Assert(buildObjectUploadPagesMethod is not null, "Host object upload must expose a bounded transport-page seam.");
+var largeObjectUploadPages = (IReadOnlyList<List<ArmaObject>>)buildObjectUploadPagesMethod!.Invoke(null, [largeObjectSet])!;
+Assert(largeObjectUploadPages.Count == 49, "50,000 host objects should use 49 bounded network pages.");
+Assert(largeObjectUploadPages.Sum(page => page.Count) == largeObjectCount,
+    "Host upload pages must preserve all 50,000 objects.");
+Assert(largeObjectUploadPages.SelectMany(page => page).Select(obj => obj.Id).SequenceEqual(largeObjectSet.Select(obj => obj.Id)),
+    "Host upload pages must preserve object order.");
+Assert(largeObjectUploadPages.All(page => Encoding.UTF8.GetByteCount(DynTypeSerializer.Serializer.Serialize(page)) <= 8_000_000),
+    "Every host upload page must retain transport headroom.");
 
 var beginObjectSyncMethod = typeof(ServerNetworkMethods).GetMethod("BeginObjectSync", BindingFlags.Public | BindingFlags.Static);
 var getObjectSyncPageMethod = typeof(ServerNetworkMethods).GetMethod("GetObjectSyncPage", BindingFlags.Public | BindingFlags.Static);

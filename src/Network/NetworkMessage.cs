@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -121,6 +122,28 @@ internal class HandshakeMessage
 
 public static class MessageBuilder
 {
+    private static readonly ConditionalWeakTable<NetworkStream, SemaphoreSlim> TcpWriteLocks = new();
+
+    /// <summary>
+    /// Writes one complete framed packet at a time per TCP stream. Server
+    /// broadcasts, RPC responses, and client requests can originate on
+    /// different tasks; without this gate their length-prefixed packets can
+    /// overlap on the same NetworkStream.
+    /// </summary>
+    internal static async ValueTask WriteTcpPacketAsync(
+        NetworkStream stream,
+        ReadOnlyMemory<byte> packet,
+        CancellationToken token = default)
+    {
+        SemaphoreSlim writeLock = TcpWriteLocks.GetValue(stream, static _ => new SemaphoreSlim(1, 1));
+        await writeLock.WaitAsync(token);
+        try {
+            await stream.WriteAsync(packet, token);
+        } finally {
+            writeLock.Release();
+        }
+    }
+
     #region TCP
     internal static byte[] CreateTcpMessage(NetworkMessage msg, bool isServerBroadcast = false)
     {
@@ -440,7 +463,10 @@ public static class MessageBuilder
                     result = MethodBuilder.CallServerMethod<object>(methodName, msg, request.Args!);
                 } else {
                     // Is fire and forget
-                    _ = Task.Run(() => MethodBuilder.CallServerMethod<object>(methodName, msg, request.Args!), token);
+                    // Execute inline so mutations from one TCP connection retain
+                    // wire order. This also avoids one ThreadPool work item per
+                    // object during large host uploads.
+                    _ = MethodBuilder.CallServerMethod<object>(methodName, msg, request.Args!);
                     return; // Dont send response
                 }
             } else {
@@ -450,7 +476,7 @@ public static class MessageBuilder
                 } else {
                     // Is fire and forget
                     // Already validated on sender (Synced Method lists)
-                    _ = Task.Run(() => MethodBuilder.CallClientMethod<object>(methodName, msg, request.Args!), token);
+                    _ = MethodBuilder.CallClientMethod<object>(methodName, msg, request.Args!);
                     return; // Dont send response
                 }
             }
@@ -467,6 +493,10 @@ public static class MessageBuilder
             if (LogItem(LogLevel.Error))
                 Console.WriteLine($"[NETWORK] Remote method '{methodName}' failed: {failure}");
         }
+
+        // Fire-and-forget calls have no response waiter. Errors are logged
+        // above; emitting a MessageId 0 response would only leak client state.
+        if (msg.MessageId == 0) return;
 
 
         NetworkMessage responseMessage = new()
@@ -505,7 +535,7 @@ public static class MessageBuilder
             packet = CreatePacket(responseMessage);
         }
 
-        await stream.WriteAsync(packet, token);
+        await WriteTcpPacketAsync(stream, packet, token);
     }
     internal static ushort GenerateRequestId(ref int requestId)
     {

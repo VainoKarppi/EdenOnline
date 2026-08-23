@@ -17,12 +17,23 @@ namespace DynTypeNetwork;
 
 public static partial class Client
 {
+    internal readonly record struct PreparedTcpMessage(NetworkMessage Message, byte[] Packet);
+
     // ── Send messages ─────────────────────────
     // Does not return a response, use SendTcpMessageAsync for sending messages that require a response
     public static Task SendTcpMessageAsync(int targetId, string methodName, params object?[] args)
         => SendTcpMessageAsync([targetId], methodName, args);
 
     public static async Task SendTcpMessageAsync(int[] targetIds, string methodName, params object?[] args) {
+        PreparedTcpMessage preparedMessage = PrepareTcpMessage(targetIds, methodName, args);
+        await SendPreparedTcpMessageAsync(preparedMessage);
+    }
+
+    /// <summary>
+    /// Serializes a message once so callers that enforce a packet-size ceiling
+    /// can inspect and then send the exact same bytes.
+    /// </summary>
+    internal static PreparedTcpMessage PrepareTcpMessage(int[] targetIds, string methodName, params object?[] args) {
         if (_tcpStream == null) throw new InvalidOperationException("TCP not initialized.");
         if (targetIds == null || targetIds.Length == 0)
             throw new ArgumentException("At least one target ID is required.", nameof(targetIds));
@@ -64,11 +75,17 @@ public static partial class Client
         var payload = new MethodRequest { MethodName = methodName, Args = args };
         var packet = MessageBuilder.CreatePacket(msg, payload);
 
+        return new PreparedTcpMessage(msg, packet);
+    }
+
+    internal static async Task SendPreparedTcpMessageAsync(PreparedTcpMessage preparedMessage) {
+        if (_tcpStream == null) throw new InvalidOperationException("TCP not initialized.");
+
         if (OnTcpMessageSent != null) {
-            _ = Task.Run(() => OnTcpMessageSent.Invoke(msg));
+            _ = Task.Run(() => OnTcpMessageSent.Invoke(preparedMessage.Message));
         }
 
-        await _tcpStream.WriteAsync(packet);
+        await MessageBuilder.WriteTcpPacketAsync(_tcpStream, preparedMessage.Packet);
     }
 
     private static async Task SendMessageAsync(int targetId, MessageType type, object? data)
@@ -83,6 +100,6 @@ public static partial class Client
         };
         var packet = MessageBuilder.CreatePacket(message, data);
 
-        await _tcpClient!.GetStream().WriteAsync(packet);
+        await MessageBuilder.WriteTcpPacketAsync(_tcpClient!.GetStream(), packet);
     }
 }

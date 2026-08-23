@@ -20,7 +20,6 @@ public static partial class Server {
     public static int TIMEOUT_MS { get; set; } = 500;
 
     private static int _requestId = 0;
-    private static readonly List<int> Requests = [];
     private static readonly ConcurrentDictionary<int, NetworkMessage?> Responses = new();
 
     // ── STRING METHOD ──────────────────────────
@@ -65,12 +64,10 @@ public static partial class Server {
         if (client.GetStream() == null) throw new Exception($"Network stream for client {targetId} is not available.");
         if (!client.GetStream().CanWrite) throw new Exception($"Cannot write to network stream for client {targetId}.");
 
-        Requests.Add(requestId);
-
         if (msg.MessageType == MessageType.Custom && msg.SenderId == SERVER_ID && !isForwarded) _ = Task.Run(() => OnTcpMessageSent?.Invoke(msg));
 
         var packet = MessageBuilder.CreatePacket(msg, payload);
-        await client.GetStream().WriteAsync(packet);
+        await MessageBuilder.WriteTcpPacketAsync(client.GetStream(), packet);
         
         
         NetworkMessage? returnMessage = await WaitWithTimeout(requestId);
@@ -97,20 +94,17 @@ public static partial class Server {
                 await Task.Delay(10, cts.Token); // async wait
             }
 
-            Requests.Remove(requestId);
             Responses.TryRemove(requestId, out _);
 
             return response;
         }
         catch (TaskCanceledException)
         {
-            Requests.Remove(requestId);
             Responses.TryRemove(requestId, out _);
             throw new TimeoutException($"[TIMEOUT] Request {requestId} timed out after {TIMEOUT_MS} ms");
         }
         catch (Exception ex)
         {
-            Requests.Remove(requestId);
             Responses.TryRemove(requestId, out _);
             throw new Exception($"[ERROR] Request {requestId} failed: {ex}");
         }

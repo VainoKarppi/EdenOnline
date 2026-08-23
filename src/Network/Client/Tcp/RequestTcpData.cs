@@ -41,7 +41,6 @@ public static partial class Client {
     public static int TIMEOUT_MS { get; set; } = 50000;
     private static int _requestId = 0;
 
-    private static readonly List<int> Requests = [];
     private static readonly ConcurrentDictionary<int, NetworkMessage?> Responses = new();
 
     
@@ -98,7 +97,7 @@ public static partial class Client {
         };
 
         byte[] packet = MessageBuilder.CreatePacket(msg);
-        await _tcpStream.WriteAsync(packet);
+        await MessageBuilder.WriteTcpPacketAsync(_tcpStream, packet);
     }
     private static async Task<TResult?> RequestDataInternalAsync<TPayload, TResult>(int targetId, MessageType type, TPayload payload, ushort requestId, bool waitForResponse) {
         if (_tcpStream == null) throw new InvalidOperationException("TCP not initialized.");
@@ -116,11 +115,8 @@ public static partial class Client {
             MessageType = type
         };
 
-        if (waitForResponse)
-            Requests.Add(requestId);
-
         byte[] packet = MessageBuilder.CreatePacket(msg, payload);
-        await _tcpStream.WriteAsync(packet);
+        await MessageBuilder.WriteTcpPacketAsync(_tcpStream, packet);
 
         if (!waitForResponse)
             return default;
@@ -157,20 +153,17 @@ public static partial class Client {
                 await Task.Delay(10, cts.Token); // async wait
             }
 
-            Requests.Remove(requestId);
             Responses.TryRemove(requestId, out _);
 
             return response;
         }
         catch (TaskCanceledException)
         {
-            Requests.Remove(requestId);
             Responses.TryRemove(requestId, out _);
             throw new TimeoutException($"[TIMEOUT] Request {requestId} timed out after {timeoutMs} ms");
         }
         catch (Exception ex)
         {
-            Requests.Remove(requestId);
             Responses.TryRemove(requestId, out _);
             throw new Exception($"[ERROR] Request {requestId} failed: {ex}");
         }

@@ -17,7 +17,7 @@ public static class Authentication
     public static string? ClientAuthenticationError { get; set; }
 
     private static Func<string?, Task<bool>>? _serverAuthenticationFunc;
-    private static Func<object[]?, Task<bool>>? _serverValidatorFunc;
+    private static Func<int, object[]?, Task<bool>>? _serverValidatorFunc;
 
     private static Func<Task<object[]?>>? _clientAuthenticationFunc;
 
@@ -49,6 +49,17 @@ public static class Authentication
     /// </summary>
     public static void SetServerValidator(Func<object[]?, Task<bool>> validatorFunc)
     {
+        ArgumentNullException.ThrowIfNull(validatorFunc);
+        _serverValidatorFunc = (_, parameters) => validatorFunc(parameters);
+    }
+
+    /// <summary>
+    /// Sets a validator that can make admission decisions using the authenticated
+    /// connection ID, for example while a host is publishing initial state.
+    /// </summary>
+    public static void SetServerValidator(Func<int, object[]?, Task<bool>> validatorFunc)
+    {
+        ArgumentNullException.ThrowIfNull(validatorFunc);
         _serverValidatorFunc = validatorFunc;
     }
 
@@ -58,10 +69,15 @@ public static class Authentication
     /// </summary>
     public static async Task<(bool Success, string? Error)> ServerValidateAsync(object[]? parameters)
     {
+        return await ServerValidateAsync(0, parameters);
+    }
+
+    public static async Task<(bool Success, string? Error)> ServerValidateAsync(int clientId, object[]? parameters)
+    {
         if (_serverValidatorFunc == null) return (true, null);
 
         try {
-            return (await _serverValidatorFunc(parameters), null);
+            return (await _serverValidatorFunc(clientId, parameters), null);
         } catch (Exception ex) {
             return (false, ex.Message);
         }

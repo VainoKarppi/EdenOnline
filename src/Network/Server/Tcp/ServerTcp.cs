@@ -57,7 +57,7 @@ public static partial class Server
     private static async Task HandleTcpClientAsync(Connection client, CancellationToken token)
     {
         bool clientDisconnectSuccess = false;
-        client.Authenticated = Authentication.Enabled;
+        client.Authenticated = !Authentication.Enabled;
         try
         {
             while (!token.IsCancellationRequested && client.Connected)
@@ -79,17 +79,26 @@ public static partial class Server
                         continue;
 
                     case MessageType.Response:
-                        if (!client.Authenticated && Authentication.ServerDropOnFail) throw new Exception($"Client {client.Id} not authenticated");
+                        if (!client.HandshakeDone || !client.Authenticated) {
+                            if (Authentication.ServerDropOnFail) throw new Exception($"Client {client.Id} not authenticated");
+                            continue;
+                        }
                         Responses[msg.MessageId] = msg;
                         continue;
 
                     case MessageType.ClientDisconnected:
-                    if (!client.Authenticated && Authentication.ServerDropOnFail) throw new Exception($"Client {client.Id} not authenticated");
+                        if (!client.HandshakeDone || !client.Authenticated) {
+                            if (Authentication.ServerDropOnFail) throw new Exception($"Client {client.Id} not authenticated");
+                            continue;
+                        }
                         clientDisconnectSuccess = true;
                         continue;
 
                     case MessageType.Custom:
-                        if (!client.Authenticated && Authentication.ServerDropOnFail) throw new Exception($"Client {client.Id} not authenticated");
+                        if (!client.HandshakeDone || !client.Authenticated) {
+                            if (Authentication.ServerDropOnFail) throw new Exception($"Client {client.Id} not authenticated");
+                            continue;
+                        }
                         // Handle custom message that is sent to the server itself
                         if (msg.TargetsServer) {
                             _ = Task.Run(() => OnTcpMessageReceived?.Invoke(msg));
@@ -97,10 +106,10 @@ public static partial class Server
                         }
 
                         // Forward to all clients when the target list is a broadcast or exclusion rule
-                        if (msg.ShouldBroadcast) _ = BroadcastTcp(client, msg);
+                        if (msg.ShouldBroadcast) await BroadcastTcp(client, msg);
 
                         // Forward to specific target
-                        if (msg.TargetId.Any(t => t > 1)) _ = ForwardTcpMessageToTarget(client, msg);
+                        if (msg.TargetId.Any(t => t > 1)) await ForwardTcpMessageToTarget(client, msg);
                         
                         continue;
 
@@ -113,7 +122,11 @@ public static partial class Server
             if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Client {client.Id} disconnected unexpectedly. Reason: {ex.Message}");
         }
 
-        await ClientDisconnected(client, clientDisconnectSuccess);
+        try {
+            await ClientDisconnected(client, clientDisconnectSuccess);
+        } finally {
+            client.Close();
+        }
     }
 
     
@@ -130,7 +143,7 @@ public static partial class Server
         };
         var packet = MessageBuilder.CreatePacket(message, data);
 
-        await client.GetStream().WriteAsync(packet);
+        await MessageBuilder.WriteTcpPacketAsync(client.GetStream(), packet);
     }
 
 
@@ -139,24 +152,26 @@ public static partial class Server
         var tasks = new List<Task<object?>>();
         object?[] broadcastResponses = [];
         
-        var clientsToSend = Clients.Values.Where(c => c.Connected && (EdenOnline.Settings.MIRROR || c.Id != sender.Id));
+        var clientsToSend = Clients.Values.Where(c =>
+            c.Connected
+            && c.Authenticated
+            && (EdenOnline.Settings.MIRROR || c.Id != sender.Id)
+        );
 
         foreach (var client in clientsToSend)
         {
             // If MessageId == 0, we treat it as a fire-and-forget broadcast, where we don't expect any response from the clients. We just send the message to all clients and return immediately.
             if (message.MessageId == 0) {
-                _ = Task.Run(async () => {
-                    var requestMessage = new NetworkMessage {
-                        SenderId = sender.Id,
-                        TargetId = [client.Id],
-                        MessageType = message.MessageType,
-                        MessageId = message.MessageId,
-                        Payload = message.Payload
-                    };
+                var requestMessage = new NetworkMessage {
+                    SenderId = sender.Id,
+                    TargetId = [client.Id],
+                    MessageType = message.MessageType,
+                    MessageId = message.MessageId,
+                    Payload = message.Payload
+                };
 
-                    var data = MessageBuilder.CreateTcpMessage(requestMessage, isServerBroadcast: true);
-                    await client.GetStream().WriteAsync(data);
-                });
+                var data = MessageBuilder.CreateTcpMessage(requestMessage, isServerBroadcast: true);
+                await MessageBuilder.WriteTcpPacketAsync(client.GetStream(), data);
             
                 continue;
             }
@@ -168,7 +183,6 @@ public static partial class Server
             tasks.Add(Task.Run(async () =>
             {
                 ushort requestId = MessageBuilder.GenerateRequestId(ref _requestId);
-                Requests.Add(requestId);
 
                 var requestMessage = new NetworkMessage
                 {
@@ -180,7 +194,7 @@ public static partial class Server
                 };
 
                 var data = MessageBuilder.CreateTcpMessage(requestMessage);
-                await client.GetStream().WriteAsync(data);
+                await MessageBuilder.WriteTcpPacketAsync(client.GetStream(), data);
 
                 NetworkMessage? returnMessage = await WaitWithTimeout(requestId);
 
@@ -222,7 +236,7 @@ public static partial class Server
 
         var broadcastResponseData = MessageBuilder.CreatePacket(broadcastResponse, broadcastResponses);
 
-        await sender.GetStream().WriteAsync(broadcastResponseData);
+        await MessageBuilder.WriteTcpPacketAsync(sender.GetStream(), broadcastResponseData);
     }
 
 
@@ -236,8 +250,9 @@ public static partial class Server
 
         Connection? target = null;
         int targetId = message.TargetId.FirstOrDefault(t => t > 0);
-        if (targetId > 0)
-            target = Clients[targetId];
+        if (targetId > 0 && Clients.TryGetValue(targetId, out Connection? candidate)
+            && candidate.Connected && candidate.Authenticated)
+            target = candidate;
         if (target == null) {
             // TODO send error response back to sender, if needed. Is already checked by the sender client, but maybe the client disconnected in the meantime.
             return;
@@ -262,7 +277,7 @@ public static partial class Server
         };
         var packet = MessageBuilder.CreatePacket(response, result);
 
-        await sender.GetStream().WriteAsync(packet);
+        await MessageBuilder.WriteTcpPacketAsync(sender.GetStream(), packet);
     }
 
 
@@ -282,16 +297,19 @@ public static partial class Server
 
         var requestPacket = MessageBuilder.CreatePacket(requestMessage);
 
-        await client.GetStream().WriteAsync(requestPacket);
+        await MessageBuilder.WriteTcpPacketAsync(client.GetStream(), requestPacket);
 
         if (LogItem(LogLevel.Debug)) Console.WriteLine($"[SERVER] Authentication request sent to client {client.Id}. Waiting for response...");
     }
 
     private static async Task HandleAuthenticationResponseAsync(Connection client, NetworkMessage msg)
     {
+        if (!client.HandshakeDone)
+            throw new InvalidOperationException($"Client {client.Id} sent authentication before completing the handshake.");
+
         object[]? authenticationParameters = MessageBuilder.UnpackPayload<object[]?>(msg.Payload);
 
-        (bool success, string? error) = await Authentication.ServerValidateAsync(authenticationParameters);
+        (bool success, string? error) = await Authentication.ServerValidateAsync(client.Id, authenticationParameters);
 
         if (LogItem(LogLevel.Debug)) Console.WriteLine($"[SERVER] Authentication result for client {client.Id}: " + $"{(success ? "SUCCESS" : "FAILURE")} " + $"ERROR: {error ?? "None"}");
 
@@ -308,7 +326,10 @@ public static partial class Server
 
         var responsePacket = MessageBuilder.CreatePacket(responseMessage, new object[] { success, error ?? "" });
 
-        await client.GetStream().WriteAsync(responsePacket);
+        await MessageBuilder.WriteTcpPacketAsync(client.GetStream(), responsePacket);
+
+        if (success)
+            await AdmitClientAsync(client);
 
         // TODO: Verify that the client has enough time to read the message
         // before dropping the connection.

@@ -64,9 +64,12 @@ public static partial class ArmaMethods
             Log($"[CLIENT] Exception during connect: {ex}");
 
             // TODO: Server should toggle loading screen off if sync client disconnects mid-sync.
-
-            await ShowLoadingScreen(false, 100);
-            await Client.DisconnectAsync();
+            // Authentication failures have already closed the stream. Cleanup
+            // must not replace the actionable authentication/readiness error.
+            try { await ShowLoadingScreen(false, 100); }
+            catch (Exception cleanupException) { Log($"[CLIENT] Unable to close remote loading screen: {cleanupException.Message}"); }
+            try { await Client.DisconnectAsync(); }
+            catch (Exception cleanupException) { Log($"[CLIENT] Disconnect cleanup failed: {cleanupException.Message}"); }
             throw;
         }
     }
@@ -95,6 +98,9 @@ public static partial class ArmaMethods
 
         string clientHash = HashUtils.GetHash(new object[] { Extension.Version });
 
+        ServerStateManager.Reset();
+        ServerStateManager.BeginInitialSync();
+
         MethodBuilder.RegisterServerMethods(new ServerNetworkMethods());
         ExtensionPlugin.PrintAvailableMethods("Server", MethodBuilder.GetAvailableServerMethods());
 
@@ -106,8 +112,19 @@ public static partial class ArmaMethods
         Server.OnClientDisconnected += ServerNetworkEvents.OnClientDisconnected;
         Server.OnServerShutdown += ServerNetworkEvents.OnServerShutdown;
 
-        int clientId = await Connect("127.0.0.1", (int)port, username, worldname, armaVersion, modHashes, password);
-        return clientId;
+        try
+        {
+            int clientId = await Connect("127.0.0.1", (int)port, username, worldname, armaVersion, modHashes, password);
+            ServerStateManager.SetInitialSyncHost(clientId);
+            return clientId;
+        }
+        catch
+        {
+            if (Server.IsTcpServerRunning())
+                await Server.StopAsync();
+            ServerStateManager.Reset();
+            throw;
+        }
     }
 
     private static void RegisterServerAuthentication(string worldname, string armaVersion, object[] modHashes, string password)
@@ -120,8 +137,15 @@ public static partial class ArmaMethods
         Authentication.SetServerValidator(ServerValidateAuthenticationAsync);
     }
 
-    private static async Task<bool> ServerValidateAuthenticationAsync(object[]? parameters)
+    private static async Task<bool> ServerValidateAuthenticationAsync(int clientId, object[]? parameters)
     {
+        if (!ServerStateManager.IsInitialSyncReady
+            && clientId != Client.ClientID
+            && !ServerStateManager.IsInitialSyncHost(clientId))
+        {
+            throw new Exception("The host is still loading the initial mission. Please connect again shortly.");
+        }
+
         if (parameters is null || parameters.Length != 4)
             throw new Exception("Invalid authentication parameters.");
 
@@ -283,9 +307,11 @@ public static partial class ArmaMethods
         List<ArmaSyncConnection>? connections = await Client.RequestTcpDataAsync<List<ArmaSyncConnection>>(1, "GetAllConnections");
 
         if (connections == null) throw new Exception("Failed to sync connections: Received null from server");
+
+        Extension.SendToArma("ConnectionSyncCount", [connections.Count]);
         
         foreach (object?[] batch in BuildConnectionSyncBatches(connections))
-            Extension.SendToArma("CreateSyncConnectionBatch", [batch]);
+            Extension.SendToArma("ConnectionSyncBatch", [batch]);
 
         Log($"[CLIENT] Connection sync complete. Total connections synced: {connections.Count}");
     }

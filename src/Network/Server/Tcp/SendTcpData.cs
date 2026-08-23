@@ -34,7 +34,7 @@ public static partial class Server
         // Helper to send to a single client
         async Task SendToClient(Connection client)
         {
-            if (client == null || !client.Connected) return;
+            if (client == null || !client.Connected || !client.Authenticated) return;
 
             var msg = new NetworkMessage
             {
@@ -44,7 +44,7 @@ public static partial class Server
             };
 
             var packet = MessageBuilder.CreatePacket(msg, payload);
-            await client.GetStream().WriteAsync(packet);
+            await MessageBuilder.WriteTcpPacketAsync(client.GetStream(), packet);
         }
 
         // Send to specific client

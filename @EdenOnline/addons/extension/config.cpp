@@ -77,6 +77,7 @@ class CfgFunctions
 			class startServer {};
 			class connect {};
 			class disconnect {};
+			class resetInitialSyncState {};
 		};
 		class Functions_UI
 		{

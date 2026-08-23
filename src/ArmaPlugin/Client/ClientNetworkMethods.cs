@@ -49,7 +49,7 @@ public class ClientNetworkMethods {
     }
     public static void CreateObjectsBatch(List<ArmaObject> createdObjects) {
         foreach (object?[] batch in ArmaMethods.BuildObjectSyncBatches(createdObjects))
-            Extension.SendToArma("ObjectSyncBatch", [batch]);
+            Extension.SendToArma("ObjectCreatedBatch", [batch]);
     }
     public static void UpdateObject(ArmaObject updatedObj) {
         Extension.SendToArma("ObjectUpdated", [updatedObj.Id, updatedObj.Attributes]);

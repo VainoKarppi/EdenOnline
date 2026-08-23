@@ -29,6 +29,12 @@ public static partial class Client
     private static async Task<int> ConnectTcp(string host, int port, string? customHash = null)
     {
         try {
+            // Authentication state belongs to one connection attempt. Reusing
+            // a prior success/failure can otherwise let reconnect skip the
+            // server's current admission decision.
+            Authentication.ClientAuthenticated = null;
+            Authentication.ClientAuthenticationError = null;
+
             _tcpClient = new TcpClient();
             await _tcpClient.ConnectAsync(host, port);
             _tcpStream = _tcpClient.GetStream();
@@ -158,7 +164,7 @@ public static partial class Client
 
                         byte[] packet = MessageBuilder.CreatePacket(response, authenticationData);
 
-                        await stream.WriteAsync(packet, token);
+                        await MessageBuilder.WriteTcpPacketAsync(stream, packet, token);
 
                         continue;
                     }

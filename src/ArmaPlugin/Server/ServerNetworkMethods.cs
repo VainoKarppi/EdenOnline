@@ -79,6 +79,34 @@ public class ServerNetworkMethods {
         return ServerStateManager.ServerObjectManager.Objects.Count;
     }
 
+    /// <summary>
+    /// Opens the server to remote joins after the host's upload has reached the
+    /// server in full. The count check turns startup races into an actionable
+    /// error instead of publishing a partial snapshot.
+    /// </summary>
+    public static bool CompleteInitialSync(NetworkMessage request, int expectedObjects, int expectedConnections)
+    {
+        if (!ServerStateManager.IsInitialSyncHost(request.SenderId))
+            throw new InvalidOperationException($"Client {request.SenderId} is not the host and cannot complete initial synchronization.");
+
+        if (expectedObjects < 0) throw new ArgumentOutOfRangeException(nameof(expectedObjects));
+        if (expectedConnections < 0) throw new ArgumentOutOfRangeException(nameof(expectedConnections));
+
+        int actualObjects = ServerStateManager.ServerObjectManager.Objects.Count;
+        int actualConnections = ServerStateManager.SyncConnections.Count;
+        if (actualObjects != expectedObjects || actualConnections != expectedConnections)
+        {
+            throw new InvalidOperationException(
+                $"Initial synchronization is incomplete. Expected {expectedObjects} objects and {expectedConnections} connections, "
+                + $"but the server contains {actualObjects} objects and {actualConnections} connections."
+            );
+        }
+
+        ServerStateManager.MarkInitialSyncReady();
+        Log($"[SERVER] Initial synchronization complete: {actualObjects} objects, {actualConnections} connections.");
+        return true;
+    }
+
     public static List<ArmaObject> GetAllObjects() {
         return ServerStateManager.ServerObjectManager.GetAllObjects();
     }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -26,7 +27,10 @@ public static partial class Server
         public bool Authenticated { get; set; } = false;
     }
 
-    public readonly static Dictionary<int, Connection> Clients = [];
+    // Only fully authenticated clients are admitted here. Keeping pending
+    // handshakes out of this collection prevents them from receiving server
+    // broadcasts before authentication/readiness validation has completed.
+    public readonly static ConcurrentDictionary<int, Connection> Clients = [];
 
     public static List<int> GetClients() {
         if (!IsTcpServerRunning()) throw new Exception("Server is not running");
@@ -108,14 +112,52 @@ public static partial class Server
 
     private static async Task ClientDisconnected(Connection client, bool success) {
         KeyExchange.RemoveServerKeyExchange(client.Id);
-        Clients.Remove(client.Id);
-        if (!client.HandshakeDone) return;
+        bool wasAdmitted = Clients.TryRemove(client.Id, out _);
+        if (!wasAdmitted) return;
 
         OnClientDisconnected?.Invoke(client.Id, success, DisconnectReason.Unknown);
 
         // Notify other clients that this client has disconnected
         foreach (var otherClient in Clients.Values) {
-            await SendMessageAsync(otherClient, otherClient.Id, MessageType.ClientDisconnected, new object[] { client.Id, success });
+            if (!otherClient.Connected || !otherClient.Authenticated) continue;
+            try {
+                await SendMessageAsync(otherClient, otherClient.Id, MessageType.ClientDisconnected, new object[] { client.Id, success });
+            } catch (Exception ex) {
+                if (LogItem(LogLevel.Info))
+                    Console.WriteLine($"[SERVER] Failed to notify client {otherClient.Id} about disconnect {client.Id}: {ex.Message}");
+            }
+        }
+    }
+
+    private static async Task AdmitClientAsync(Connection client)
+    {
+        if (!client.HandshakeDone)
+            throw new InvalidOperationException($"Client {client.Id} cannot be admitted before completing the handshake.");
+        if (!client.Authenticated)
+            throw new InvalidOperationException($"Client {client.Id} cannot be admitted before authentication.");
+        if (!client.Connected)
+            throw new InvalidOperationException($"Client {client.Id} disconnected before admission.");
+
+        if (!Clients.TryAdd(client.Id, client)) return;
+
+        try {
+            OnClientConnected?.Invoke(client.Id);
+        } catch (Exception ex) {
+            if (LogItem(LogLevel.Info))
+                Console.WriteLine($"[SERVER] Client-connected handler failed for {client.Id}: {ex.Message}");
+        }
+
+        // Notify only clients that have passed the same admission gate.
+        foreach (var otherClient in Clients.Values) {
+            if (!otherClient.Connected || !otherClient.Authenticated || otherClient.Id == client.Id) continue;
+            try {
+                await SendMessageAsync(otherClient, otherClient.Id, MessageType.ClientConnected, client.Id);
+            } catch (Exception ex) {
+                // A stale peer must not invalidate the new client's successful
+                // admission after authentication has already completed.
+                if (LogItem(LogLevel.Info))
+                    Console.WriteLine($"[SERVER] Failed to notify client {otherClient.Id} about client {client.Id}: {ex.Message}");
+            }
         }
     }
 
@@ -176,18 +218,7 @@ public static partial class Server
 
             KeyExchange.InitializeServerKeyExchange(client.Id, payload.ClientPublicKey);
 
-            // TODO If Authentication is enabled, make sure the client gets authenticated, before setting the client as connected, and notifying other clients.
-
-            Clients.Add(client.Id, client);
             client.HandshakeDone = true;
-            
-            OnClientConnected?.Invoke(client.Id);
-
-            // Notify other clients that client was connected
-            foreach (var otherClient in Clients.Values) {
-                if (!otherClient.Connected || otherClient.Id == client.Id || !otherClient.HandshakeDone) continue;
-                await SendMessageAsync(otherClient, otherClient.Id, MessageType.ClientConnected, client.Id);
-            }
 
             // TODO Send also the hmac challange
             // TODO Add ability to Hardcode server public key to user code, so that we can verify that the server is the correct one, and not a man in the middle
@@ -195,7 +226,10 @@ public static partial class Server
                 Success = true,
                 Message = "SUCCESS",
                 ClientId = client.Id,
-                OtherConnectedClients = Clients.Keys.Where(id => id != client.Id).ToList(),
+                OtherConnectedClients = Clients.Values
+                    .Where(other => other.Connected && other.Authenticated && other.Id != client.Id)
+                    .Select(other => other.Id)
+                    .ToList(),
                 AvailableMethods = MethodBuilder.GetAvailableServerMethods(),
                 ServerPublicKey = KeyExchange.GetServerPublicKey(client.Id)
             };
@@ -203,7 +237,12 @@ public static partial class Server
             
             var handshakeResult = MessageBuilder.CreatePacket(response, handshakeResponse);
 
-            await client.GetStream().WriteAsync(handshakeResult);     
+            await MessageBuilder.WriteTcpPacketAsync(client.GetStream(), handshakeResult);
+
+            // With authentication disabled, the handshake itself is the final
+            // admission check. Otherwise AuthenticationResponse admits later.
+            if (!Authentication.Enabled)
+                await AdmitClientAsync(client);
         } catch (Exception ex) {
 
             // Send handshake failure response to client, before closing connection and removing from clients list
@@ -214,13 +253,13 @@ public static partial class Server
 
             var handshakeResult = MessageBuilder.CreatePacket(response, handshakeResponse);
 
-            await client.GetStream().WriteAsync(handshakeResult);
+            await MessageBuilder.WriteTcpPacketAsync(client.GetStream(), handshakeResult);
 
             KeyExchange.RemoveServerKeyExchange(client.Id);
-            Clients.Remove(client.Id);
+            bool wasAdmitted = Clients.TryRemove(client.Id, out _);
 
             // Error occured after the handshake, meaning the client was already connected, so we need to notify other clients that this client has disconnected
-            if (client.HandshakeDone) {
+            if (wasAdmitted) {
                 OnClientDisconnected?.Invoke(client.Id, false, DisconnectReason.ConnectionError);
             }
 

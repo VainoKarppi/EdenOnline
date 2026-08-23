@@ -36,7 +36,7 @@ public static partial class Server
 
         async Task SendToClient(Connection client) {
             try {
-                if (client?.UdpEndpoint == null)
+                if (client == null || !client.Authenticated || client.UdpEndpoint == null)
                     throw new InvalidOperationException($"Client {client?.Id} has no registered UDP endpoint.");
 
                 var msg = new NetworkMessage
