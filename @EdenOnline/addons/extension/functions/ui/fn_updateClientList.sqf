@@ -1,7 +1,7 @@
 // EOEX_fnc_updateClientList
 
 
-params ["_otherClients",[]];
+params [["_otherClients", []]];
 // [[id,"name1"],[id,"name2"]]
 
 
