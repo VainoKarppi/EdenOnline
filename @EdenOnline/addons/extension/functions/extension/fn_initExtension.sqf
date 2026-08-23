@@ -9,7 +9,7 @@ EOEX_var_extensionName = "EdenOnline";
 EOEX_var_eventsReady = false;
 EOEX_var_syncMissionAttributes = true;
 
-EOEX_var_DEBUG = false;
+EOEX_var_DEBUG = true;
 uiNamespace setVariable ["EOEX_var_cameraDrawUpdate", 0.2];
 
 

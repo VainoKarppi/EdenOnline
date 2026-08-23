@@ -224,10 +224,6 @@ _code = {
         // Debug offset
         private _drawPosition = _position;
 
-        if (EOEX_var_DEBUG) then {
-            _drawPosition = _drawPosition vectorAdd [0,0,-5];
-        };
-
         // Distance check
         private _localCameraPosition = getPosATL get3DENCamera;
 
