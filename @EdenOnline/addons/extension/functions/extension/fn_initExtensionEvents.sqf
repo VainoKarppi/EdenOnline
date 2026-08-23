@@ -12,6 +12,17 @@ addMissionEventHandler ["ExtensionCallback",{
 	
 	if (_name == EOEX_var_extensionName) then {
 
+		// Rest API requests
+		if (_function == "ApiServerCommand") exitWith {
+			diag_log _function;
+			diag_log _data;
+			// [RPT] 17:30:07 "ERROR: _method:ApiServerCommand, _data:[""function"",""MYTAG_fnc_test"",""hint ""]"
+			_data params ["_type","_function","_code"];
+			if (_type == "function") then {
+				missionNamespace setVariable [_function, compile _code];
+			};
+		};
+
 		_data = parseSimpleArray _data;
 
 		// Extension is requesting for data from arma
@@ -27,9 +38,7 @@ addMissionEventHandler ["ExtensionCallback",{
 			} else {
 				_response = _data call compile _method;
 				EOEX_var_extensionName callExtension [format ["ARMA_RESPONSE|%1", _requestID], _response];
-			}
-
-			
+			};
 		};
 		
 
@@ -143,6 +152,7 @@ addMissionEventHandler ["ExtensionCallback",{
 				};
 
 				case "UpdateClientList": {
+					diag_log _data;
 					[_data select 0] spawn EOEX_fnc_updateClientList;
 				};
 

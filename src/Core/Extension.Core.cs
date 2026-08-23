@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using Microsoft.Win32;
 using static EdenOnline.Logger;
 using static EdenOnline.MethodSystem;
@@ -25,6 +27,115 @@ public static partial class Extension {
         Callback = callback;
     }
     internal static unsafe delegate* unmanaged<string, string, string, int> Callback;
+
+    // ---------------------------------------------------------------------
+    // Outbound message queue.
+    //
+    // Arma's callback buffer accepts at most 100 entries per frame. When the
+    // buffer is full, the callback pointer returns a negative value and the
+    // message is dropped unless retried. Rather than retrying inline (which
+    // would block/spin the calling thread), every outbound message is queued
+    // and drained by a single dedicated worker thread. This keeps ordering
+    // intact, works fine with tens of thousands of queued calls, and never
+    // gives up on a message unless the callback pointer itself throws.
+    // ---------------------------------------------------------------------
+    private static readonly BlockingCollection<(string method, string data)> _outbox = new(new ConcurrentQueue<(string, string)>());
+
+    private static readonly Thread _outboxWorker = CreateOutboxWorker();
+
+    // When the buffer is full we don't know exactly when it'll be drained,
+    // so instead of sleeping a flat amount every time, we spin first (cheap,
+    // catches the buffer clearing faster than a frame) and only fall back to
+    // sleeping - with a small growing backoff - if it stays full. This keeps
+    // large bursts (tens of thousands of queued calls) moving as fast as
+    // Arma can actually drain them instead of being capped at one retry per
+    // fixed interval.
+    private const int SpinRetriesBeforeSleep = 20;
+    private const int InitialBackoffMs = 1;
+    private const int MaxBackoffMs = 16; // one frame at 60 fps, as a ceiling
+
+    private static Thread CreateOutboxWorker() {
+        Thread t = new(ProcessOutbox) {
+            IsBackground = true,
+            Name = "EdenOnline.ArmaCallbackWorker"
+        };
+        t.Start();
+        return t;
+    }
+
+    private static void ProcessOutbox() {
+        foreach ((string method, string data) in _outbox.GetConsumingEnumerable()) {
+            DeliverToArma(method, data);
+        }
+    }
+
+    /// <summary>
+    /// Invokes Arma's registered callback pointer, if any. Contains the only
+    /// unsafe code in this class - the unsafe block is scoped to just the
+    /// pointer access/call, not the whole method, so callers don't need to
+    /// be in an unsafe context themselves.
+    /// </summary>
+    /// <returns>
+    /// True if the callback pointer was registered and got invoked (with the
+    /// slots-remaining result in <paramref name="remainingSlots"/>); false if
+    /// no callback is registered yet.
+    /// </returns>
+    private static bool TryInvokeCallback(string method, string data, out int remainingSlots) {
+        unsafe {
+            if (Callback == null) {
+                remainingSlots = default;
+                return false;
+            }
+
+            remainingSlots = Callback(ExtensionName, method, data);
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Delivers a single message to Arma, retrying indefinitely whenever the
+    /// callback buffer is full. Retries start as a tight spin (no delay) and
+    /// only escalate to a small, growing sleep if the buffer stays full, so
+    /// throughput adapts to how fast Arma is actually draining the buffer
+    /// instead of assuming a fixed frame interval. Only stops if the
+    /// callback itself throws.
+    /// </summary>
+    private static void DeliverToArma(string method, string data) {
+        int spinAttempts = 0;
+        int backoffMs = InitialBackoffMs;
+
+        while (true) {
+            try {
+                if (!TryInvokeCallback(method, data, out int remainingSlots)) {
+                    // Not registered yet (or unregistered) - wait and retry
+                    // instead of dropping the message.
+                    Thread.Sleep(MaxBackoffMs);
+                    continue;
+                }
+
+                if (remainingSlots >= 0) return; // accepted this frame
+
+                // Negative return = buffer was full. Spin a handful of times
+                // with no delay first, since the buffer may clear well
+                // before a full frame elapses (especially when calling from
+                // a background thread, per Arma's own docs). Only once
+                // spinning fails to find room do we start sleeping, and even
+                // then we ramp the delay up gradually instead of jumping
+                // straight to a full frame's worth of wait.
+                if (spinAttempts < SpinRetriesBeforeSleep) {
+                    spinAttempts++;
+                    Thread.SpinWait(200);
+                } else {
+                    Thread.Sleep(backoffMs);
+                    backoffMs = Math.Min(backoffMs * 2, MaxBackoffMs);
+                }
+            } catch (Exception ex) {
+                Events.RaiseErrorOccurred(ex);
+                Error(ex.Message);
+                return; // give up on this specific message only
+            }
+        }
+    }
 
 
 
@@ -111,47 +222,46 @@ public static partial class Extension {
 
 
     /// <summary>
-    /// Sends the response back to Arma 3.
+    /// Queues a response to be sent back to Arma 3. Delivery happens
+    /// asynchronously on a dedicated worker thread, which automatically
+    /// waits for the next frame and retries if Arma's callback buffer is
+    /// full - there is no cap on how many calls can be queued this way, so
+    /// this is safe to call in bursts of thousands.
     /// </summary>
     /// <param name="method"></param>
     /// <param name="data"></param>
-    /// <returns>BOOL - Success/Failed</returns>
+    /// <returns>BOOL - Whether the message was accepted into the outbound queue</returns>
     public static bool SendToArma(string method, object?[] data) {
-        if (string.IsNullOrEmpty(method)) Log("Empty function name in SendToArma.");
-
-        Events.RaiseSendToArma(method, data);
-        
-        string dataString = Serializer.PrintArray(data);
-
-        Debug(@$"EXTENSION >> ARMA >> [""{ExtensionName}"", ""{method}"", ""{dataString}""]");
-
-        try {
-            unsafe { Callback(ExtensionName, method, dataString); }
-
-            return true;
-        } catch (Exception ex) {
-            Events.RaiseErrorOccurred(ex);
-            Error(ex.Message);
+        if (string.IsNullOrEmpty(method)) {
+            Log("Empty function name in SendToArma.");
             return false;
         }
+
+        Events.RaiseSendToArma(method, data);
+
+        string dataString = Serializer.PrintArray(data);
+
+        Log(@$"EXTENSION >> ARMA >> [""{ExtensionName}"", ""{method}"", ""{dataString}""] (queued)");
+
+        _outbox.Add((method, dataString));
+
+        return true;
     }
 
 
     internal static void SendAsyncResponseCallbackMessage(string method, object?[] data, int errorCode = 0, int asyncKey = -1) {
-        if (string.IsNullOrEmpty(method)) Log("Empty function name in SendAsyncCallbackMessage.");
+        if (string.IsNullOrEmpty(method)) {
+            Log("Empty function name in SendAsyncCallbackMessage.");
+            return;
+        }
 
         method += $"|{asyncKey}|{errorCode}";
 
         string returnData = Serializer.PrintArray(data);
 
-        Log(@$"EXTENSION CALLBACK >> ARMA >> [""{ExtensionName}"", ""{method}"", ""{returnData}""]");
+        Log(@$"EXTENSION CALLBACK >> ARMA >> [""{ExtensionName}"", ""{method}"", ""{returnData}""] (queued)");
 
-        try {
-            unsafe { Callback(ExtensionName, method, returnData); }
-        } catch (Exception ex) {
-            Events.RaiseErrorOccurred(ex);
-            Error(ex.Message);
-        }
+        _outbox.Add((method, returnData));
     }
 
 

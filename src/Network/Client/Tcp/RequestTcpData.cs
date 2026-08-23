@@ -25,7 +25,7 @@ public static class MethodResponseExtensions {
 }
 
 public static partial class Client {
-    public static int TIMEOUT_MS { get; set; } = 500;
+    public static int TIMEOUT_MS { get; set; } = 50000;
     private static int _requestId = 0;
 
     private static readonly List<int> Requests = [];

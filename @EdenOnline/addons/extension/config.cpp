@@ -82,8 +82,9 @@ class CfgFunctions
 		{
 			file = "\extension\functions\ui";
 			class showConnectDialog {};
-            class showPlayersDialog {};
             class togglePlayButtons {};
+
+            class showPlayersDialog {};
             class updateClientList {};
 		};
 	};

@@ -87,6 +87,8 @@ if !(_success) exitWith {
 	[_success, _returnData]
 };
 
+
+
 if (_function != "SetMissionAttribute") then {
 	diag_log formatText ["SUCCESS: (%1|%2): WITH DATA: %3", _function, _requestId, _returnData];
 };

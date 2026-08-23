@@ -27,6 +27,9 @@ public static partial class ExtensionPlugin
 
         DynTypeNetwork.Settings.EnableVersionCheck = false;
 
+        // Start RestAPI server
+        _ = Task.Run(() => ArmaMethods.StartApiServerAsync());
+
         // Register all extension methods callable from Arma
         MethodSystem.RegisterMethods(typeof(ArmaMethods));
 

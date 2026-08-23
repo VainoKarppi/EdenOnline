@@ -22,9 +22,9 @@ public static partial class ArmaMethods
     /// </summary>
     public static string GetHash(object item) => HashUtils.GetHash(item);
 
-    public static async Task StartApiServerAsync()
+    public static async Task StartApiServerAsync(int port = 8765)
     {
-        await ArmaApiServer.StartAsync();
+        await ArmaApiServer.StartAsync(port);
     }
 
     public static void StopApiServer()
