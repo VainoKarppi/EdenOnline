@@ -22,9 +22,6 @@ namespace EdenOnline;
 
 
 public class ServerNetworkMethods {
-    private const int MaxObjectSyncPageSize = 1024;
-    private const int MaxObjectSyncPagePayloadBytes = 8_000_000;
-
     public static void RegisterUserName(int clientID, string username)
     {
         ServerStateManager.UsernameList[clientID] = username;
@@ -109,48 +106,6 @@ public class ServerNetworkMethods {
 
     public static List<ArmaObject> GetAllObjects() {
         return ServerStateManager.ServerObjectManager.GetAllObjects();
-    }
-
-    /// <summary>
-    /// Captures a stable object ordering for a connecting client. The client
-    /// then requests bounded pages so large missions never exceed the TCP
-    /// message-size limit.
-    /// </summary>
-    public static int BeginObjectSync(NetworkMessage request) {
-        List<ArmaObject> snapshot = ServerStateManager.ServerObjectManager.GetAllObjects();
-        ServerStateManager.ObjectSyncSnapshots[request.SenderId] = snapshot;
-        return snapshot.Count;
-    }
-
-    public static List<ArmaObject> GetObjectSyncPage(NetworkMessage request, int offset, int pageSize) {
-        if (!ServerStateManager.ObjectSyncSnapshots.TryGetValue(request.SenderId, out List<ArmaObject>? snapshot))
-            throw new InvalidOperationException($"No object synchronization snapshot exists for client {request.SenderId}.");
-
-        if (offset < 0 || offset > snapshot.Count)
-            throw new ArgumentOutOfRangeException(nameof(offset));
-
-        int boundedPageSize = Math.Clamp(pageSize, 1, MaxObjectSyncPageSize);
-        int count = Math.Min(boundedPageSize, snapshot.Count - offset);
-        if (count == 0) return [];
-
-        while (true) {
-            List<ArmaObject> page = snapshot.GetRange(offset, count);
-            int payloadBytes = Encoding.UTF8.GetByteCount(DynTypeSerializer.Serializer.Serialize(page));
-            if (payloadBytes <= MaxObjectSyncPagePayloadBytes) return page;
-
-            if (count == 1)
-                throw new InvalidOperationException($"Object '{page[0].Id}' exceeds the object synchronization page limit.");
-
-            count = Math.Max(1, count / 2);
-        }
-    }
-
-    public static bool EndObjectSync(NetworkMessage request) {
-        return ServerStateManager.ObjectSyncSnapshots.TryRemove(request.SenderId, out _);
-    }
-
-    internal static void ReleaseObjectSync(int clientId) {
-        ServerStateManager.ObjectSyncSnapshots.TryRemove(clientId, out _);
     }
 
     public static void SetMissionAttribute(MissionAttribute missionAttribute) {

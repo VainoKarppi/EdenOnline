@@ -122,7 +122,46 @@ internal class HandshakeMessage
 
 public static class MessageBuilder
 {
+    private const int MaxTcpFrameLength = 10_000_000;
+    private const int TcpFragmentPayloadLength = 8_000_000;
+    private const int TcpFragmentHeaderLength = 24;
+    private const int MaxTcpReassembledLength = 128_000_000;
+    private const int TcpFragmentMagic = 0x58454F45;
     private static readonly ConditionalWeakTable<NetworkStream, SemaphoreSlim> TcpWriteLocks = new();
+    private static long _nextTcpFragmentTransferId;
+
+    private readonly record struct TcpFragmentHeader(
+        long TransferId,
+        int FragmentIndex,
+        int FragmentCount,
+        int TotalLength)
+    {
+        internal void WriteTo(Span<byte> destination)
+        {
+            if (destination.Length < TcpFragmentHeaderLength)
+                throw new ArgumentException("TCP fragment header destination is too small.", nameof(destination));
+
+            BitConverter.TryWriteBytes(destination[0..4], TcpFragmentMagic);
+            BitConverter.TryWriteBytes(destination[4..12], TransferId);
+            BitConverter.TryWriteBytes(destination[12..16], FragmentIndex);
+            BitConverter.TryWriteBytes(destination[16..20], FragmentCount);
+            BitConverter.TryWriteBytes(destination[20..24], TotalLength);
+        }
+
+        internal static TcpFragmentHeader ReadFrom(ReadOnlySpan<byte> source)
+        {
+            if (source.Length < TcpFragmentHeaderLength
+                || BitConverter.ToInt32(source[0..4]) != TcpFragmentMagic)
+                throw new InvalidDataException("Invalid TCP fragment header signature.");
+
+            return new TcpFragmentHeader(
+                BitConverter.ToInt64(source[4..12]),
+                BitConverter.ToInt32(source[12..16]),
+                BitConverter.ToInt32(source[16..20]),
+                BitConverter.ToInt32(source[20..24])
+            );
+        }
+    }
 
     /// <summary>
     /// Writes one complete framed packet at a time per TCP stream. Server
@@ -138,9 +177,52 @@ public static class MessageBuilder
         SemaphoreSlim writeLock = TcpWriteLocks.GetValue(stream, static _ => new SemaphoreSlim(1, 1));
         await writeLock.WaitAsync(token);
         try {
-            await stream.WriteAsync(packet, token);
+            if (packet.Length < sizeof(int))
+                throw new InvalidDataException("TCP packet is missing its length prefix.");
+
+            int declaredLength = BitConverter.ToInt32(packet.Span[..sizeof(int)]);
+            if (declaredLength != packet.Length - sizeof(int))
+                throw new InvalidDataException($"TCP packet length mismatch: declared {declaredLength}, actual {packet.Length - sizeof(int)}.");
+
+            if (declaredLength <= MaxTcpFrameLength) {
+                await stream.WriteAsync(packet, token);
+            } else {
+                await WriteTcpFragmentsAsync(stream, packet[sizeof(int)..], token);
+            }
         } finally {
             writeLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Splits one oversized encrypted TCP envelope into contiguous transport
+    /// frames. The per-stream write lock remains held for the whole transfer,
+    /// so fragments cannot interleave with another logical message.
+    /// </summary>
+    private static async ValueTask WriteTcpFragmentsAsync(
+        NetworkStream stream,
+        ReadOnlyMemory<byte> envelope,
+        CancellationToken token)
+    {
+        if (envelope.Length > MaxTcpReassembledLength)
+            throw new InvalidDataException($"TCP message exceeds the {MaxTcpReassembledLength}-byte reassembly limit.");
+
+        long transferId = Interlocked.Increment(ref _nextTcpFragmentTransferId);
+        int fragmentCount = (envelope.Length + TcpFragmentPayloadLength - 1) / TcpFragmentPayloadLength;
+
+        for (int fragmentIndex = 0; fragmentIndex < fragmentCount; fragmentIndex++) {
+            int offset = fragmentIndex * TcpFragmentPayloadLength;
+            int payloadLength = Math.Min(TcpFragmentPayloadLength, envelope.Length - offset);
+            int frameLength = TcpFragmentHeaderLength + payloadLength;
+
+            byte[] lengthPrefix = BitConverter.GetBytes(-frameLength);
+            byte[] header = new byte[TcpFragmentHeaderLength];
+            new TcpFragmentHeader(transferId, fragmentIndex, fragmentCount, envelope.Length)
+                .WriteTo(header);
+
+            await stream.WriteAsync(lengthPrefix, token);
+            await stream.WriteAsync(header, token);
+            await stream.WriteAsync(envelope.Slice(offset, payloadLength), token);
         }
     }
 
@@ -235,8 +317,13 @@ public static class MessageBuilder
         stream.ReadExactly(lenBuf);
         int messageLength = BitConverter.ToInt32(lenBuf);
 
+        if (messageLength < 0) {
+            byte[] reassembledEnvelope = ReadTcpFragments(stream, messageLength);
+            return ReadTcpMessage(reassembledEnvelope, includeData: true, connectionId);
+        }
+
         // sanity check
-        if (messageLength <= 0 || messageLength > 10_000_000)
+        if (messageLength <= 0 || messageLength > MaxTcpFrameLength)
             throw new InvalidDataException($"Invalid message length: {messageLength}");
 
         // --- READ FULL MESSAGE ---
@@ -247,6 +334,85 @@ public static class MessageBuilder
         NetworkMessage msg = ReadTcpMessage(messageBytes, includeData: true, connectionId);
 
         return msg;
+    }
+
+    /// <summary>
+    /// Reassembles a contiguous run of generic transport fragments into the
+    /// encrypted envelope expected by the normal decoder.
+    /// </summary>
+    private static byte[] ReadTcpFragments(NetworkStream stream, int firstFrameLengthPrefix)
+    {
+        byte[]? envelope = null;
+        long transferId = 0;
+        int fragmentCount = 0;
+        int written = 0;
+        int frameLengthPrefix = firstFrameLengthPrefix;
+
+        for (int expectedIndex = 0; ; expectedIndex++) {
+            if (frameLengthPrefix == int.MinValue)
+                throw new InvalidDataException("Invalid TCP fragment length.");
+
+            int frameLength = -frameLengthPrefix;
+            if (frameLength < TcpFragmentHeaderLength
+                || frameLength > TcpFragmentHeaderLength + TcpFragmentPayloadLength)
+                throw new InvalidDataException($"Invalid TCP fragment length: {frameLength}.");
+
+            byte[] frame = new byte[frameLength];
+            stream.ReadExactly(frame);
+
+            TcpFragmentHeader header = TcpFragmentHeader.ReadFrom(frame);
+            long currentTransferId = header.TransferId;
+            int fragmentIndex = header.FragmentIndex;
+            int currentFragmentCount = header.FragmentCount;
+            int totalLength = header.TotalLength;
+            int expectedFragmentCount = totalLength > 0
+                ? (totalLength + TcpFragmentPayloadLength - 1) / TcpFragmentPayloadLength
+                : 0;
+
+            if (fragmentIndex != expectedIndex
+                || currentFragmentCount <= 0
+                || currentFragmentCount != expectedFragmentCount
+                || totalLength <= MaxTcpFrameLength
+                || totalLength > MaxTcpReassembledLength)
+                throw new InvalidDataException("Invalid TCP fragment header.");
+
+            if (expectedIndex == 0) {
+                transferId = currentTransferId;
+                fragmentCount = currentFragmentCount;
+                envelope = new byte[totalLength];
+            } else if (currentTransferId != transferId
+                || currentFragmentCount != fragmentCount
+                || envelope is null
+                || totalLength != envelope.Length) {
+                throw new InvalidDataException("TCP fragment transfer changed before reassembly completed.");
+            }
+
+            int payloadLength = frameLength - TcpFragmentHeaderLength;
+            int expectedPayloadLength = Math.Min(
+                TcpFragmentPayloadLength,
+                totalLength - (fragmentIndex * TcpFragmentPayloadLength)
+            );
+            if (payloadLength != expectedPayloadLength)
+                throw new InvalidDataException("TCP fragment payload length does not match its position.");
+
+            if (envelope is null || written + payloadLength > envelope.Length)
+                throw new InvalidDataException("TCP fragments exceed the declared message length.");
+
+            Buffer.BlockCopy(frame, TcpFragmentHeaderLength, envelope, written, payloadLength);
+            written += payloadLength;
+
+            if (expectedIndex + 1 == fragmentCount) {
+                if (written != envelope.Length)
+                    throw new InvalidDataException("TCP fragment transfer ended before the declared message length was reached.");
+                return envelope;
+            }
+
+            byte[] nextLengthPrefix = new byte[sizeof(int)];
+            stream.ReadExactly(nextLengthPrefix);
+            frameLengthPrefix = BitConverter.ToInt32(nextLengthPrefix);
+            if (frameLengthPrefix >= 0)
+                throw new InvalidDataException("TCP fragment transfer was interrupted by a normal frame.");
+        }
     }
     #endregion
 

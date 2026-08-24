@@ -39,7 +39,6 @@ public class ServerNetworkEvents {
 
         // Remove username from server list. Other clients are notified of this via network event OnOtherClientDisconnected, which is triggered by the server when a client disconnects.
         ServerNetworkMethods.RemoveUserName(clientId);
-        ServerNetworkMethods.ReleaseObjectSync(clientId);
     }
 
     public static async void OnServerShutdown(DisconnectReason reason)

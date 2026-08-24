@@ -205,14 +205,12 @@ EOEX_var_ObjectSyncEachFrameId = addMissionEventHandler ["EachFrame", {
 	};
 }];
 
-addMissionEventHandler ["ExtensionCallback",{
-	params [["_name",""],["_function",""],["_data","[]"]];
+EOEX_fnc_dispatchExtensionCallback = {
+	params [["_name", ""], ["_function", ""], ["_data", []]];
 	if (_name == "" || _function == "") exitWith {};
 
 	
 	if (_name == EOEX_var_extensionName) then {
-		_data = parseSimpleArray _data;
-
 		// Rest API requests
 		if (_function == "ApiServerCommand") exitWith {
 			diag_log _function;
@@ -248,15 +246,15 @@ addMissionEventHandler ["ExtensionCallback",{
 		if (
 			!(missionNamespace getVariable ["EOEX_var_AcceptSyncCallbacks", false])
 			&& {_method in [
-				"ObjectSyncCount", "ConnectionSyncCount", "ObjectSyncData", "ObjectSyncBatch",
-				"ObjectCreated", "ObjectCreatedBatch", "ObjectUpdated", "ObjectRemoved",
-				"CreateSyncConnection", "CreateSyncConnectionBatch", "ConnectionSyncBatch",
+				"ObjectSyncCount", "ConnectionSyncCount", "ObjectSyncData",
+				"ObjectCreated", "ObjectUpdated", "ObjectRemoved",
+				"CreateSyncConnection", "ConnectionSyncData",
 				"RemoveSyncConnection"
 			]}
 		) exitWith {};
 
 
-		if (EOEX_var_DEBUG && {!(_method in ["CameraUpdate", "ASYNC_RESPONSE", "ObjectSyncBatch", "ObjectCreatedBatch", "CreateSyncConnectionBatch", "ConnectionSyncBatch"])}) then {
+		if (EOEX_var_DEBUG && {!(_method in ["CameraUpdate", "ASYNC_RESPONSE", "ObjectSyncData", "ObjectCreated", "CreateSyncConnection", "ConnectionSyncData"])}) then {
 			diag_log "=========================================================================================";
 			diag_log _function;
 			diag_log _data;
@@ -284,18 +282,8 @@ addMissionEventHandler ["ExtensionCallback",{
 					EOEX_var_ApplyingRemoteChanges = true;
 				};
 
-				case "CreateSyncConnectionBatch": {
-					{
-						EOEX_var_ConnectionSyncQueue pushBack [true, _x select 0, _x select 1, _x select 2, false];
-					} forEach (_data select 0);
-					EOEX_var_ObjectSyncApplying = true;
-					EOEX_var_ApplyingRemoteChanges = true;
-				};
-
-				case "ConnectionSyncBatch": {
-					{
-						EOEX_var_ConnectionSyncQueue pushBack [true, _x select 0, _x select 1, _x select 2, true];
-					} forEach (_data select 0);
+				case "ConnectionSyncData": {
+					EOEX_var_ConnectionSyncQueue pushBack [true, _data select 0, _data select 1, _data select 2, true];
 					EOEX_var_ObjectSyncApplying = true;
 					EOEX_var_ApplyingRemoteChanges = true;
 				};
@@ -340,24 +328,8 @@ addMissionEventHandler ["ExtensionCallback",{
 					EOEX_var_ApplyingRemoteChanges = true;
 				};
 
-				case "ObjectSyncBatch": {
-					{
-						EOEX_var_ObjectSyncQueue pushBack [_x select 0, _x select 1, true];
-					} forEach (_data select 0);
-					EOEX_var_ObjectSyncApplying = true;
-					EOEX_var_ApplyingRemoteChanges = true;
-				};
-
 				case "ObjectCreated": {
 					EOEX_var_ObjectSyncQueue pushBack [_data select 0, _data select 1, false];
-					EOEX_var_ObjectSyncApplying = true;
-					EOEX_var_ApplyingRemoteChanges = true;
-				};
-
-				case "ObjectCreatedBatch": {
-					{
-						EOEX_var_ObjectSyncQueue pushBack [_x select 0, _x select 1, false];
-					} forEach (_data select 0);
 					EOEX_var_ObjectSyncApplying = true;
 					EOEX_var_ApplyingRemoteChanges = true;
 				};
@@ -450,6 +422,35 @@ addMissionEventHandler ["ExtensionCallback",{
 			};
 		};
 	};
+};
+
+addMissionEventHandler ["ExtensionCallback", {
+	params [["_name", ""], ["_function", ""], ["_data", "[]"]];
+	if (_name == "" || _function == "") exitWith {};
+	if (_name != EOEX_var_extensionName) exitWith {};
+
+	if (_function == "EOEX_BATCH") exitWith {
+		private _batch = parseSimpleArray _data;
+		if !(_batch isEqualType []) exitWith {
+			diag_log "[EdenOnline] Ignored malformed extension callback batch.";
+		};
+
+		{
+			if (
+				_x isEqualType []
+				&& {count _x == 2}
+				&& {_x # 0 isEqualType ""}
+				&& {_x # 0 != "EOEX_BATCH"}
+				&& {_x # 1 isEqualType []}
+			) then {
+				[_name, _x # 0, _x # 1] call EOEX_fnc_dispatchExtensionCallback;
+			} else {
+				diag_log "[EdenOnline] Ignored malformed entry in extension callback batch.";
+			};
+		} forEach _batch;
+	};
+
+	[_name, _function, parseSimpleArray _data] call EOEX_fnc_dispatchExtensionCallback;
 }];
 
 

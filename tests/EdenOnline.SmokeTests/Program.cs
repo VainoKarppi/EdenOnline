@@ -43,12 +43,6 @@ Assert(deserializeMethod is not null, "DeserializeArmaArray should exist.");
 var values = (object?[])deserializeMethod!.Invoke(null, [setMissionAttributeMethod!, new string[] { "\"Briefing\"", "\"Scenario\"", "[1,2,3]" }, null])!;
 Assert(values[2] is object[] array && array.Length == 3, "Array payloads should deserialize as object[] for object parameters.");
 
-var buildObjectSyncBatchesMethod = typeof(ArmaMethods).GetMethod(
-    "BuildObjectSyncBatches",
-    BindingFlags.NonPublic | BindingFlags.Static
-);
-Assert(buildObjectSyncBatchesMethod is not null, "Object synchronization should expose a bounded batching seam.");
-
 var objectsToSync = Enumerable.Range(0, 250)
     .Select(index => new ArmaObject($"object-{index}", new Dictionary<string, object?>
     {
@@ -56,14 +50,6 @@ var objectsToSync = Enumerable.Range(0, 250)
         ["Position"] = new object[] { index, 0, 0 }
     }))
     .ToList();
-
-var objectSyncBatches = (IReadOnlyList<object?[]>)buildObjectSyncBatchesMethod!.Invoke(null, [objectsToSync])!;
-Assert(objectSyncBatches.Count == 4, "250 objects should use four callbacks rather than 250 callbacks.");
-Assert(objectSyncBatches.All(batch => batch.Length <= 64), "Object synchronization batches must stay bounded.");
-Assert(objectSyncBatches.Sum(batch => batch.Length) == objectsToSync.Count, "Object synchronization batches must preserve every object.");
-Assert(((object?[])objectSyncBatches[0][0]!)[0]?.ToString() == "object-0", "Object synchronization batches must preserve object order.");
-Assert(((object?[])objectSyncBatches[^1][^1]!)[0]?.ToString() == "object-249", "The last object must remain in the final batch.");
-
 var parseObjectBatchMethod = typeof(ArmaMethods).GetMethod("ParseObjectBatch", BindingFlags.NonPublic | BindingFlags.Static);
 Assert(parseObjectBatchMethod is not null, "Host object upload should expose its batch parser seam.");
 var parsedObjectBatch = (List<ArmaObject>)parseObjectBatchMethod!.Invoke(null, [new object[]
@@ -258,9 +244,51 @@ HashSet<ushort> concurrentPacketIds = await packetReaderTask.WaitAsync(TimeSpan.
 Assert(concurrentPacketIds.Count == concurrentPacketCount,
     "Concurrent TCP producers must deliver every framed packet exactly once.");
 
+const int oversizedTcpPayloadLength = 12_000_000;
+byte[] oversizedTcpPacket = (byte[])createRawPacketMethod!.Invoke(null, [new NetworkMessage
+{
+    SenderId = 2,
+    TargetId = [Server.SERVER_ID],
+    MessageType = MessageType.Handshake,
+    MessageId = 65000,
+    Payload = new string('Z', oversizedTcpPayloadLength)
+}])!;
+
+Task<NetworkMessage> oversizedPacketReaderTask = Task.Run(() =>
+    (NetworkMessage)readSerializedPacketMethod!.Invoke(null,
+        [serializedPacketReader.GetStream(), null])!);
+object? oversizedPendingWrite = writeTcpPacketMethod!.Invoke(null,
+    [serializedPacketWriter.GetStream(), new ReadOnlyMemory<byte>(oversizedTcpPacket), CancellationToken.None]);
+Assert(oversizedPendingWrite is ValueTask, "Oversized TCP writes must use the normal serialized packet writer.");
+await ((ValueTask)oversizedPendingWrite!);
+NetworkMessage oversizedTcpRoundTrip = await oversizedPacketReaderTask.WaitAsync(TimeSpan.FromSeconds(10));
+string? oversizedTcpPayload = oversizedTcpRoundTrip.Payload;
+Assert(oversizedTcpRoundTrip.MessageId == 65000
+    && oversizedTcpPayload?.Length == oversizedTcpPayloadLength
+    && oversizedTcpPayload![0] == 'Z'
+    && oversizedTcpPayload![^1] == 'Z',
+    "The TCP layer must transparently fragment and reconstruct an oversized logical message.");
+
+byte[] postFragmentPacket = (byte[])createRawPacketMethod.Invoke(null, [new NetworkMessage
+{
+    SenderId = 2,
+    TargetId = [Server.SERVER_ID],
+    MessageType = MessageType.Handshake,
+    MessageId = 65001,
+    Payload = "after-fragments"
+}])!;
+Task<NetworkMessage> postFragmentReaderTask = Task.Run(() =>
+    (NetworkMessage)readSerializedPacketMethod!.Invoke(null,
+        [serializedPacketReader.GetStream(), null])!);
+object? postFragmentPendingWrite = writeTcpPacketMethod!.Invoke(null,
+    [serializedPacketWriter.GetStream(), new ReadOnlyMemory<byte>(postFragmentPacket), CancellationToken.None]);
+await ((ValueTask)postFragmentPendingWrite!);
+NetworkMessage postFragmentRoundTrip = await postFragmentReaderTask.WaitAsync(TimeSpan.FromSeconds(10));
+Assert(postFragmentRoundTrip.MessageId == 65001 && postFragmentRoundTrip.Payload == "after-fragments",
+    "TCP fragment reassembly must leave the stream aligned for the next logical message.");
+
 const int largeObjectCount = 50_000;
 const int tcpMessageLimitBytes = 10_000_000;
-const int objectSyncPageSize = 1024;
 
 var largeObjectSet = Enumerable.Range(0, largeObjectCount)
     .Select(index => new ArmaObject($"large-object-{index:D5}", new Dictionary<string, object?>
@@ -280,12 +308,6 @@ var largeObjectSet = Enumerable.Range(0, largeObjectCount)
     }))
     .ToList();
 
-var largeBatchStopwatch = System.Diagnostics.Stopwatch.StartNew();
-var largeObjectSyncBatches = (IReadOnlyList<object?[]>)buildObjectSyncBatchesMethod.Invoke(null, [largeObjectSet])!;
-largeBatchStopwatch.Stop();
-Assert(largeObjectSyncBatches.Count == 782, "50,000 objects should use 782 callbacks rather than 50,000 callbacks.");
-Assert(largeObjectSyncBatches.Sum(batch => batch.Length) == largeObjectCount, "The 50,000-object callback plan must preserve every object.");
-
 var printArrayMethod = serializerType!.GetMethod("PrintArray", BindingFlags.NonPublic | BindingFlags.Static);
 Assert(printArrayMethod is not null, "The Arma payload serializer should expose its callback serialization seam.");
 string representativeArmaPayload = (string)printArrayMethod!.Invoke(null, [new object?[]
@@ -298,98 +320,89 @@ string representativeArmaPayload = (string)printArrayMethod!.Invoke(null, [new o
 }])!;
 Assert(representativeArmaPayload == "[\"alpha\",true,nil,[1,2],[[\"key\",\"value\"]]]",
     "The optimized serializer must preserve the existing Arma wire format.");
-GC.Collect();
-GC.WaitForPendingFinalizers();
-GC.Collect();
-long callbackSerializationAllocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-var callbackSerializationStopwatch = System.Diagnostics.Stopwatch.StartNew();
-long totalObjectCallbackBytes = 0;
-int largestObjectCallbackBytes = 0;
-foreach (object?[] batch in largeObjectSyncBatches)
+
+var managedCallbackOverrideField = typeof(Extension).GetField(
+    "_managedCallbackOverride",
+    BindingFlags.NonPublic | BindingFlags.Static
+);
+Assert(managedCallbackOverrideField is not null,
+    "SendToArma must expose a managed callback seam for its public transport behavior tests.");
+
+var deliveredArmaCallbacks = new System.Collections.Concurrent.ConcurrentQueue<(string Method, string Data)>();
+managedCallbackOverrideField!.SetValue(null, new Func<string, string, int>((method, data) =>
 {
-    string payload = (string)printArrayMethod!.Invoke(null, [new object?[] { batch }])!;
-    int payloadBytes = Encoding.UTF8.GetByteCount(payload);
-    totalObjectCallbackBytes += payloadBytes;
-    largestObjectCallbackBytes = Math.Max(largestObjectCallbackBytes, payloadBytes);
+    deliveredArmaCallbacks.Enqueue((method, data));
+    return 99;
+}));
+
+for (int index = 0; index < 300; index++)
+{
+    string method = index % 2 == 0 ? "CoalescedPosition" : "CoalescedDirection";
+    Assert(Extension.SendToArma(method, [index]), "Every logical SendToArma call must enter the background queue.");
 }
-callbackSerializationStopwatch.Stop();
-long callbackSerializationAllocatedBytes = GC.GetAllocatedBytesForCurrentThread() - callbackSerializationAllocatedBefore;
-Assert(largestObjectCallbackBytes < 1_000_000, "Representative object callback batches should remain comfortably bounded.");
-Assert(callbackSerializationAllocatedBytes < 150_000_000, "50,000-object callback serialization should avoid recursive intermediate strings.");
+
+Assert(SpinWait.SpinUntil(() => !deliveredArmaCallbacks.IsEmpty, TimeSpan.FromSeconds(2)),
+    "The SendToArma worker must deliver calls without an explicit flush.");
+Thread.Sleep(50);
+
+Assert(deliveredArmaCallbacks.Count == 1,
+    "Three hundred SendToArma calls from one batching window must use one Arma callback despite queue backpressure.");
+Assert(deliveredArmaCallbacks.TryDequeue(out var deliveredArmaBatch)
+    && deliveredArmaBatch.Method == "EOEX_BATCH",
+    "Coalesced callbacks must use the generic SQF batch envelope.");
+Assert(deliveredArmaBatch.Data.StartsWith("[[\"CoalescedPosition\",[0]]", StringComparison.Ordinal)
+    && deliveredArmaBatch.Data.EndsWith("[\"CoalescedDirection\",[299]]]", StringComparison.Ordinal),
+    "The generic callback batch must retain the first and last logical messages in order.");
+Assert(deliveredArmaBatch.Data.Split("\"CoalescedPosition\"", StringSplitOptions.None).Length - 1 == 150
+    && deliveredArmaBatch.Data.Split("\"CoalescedDirection\"", StringSplitOptions.None).Length - 1 == 150,
+    "The generic callback batch must preserve every logical message across unrelated methods.");
+
+Assert(Extension.SendToArma("SingleProbe", ["unchanged"]), "A single logical callback must enter the same queue.");
+Assert(SpinWait.SpinUntil(() => !deliveredArmaCallbacks.IsEmpty, TimeSpan.FromSeconds(2)),
+    "A single logical callback must flush after the batching window.");
+Assert(deliveredArmaCallbacks.TryDequeue(out var deliveredSingleCallback)
+    && deliveredSingleCallback.Method == "SingleProbe"
+    && deliveredSingleCallback.Data == "[\"unchanged\"]",
+    "A lone SendToArma call must retain the legacy callback method and payload.");
+
+var stalledCallbackEntered = new ManualResetEventSlim(false);
+var releaseStalledCallback = new ManualResetEventSlim(false);
+var stalledWindowDeliveries = new System.Collections.Concurrent.ConcurrentQueue<string>();
+managedCallbackOverrideField.SetValue(null, new Func<string, string, int>((method, _) =>
+{
+    if (method == "StalledCallback")
+    {
+        stalledCallbackEntered.Set();
+        releaseStalledCallback.Wait(TimeSpan.FromSeconds(2));
+    }
+    stalledWindowDeliveries.Enqueue(method);
+    return 99;
+}));
+
+Assert(Extension.SendToArma("StalledCallback", [0]), "The stalled callback probe must enter the outbound queue.");
+Assert(stalledCallbackEntered.Wait(TimeSpan.FromSeconds(2)), "The callback probe must reach the managed Arma sink.");
+Assert(Extension.SendToArma("EarlierWindow", [1]), "The first delayed-window message must enter the queue.");
+Thread.Sleep(25);
+Assert(Extension.SendToArma("LaterWindow", [2]), "The second delayed-window message must enter the queue.");
+releaseStalledCallback.Set();
+Assert(SpinWait.SpinUntil(() => stalledWindowDeliveries.Count == 3, TimeSpan.FromSeconds(2)),
+    "Messages queued while delivery is stalled must resume automatically.");
+Assert(stalledWindowDeliveries.ToArray().SequenceEqual(["StalledCallback", "EarlierWindow", "LaterWindow"]),
+    "A stalled callback must not merge logical calls that were enqueued in different frame windows.");
+managedCallbackOverrideField.SetValue(null, null);
 
 string unpagedObjectPayload = DynTypeSerializer.Serializer.Serialize(largeObjectSet);
 int unpagedObjectPayloadBytes = Encoding.UTF8.GetByteCount(unpagedObjectPayload);
 Assert(unpagedObjectPayloadBytes > tcpMessageLimitBytes, "The 50,000-object fixture must exercise the TCP message-size failure mode.");
 
-var buildObjectUploadPagesMethod = typeof(ArmaMethods).GetMethod(
-    "BuildObjectUploadPages",
-    BindingFlags.NonPublic | BindingFlags.Static
-);
-Assert(buildObjectUploadPagesMethod is not null, "Host object upload must expose a bounded transport-page seam.");
-var largeObjectUploadPages = (IReadOnlyList<List<ArmaObject>>)buildObjectUploadPagesMethod!.Invoke(null, [largeObjectSet])!;
-Assert(largeObjectUploadPages.Count == 49, "50,000 host objects should use 49 bounded network pages.");
-Assert(largeObjectUploadPages.Sum(page => page.Count) == largeObjectCount,
-    "Host upload pages must preserve all 50,000 objects.");
-Assert(largeObjectUploadPages.SelectMany(page => page).Select(obj => obj.Id).SequenceEqual(largeObjectSet.Select(obj => obj.Id)),
-    "Host upload pages must preserve object order.");
-Assert(largeObjectUploadPages.All(page => Encoding.UTF8.GetByteCount(DynTypeSerializer.Serializer.Serialize(page)) <= 8_000_000),
-    "Every host upload page must retain transport headroom.");
-
-var beginObjectSyncMethod = typeof(ServerNetworkMethods).GetMethod("BeginObjectSync", BindingFlags.Public | BindingFlags.Static);
-var getObjectSyncPageMethod = typeof(ServerNetworkMethods).GetMethod("GetObjectSyncPage", BindingFlags.Public | BindingFlags.Static);
-var endObjectSyncMethod = typeof(ServerNetworkMethods).GetMethod("EndObjectSync", BindingFlags.Public | BindingFlags.Static);
-Assert(beginObjectSyncMethod is not null && getObjectSyncPageMethod is not null && endObjectSyncMethod is not null,
-    "Large object synchronization must use a bounded server snapshot API.");
-
 ServerStateManager.ServerObjectManager.Clear();
 foreach (ArmaObject obj in largeObjectSet)
     ServerStateManager.ServerObjectManager.AddOrUpdateObject(obj);
-
-var syncRequest = new NetworkMessage { SenderId = 42 };
-int snapshotCount = (int)beginObjectSyncMethod!.Invoke(null, [syncRequest])!;
-Assert(snapshotCount == largeObjectCount, "The object synchronization snapshot must contain all 50,000 objects.");
-
-int pagedObjectCount = 0;
-int pageOffset = 0;
-int pageCount = 0;
-int largestPageBytes = 0;
-while (pageOffset < snapshotCount)
-{
-    var page = (List<ArmaObject>)getObjectSyncPageMethod!.Invoke(null, [syncRequest, pageOffset, objectSyncPageSize])!;
-    Assert(page.Count > 0 && page.Count <= objectSyncPageSize, "Every object synchronization page must be non-empty and bounded.");
-    int pageBytes = Encoding.UTF8.GetByteCount(DynTypeSerializer.Serializer.Serialize(page));
-    Assert(pageBytes <= 8_000_000, "Every representative object synchronization page must preserve transport headroom.");
-    largestPageBytes = Math.Max(largestPageBytes, pageBytes);
-
-    pagedObjectCount += page.Count;
-    pageOffset += page.Count;
-    pageCount++;
-}
-
-Assert(pagedObjectCount == largeObjectCount, "Paged synchronization must preserve all 50,000 objects.");
-Assert(pageCount == 49, "50,000 objects should be transferred in 49 bounded network pages.");
-Assert((bool)endObjectSyncMethod!.Invoke(null, [syncRequest])!, "The server must release the synchronization snapshot.");
-Assert(!ServerStateManager.ObjectSyncSnapshots.ContainsKey(syncRequest.SenderId), "Released synchronization snapshots must not retain client state.");
-ServerStateManager.ServerObjectManager.Clear();
-
-string oversizedAttribute = new('x', 200_000);
-for (int index = 0; index < 64; index++)
-{
-    ServerStateManager.ServerObjectManager.AddOrUpdateObject(new ArmaObject($"oversized-{index}", new Dictionary<string, object?>
-    {
-        ["ItemClass"] = "Land_HelipadEmpty_F",
-        ["Position"] = new object[] { index, 0, 0 },
-        ["Init"] = oversizedAttribute
-    }));
-}
-
-var oversizedSyncRequest = new NetworkMessage { SenderId = 43 };
-Assert((int)beginObjectSyncMethod!.Invoke(null, [oversizedSyncRequest])! == 64, "Oversized-page fixture should contain all objects.");
-var adaptivelySizedPage = (List<ArmaObject>)getObjectSyncPageMethod!.Invoke(null, [oversizedSyncRequest, 0, objectSyncPageSize])!;
-Assert(adaptivelySizedPage.Count < 64, "Object pages should shrink when their serialized payload is too large.");
-Assert(Encoding.UTF8.GetByteCount(DynTypeSerializer.Serializer.Serialize(adaptivelySizedPage)) <= 8_000_000,
-    "Adaptively sized object pages must retain transport headroom.");
-Assert((bool)endObjectSyncMethod!.Invoke(null, [oversizedSyncRequest])!, "Oversized synchronization snapshots must be released.");
+List<ArmaObject> completeObjectSnapshot = ServerNetworkMethods.GetAllObjects();
+Assert(completeObjectSnapshot.Count == largeObjectCount
+    && completeObjectSnapshot.Any(obj => obj.Id == largeObjectSet[0].Id)
+    && completeObjectSnapshot.Any(obj => obj.Id == largeObjectSet[^1].Id),
+    "Object synchronization must expose one complete logical response and leave transport fragmentation behind the API.");
 ServerStateManager.ServerObjectManager.Clear();
 
 var largeConnectionSet = Enumerable.Range(0, largeObjectCount)
@@ -402,16 +415,6 @@ var largeConnectionSet = Enumerable.Range(0, largeObjectCount)
 
 int connectionPayloadBytes = Encoding.UTF8.GetByteCount(DynTypeSerializer.Serializer.Serialize(largeConnectionSet));
 Assert(connectionPayloadBytes < tcpMessageLimitBytes, "The representative 50,000-connection response must fit the TCP message limit.");
-
-var buildConnectionSyncBatchesMethod = typeof(ArmaMethods).GetMethod(
-    "BuildConnectionSyncBatches",
-    BindingFlags.NonPublic | BindingFlags.Static
-);
-Assert(buildConnectionSyncBatchesMethod is not null, "Initial synchronization connections must use bounded callbacks.");
-
-var largeConnectionBatches = (IReadOnlyList<object?[]>)buildConnectionSyncBatchesMethod!.Invoke(null, [largeConnectionSet])!;
-Assert(largeConnectionBatches.Count == 391, "50,000 synchronization connections should use 391 callbacks rather than 50,000 callbacks.");
-Assert(largeConnectionBatches.Sum(batch => batch.Length) == largeObjectCount, "Connection callback batches must preserve all 50,000 connections.");
 
 var parseConnectionBatchMethod = typeof(ArmaMethods).GetMethod("ParseConnectionBatch", BindingFlags.NonPublic | BindingFlags.Static);
 Assert(parseConnectionBatchMethod is not null, "Host connection upload should expose its batch parser seam.");
@@ -432,7 +435,7 @@ Assert(ServerNetworkMethods.RemoveSyncConnection(largeConnectionSet[0]), "Indexe
 Assert(ServerStateManager.SyncConnections.Count == largeObjectCount - 1, "Indexed connection removal must remove exactly one connection.");
 ServerStateManager.SyncConnections.Clear();
 
-Console.WriteLine($"50k sync probe: objectCallbacks={largeObjectSyncBatches.Count}, connectionCallbacks={largeConnectionBatches.Count}, pages={pageCount}, largestPageBytes={largestPageBytes}, largestCallbackBytes={largestObjectCallbackBytes}, callbackBytes={totalObjectCallbackBytes}, callbackAllocatedBytes={callbackSerializationAllocatedBytes}, objectBytes={unpagedObjectPayloadBytes}, connectionBytes={connectionPayloadBytes}, batchPlanMs={largeBatchStopwatch.ElapsedMilliseconds}, callbackSerializeMs={callbackSerializationStopwatch.ElapsedMilliseconds}, connectionIndexMs={connectionIndexStopwatch.ElapsedMilliseconds}");
+Console.WriteLine($"50k sync probe: objectBytes={unpagedObjectPayloadBytes}, connectionBytes={connectionPayloadBytes}, connectionIndexMs={connectionIndexStopwatch.ElapsedMilliseconds}");
 
 bool previousLoggerEnabled = Logger.Enabled;
 bool previousLogToConsole = Logger.LogToConsole;
@@ -493,9 +496,9 @@ MethodInfo? unpackResponsePayloadMethod = typeof(MessageBuilder).GetMethod(
 Assert(createRemoteErrorPayloadMethod is not null && unpackResponsePayloadMethod is not null,
     "RPC responses must expose a structured remote-error decoding seam.");
 
-const string remoteFailureMessage = "No object synchronization snapshot exists for client 68195.";
+const string remoteFailureMessage = "Object synchronization failed for client 68195.";
 string remoteErrorPayload = (string)createRemoteErrorPayloadMethod!.Invoke(null,
-    ["GetObjectSyncPage", new InvalidOperationException(remoteFailureMessage)])!;
+    ["GetAllObjects", new InvalidOperationException(remoteFailureMessage)])!;
 MethodInfo unpackObjectPageResponseMethod = unpackResponsePayloadMethod!
     .MakeGenericMethod(typeof(List<ArmaObject>));
 
@@ -503,7 +506,7 @@ RemoteMethodException? decodedRemoteFailure = null;
 try
 {
     _ = unpackObjectPageResponseMethod.Invoke(null,
-        [remoteErrorPayload, 1, "GetObjectSyncPage"]);
+        [remoteErrorPayload, 1, "GetAllObjects"]);
 }
 catch (TargetInvocationException ex) when (ex.InnerException is RemoteMethodException remoteException)
 {
@@ -512,17 +515,17 @@ catch (TargetInvocationException ex) when (ex.InnerException is RemoteMethodExce
 
 Assert(decodedRemoteFailure is not null,
     "A failed RPC response must throw RemoteMethodException instead of deserializing null.");
-Assert(decodedRemoteFailure!.TargetId == 1 && decodedRemoteFailure.MethodName == "GetObjectSyncPage",
+Assert(decodedRemoteFailure!.TargetId == 1 && decodedRemoteFailure.MethodName == "GetAllObjects",
     "Remote RPC failures must identify their target and method.");
 Assert(decodedRemoteFailure.RemoteMessage == remoteFailureMessage,
     "Remote RPC failures must preserve the actionable server error message.");
-Assert(decodedRemoteFailure.Message.Contains("GetObjectSyncPage", StringComparison.Ordinal)
+Assert(decodedRemoteFailure.Message.Contains("GetAllObjects", StringComparison.Ordinal)
     && decodedRemoteFailure.Message.Contains("System.InvalidOperationException", StringComparison.Ordinal),
     "Remote RPC failure messages exposed to Arma must include method and exception context.");
 
 string successfulPagePayload = DynTypeSerializer.Serializer.Serialize(new List<ArmaObject> { objectsToSync[0] });
 var decodedSuccessfulPage = (List<ArmaObject>)unpackObjectPageResponseMethod.Invoke(null,
-    [successfulPagePayload, 1, "GetObjectSyncPage"])!;
+    [successfulPagePayload, 1, "GetAllObjects"])!;
 Assert(decodedSuccessfulPage.Count == 1 && decodedSuccessfulPage[0].Id == "object-0",
     "Successful RPC payloads must retain their existing wire format.");
 
@@ -595,7 +598,7 @@ Console.WriteLine("Smoke tests passed.");
 
 public sealed class ReflectionFallbackRpcMethods
 {
-    public const string FailureMessage = "object synchronization page failed on the server";
+    public const string FailureMessage = "object synchronization failed on the server";
 
     public static int AlwaysFails(NetworkMessage request)
     {

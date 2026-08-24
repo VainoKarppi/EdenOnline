@@ -32,7 +32,6 @@ public static class ServerStateManager
     public static ClientStateManager ServerObjectManager { get; } = new ClientStateManager();
     public static MissionAttributeManager MissionAttributeManager { get; } = new MissionAttributeManager();
     public static ConcurrentDictionary<(string FromID, string ToID, string Type), ArmaSyncConnection> SyncConnections { get; } = new();
-    public static ConcurrentDictionary<int, List<ArmaObject>> ObjectSyncSnapshots { get; } = new();
 
     /// <summary>
     /// True only after the host has uploaded and verified its initial mission
@@ -68,7 +67,6 @@ public static class ServerStateManager
         ServerObjectManager.Clear();
         MissionAttributeManager.Clear();
         SyncConnections.Clear();
-        ObjectSyncSnapshots.Clear();
         Volatile.Write(ref initialSyncHostClientId, 0);
         Volatile.Write(ref initialSyncReady, 1);
     }

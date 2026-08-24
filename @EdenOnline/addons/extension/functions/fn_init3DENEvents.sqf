@@ -146,7 +146,6 @@ add3DENEventHandler ["OnEditableEntityAdded", {
 						EOEX_var_InFlightObjectCreates = +_pendingObjects;
 
 						private _objectBatch = [];
-						private _batchCharacters = 0;
 						private _uploadFailed = false;
 						{
 							if (_uploadFailed) then { continue };
@@ -157,22 +156,7 @@ add3DENEventHandler ["OnEditableEntityAdded", {
 							private _objectId = _object call EOEX_fnc_getId;
 							private _entry = [_objectId, _object get3DENAttributes ""];
 							_object setVariable ["EOEX_var_createPending", nil];
-							private _entryCharacters = count str _entry;
-
-							// One nested callExtension argument may be large, but keeping a
-							// conservative payload ceiling avoids oversized TCP messages.
-							if (
-								_objectBatch isNotEqualTo []
-								&& {count _objectBatch >= 256 || {_batchCharacters + _entryCharacters > 4000000}}
-							) then {
-								private _sent = [_objectBatch, _generation] call EOEX_fnc_sendObjectBatchWithRetry;
-								if !(_sent) then { _uploadFailed = true };
-								_objectBatch = [];
-								_batchCharacters = 0;
-							};
-
 							_objectBatch pushBack _entry;
-							_batchCharacters = _batchCharacters + _entryCharacters;
 						} forEach _pendingObjects;
 
 						if (!_uploadFailed && {_objectBatch isNotEqualTo []}) then {

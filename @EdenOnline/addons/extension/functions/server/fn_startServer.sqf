@@ -91,36 +91,16 @@ if (missionNamespace getVariable ["EOEX_var_syncMissionAttributes", false]) then
 
 private _allObjects = (all3DENEntities # 0);
 // Send current world edits to server
-private _objectBatch = [];
-private _objectBatchCharacters = 0;
-private _uploadedObjectCount = 0;
+private _objectData = [];
 private _totalObjectCount = count _allObjects;
 {
     private _attributes = (_x get3DENAttributes "");
     private _id = _x call EOEX_fnc_getId;
-    private _entry = [_id, _attributes];
-    private _entryCharacters = count str _entry;
-
-    if (
-        _objectBatch isNotEqualTo []
-        && {count _objectBatch >= 256 || {_objectBatchCharacters + _entryCharacters > 4000000}}
-    ) then {
-        ["CreateObjectsBatch", [_objectBatch], false, 30] call EOEX_fnc_callExtensionAsync;
-        _objectBatch = [];
-        _objectBatchCharacters = 0;
-
-        if (_totalObjectCount > 0) then {
-            progressLoadingScreen (0.1 + (0.6 * (_uploadedObjectCount / _totalObjectCount)));
-        };
-    };
-
-    _objectBatch pushBack _entry;
-    _objectBatchCharacters = _objectBatchCharacters + _entryCharacters;
-    _uploadedObjectCount = _uploadedObjectCount + 1;
+    _objectData pushBack [_id, _attributes];
 } forEach _allObjects;
 
-if (_objectBatch isNotEqualTo []) then {
-    ["CreateObjectsBatch", [_objectBatch], false, 30] call EOEX_fnc_callExtensionAsync;
+if (_objectData isNotEqualTo []) then {
+    ["CreateObjectsBatch", [_objectData], false, 30] call EOEX_fnc_callExtensionAsync;
 };
 
 progressLoadingScreen 0.7;
@@ -130,7 +110,7 @@ uiSleep 0.1;
 
 // Send initial synced items list to server
 private _sentConnections = createHashMap;
-private _connectionBatch = [];
+private _connectionData = [];
 
 {
     private _object = _x;
@@ -164,22 +144,17 @@ private _connectionBatch = [];
 
         _sentConnections set [_key, true];
 
-        _connectionBatch pushBack [_id, _toID, _connectionType];
+        _connectionData pushBack [_id, _toID, _connectionType];
         private _localConnection = [_id, _toID, _connectionType];
         EOEX_var_SyncConnections pushBack _localConnection;
         EOEX_var_SyncConnectionKeys set [str _localConnection, true];
-
-        if ((count _connectionBatch) >= 512) then {
-            ["CreateSyncConnectionsBatch", [_connectionBatch], false, 30] call EOEX_fnc_callExtensionAsync;
-            _connectionBatch = [];
-        };
 
     } forEach _connections;
 
 } forEach _allObjects;
 
-if (_connectionBatch isNotEqualTo []) then {
-    ["CreateSyncConnectionsBatch", [_connectionBatch], false, 30] call EOEX_fnc_callExtensionAsync;
+if (_connectionData isNotEqualTo []) then {
+    ["CreateSyncConnectionsBatch", [_connectionData], false, 30] call EOEX_fnc_callExtensionAsync;
 };
 
 progressLoadingScreen 0.95;

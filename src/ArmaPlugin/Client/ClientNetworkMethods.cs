@@ -48,8 +48,8 @@ public class ClientNetworkMethods {
         Extension.SendToArma("ObjectCreated", [createdObj.Id, createdObj.Attributes]);
     }
     public static void CreateObjectsBatch(List<ArmaObject> createdObjects) {
-        foreach (object?[] batch in ArmaMethods.BuildObjectSyncBatches(createdObjects))
-            Extension.SendToArma("ObjectCreatedBatch", [batch]);
+        foreach (ArmaObject createdObject in createdObjects)
+            Extension.SendToArma("ObjectCreated", [createdObject.Id, createdObject.Attributes]);
     }
     public static void UpdateObject(ArmaObject updatedObj) {
         Extension.SendToArma("ObjectUpdated", [updatedObj.Id, updatedObj.Attributes]);
@@ -62,8 +62,8 @@ public class ClientNetworkMethods {
         Extension.SendToArma("CreateSyncConnection", [connection.FromID, connection.ToID, connection.Type]);
     }
     public static void CreateSyncConnectionsBatch(List<ArmaSyncConnection> connections) {
-        foreach (object?[] batch in ArmaMethods.BuildConnectionSyncBatches(connections))
-            Extension.SendToArma("CreateSyncConnectionBatch", [batch]);
+        foreach (ArmaSyncConnection connection in connections)
+            Extension.SendToArma("CreateSyncConnection", [connection.FromID, connection.ToID, connection.Type]);
     }
 
     public static void RemoveSyncConnection(ArmaSyncConnection connection) {

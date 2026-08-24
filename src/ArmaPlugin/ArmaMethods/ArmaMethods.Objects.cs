@@ -12,9 +12,6 @@ namespace EdenOnline;
 /// </summary>
 public static partial class ArmaMethods
 {
-    private const int MaxObjectUploadPageSize = 1024;
-    private const int MaxObjectUploadPayloadBytes = 8_000_000;
-
     /// <summary>
     /// Confirms that every initial host object and connection reached the server.
     /// Remote clients are admitted only after this succeeds.
@@ -57,51 +54,7 @@ public static partial class ArmaMethods
             throw new Exception("Client is not connected. Cannot create objects.");
 
         List<ArmaObject> objects = ParseObjectBatch(objectData);
-        foreach (List<ArmaObject> page in BuildObjectUploadPages(objects))
-            await SendObjectUploadPageAsync(page);
-    }
-
-    /// <summary>
-    /// Sends a page using the same serialized packet used for its size check.
-    /// Oversized pages are divided without serializing every successful page
-    /// twice, which matters when a host publishes tens of thousands of objects.
-    /// </summary>
-    private static async Task SendObjectUploadPageAsync(List<ArmaObject> page)
-    {
-        Client.PreparedTcpMessage preparedMessage = Client.PrepareTcpMessage(
-            [0],
-            "CreateObjectsBatch",
-            page
-        );
-
-        if (preparedMessage.Packet.Length <= MaxObjectUploadPayloadBytes)
-        {
-            await Client.SendPreparedTcpMessageAsync(preparedMessage);
-            return;
-        }
-
-        if (page.Count == 1)
-            throw new InvalidOperationException($"Object '{page[0].Id}' exceeds the object upload limit.");
-
-        int midpoint = page.Count / 2;
-        await SendObjectUploadPageAsync(page.GetRange(0, midpoint));
-        await SendObjectUploadPageAsync(page.GetRange(midpoint, page.Count - midpoint));
-    }
-
-    internal static IReadOnlyList<List<ArmaObject>> BuildObjectUploadPages(IReadOnlyList<ArmaObject> objects)
-    {
-        var pages = new List<List<ArmaObject>>((objects.Count + MaxObjectUploadPageSize - 1) / MaxObjectUploadPageSize);
-
-        for (int offset = 0; offset < objects.Count; offset += MaxObjectUploadPageSize)
-        {
-            int count = Math.Min(MaxObjectUploadPageSize, objects.Count - offset);
-            var page = new List<ArmaObject>(count);
-            for (int index = 0; index < count; index++)
-                page.Add(objects[offset + index]);
-            pages.Add(page);
-        }
-
-        return pages;
+        await Client.SendTcpMessageAsync(0, "CreateObjectsBatch", objects);
     }
 
     internal static List<ArmaObject> ParseObjectBatch(object[] objectData)

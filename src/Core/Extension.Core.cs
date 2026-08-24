@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -34,17 +35,26 @@ public static partial class Extension {
     // Arma's callback buffer accepts at most 100 entries per frame. When the
     // buffer is full, the callback pointer returns a negative value and the
     // message is dropped unless retried. Rather than retrying inline (which
-    // would block/spin the calling thread), every outbound message is queued
-    // and drained by a single dedicated worker thread. This keeps ordering
-    // intact and applies bounded backpressure during very large bursts instead
-    // of retaining every serialized payload in memory. Delivery never gives
-    // up on a message unless the callback pointer itself throws.
+    // would block/spin the calling thread), every logical outbound message is
+    // queued and drained by a single dedicated worker thread. Calls arriving
+    // in the same short frame window are coalesced into one generic callback;
+    // SQF expands that envelope and dispatches the original methods in order.
+    // This keeps feature code unaware of batching while applying bounded
+    // backpressure during very large bursts.
     // ---------------------------------------------------------------------
     private const int OutboundQueueCapacity = 256;
-    private static readonly BlockingCollection<(string method, string data)> _outbox = new(
-        new ConcurrentQueue<(string, string)>(),
+    private const int OutboundBatchWindowMilliseconds = 16;
+    private const string OutboundBatchMethod = "EOEX_BATCH";
+    private static readonly long OutboundBatchWindowTicks = Math.Max(
+        1,
+        Stopwatch.Frequency * OutboundBatchWindowMilliseconds / 1000
+    );
+    private static readonly BlockingCollection<OutboundArmaMessage> _outbox = new(
+        new ConcurrentQueue<OutboundArmaMessage>(),
         OutboundQueueCapacity
     );
+    private static readonly object _outboxEnqueueLock = new();
+    private static Func<string, string, int>? _managedCallbackOverride = null;
 
     private static readonly Thread _outboxWorker = CreateOutboxWorker();
 
@@ -62,8 +72,81 @@ public static partial class Extension {
     }
 
     private static void ProcessOutbox() {
-        foreach ((string method, string data) in _outbox.GetConsumingEnumerable()) {
-            DeliverToArma(method, data);
+        OutboundArmaMessage? pendingMessage = null;
+
+        while (!_outbox.IsCompleted) {
+            OutboundArmaMessage firstMessage;
+            if (pendingMessage is OutboundArmaMessage pending) {
+                firstMessage = pending;
+                pendingMessage = null;
+            } else {
+                try {
+                    firstMessage = _outbox.Take();
+                } catch (InvalidOperationException) {
+                    break;
+                }
+            }
+
+            var messages = new List<OutboundArmaMessage> { firstMessage };
+            long windowDeadline = firstMessage.EnqueuedAtTicks + OutboundBatchWindowTicks;
+
+            while (true) {
+                long remainingTicks = windowDeadline - Stopwatch.GetTimestamp();
+                int waitMilliseconds = remainingTicks <= 0
+                    ? 0
+                    : Math.Max(1, (int)Math.Ceiling(remainingTicks * 1000.0 / Stopwatch.Frequency));
+
+                if (!_outbox.TryTake(out OutboundArmaMessage message, waitMilliseconds))
+                    break;
+
+                if (message.EnqueuedAtTicks <= windowDeadline) {
+                    messages.Add(message);
+                } else {
+                    pendingMessage = message;
+                    break;
+                }
+            }
+
+            if (messages.Count == 1) {
+                DeliverToArma(firstMessage.Method, firstMessage.Data);
+            } else {
+                DeliverToArma(OutboundBatchMethod, SerializeOutboundBatch(messages));
+            }
+        }
+    }
+
+    private static void EnqueueOutboundMessage(string method, string data) {
+        lock (_outboxEnqueueLock) {
+            _outbox.Add(new OutboundArmaMessage(method, data, Stopwatch.GetTimestamp()));
+        }
+    }
+
+    /// <summary>
+    /// Creates one SQF array whose entries retain each logical callback method
+    /// and its already-serialized data array. Payloads are embedded directly,
+    /// avoiding a second escaping/serialization pass for large bursts.
+    /// </summary>
+    private static string SerializeOutboundBatch(IReadOnlyList<OutboundArmaMessage> messages) {
+        var builder = new StringBuilder();
+        builder.Append('[');
+
+        for (int index = 0; index < messages.Count; index++) {
+            if (index > 0) builder.Append(',');
+            messages[index].AppendBatchEntry(builder);
+        }
+
+        builder.Append(']');
+        return builder.ToString();
+    }
+
+    private readonly record struct OutboundArmaMessage(string Method, string Data, long EnqueuedAtTicks) {
+        internal void AppendBatchEntry(StringBuilder builder) {
+            string serializedMethodArray = Serializer.PrintArray([Method]);
+            builder.Append('[');
+            builder.Append(serializedMethodArray.AsSpan(1, serializedMethodArray.Length - 2));
+            builder.Append(',');
+            builder.Append(Data);
+            builder.Append(']');
         }
     }
 
@@ -79,6 +162,12 @@ public static partial class Extension {
     /// no callback is registered yet.
     /// </returns>
     private static bool TryInvokeCallback(string method, string data, out int remainingSlots) {
+        Func<string, string, int>? managedCallback = Volatile.Read(ref _managedCallbackOverride);
+        if (managedCallback is not null) {
+            remainingSlots = managedCallback(method, data);
+            return true;
+        }
+
         unsafe {
             if (Callback == null) {
                 remainingSlots = default;
@@ -221,6 +310,10 @@ public static partial class Extension {
             Log("Empty function name in SendToArma.");
             return false;
         }
+        if (string.Equals(method, OutboundBatchMethod, StringComparison.Ordinal)) {
+            Log($"{OutboundBatchMethod} is reserved for the SendToArma transport.");
+            return false;
+        }
 
         Events.RaiseSendToArma(method, data);
 
@@ -228,7 +321,7 @@ public static partial class Extension {
 
         Debug(@$"EXTENSION >> ARMA >> [""{ExtensionName}"", ""{method}"", ""{dataString}""] (queued)");
 
-        _outbox.Add((method, dataString));
+        EnqueueOutboundMessage(method, dataString);
 
         return true;
     }
@@ -246,7 +339,7 @@ public static partial class Extension {
 
         Debug(@$"EXTENSION CALLBACK >> ARMA >> [""{ExtensionName}"", ""{method}"", ""{returnData}""] (queued)");
 
-        _outbox.Add((method, returnData));
+        EnqueueOutboundMessage(method, returnData);
     }
 
 
