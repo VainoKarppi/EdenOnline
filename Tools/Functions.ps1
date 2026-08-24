@@ -1,9 +1,9 @@
 function Get-ProjectPath {
-    return Resolve-Path "$PSScriptRoot\.."
+    return (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
 }
 
 function Get-ProjectBuildPath {
-    return Resolve-Path "$PSScriptRoot\Build"
+    return (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "Build")).Path
 }
 
 function Terminate-ExistingProcess {
@@ -370,52 +370,96 @@ function Run-CallExtension {
 }
 
 function Pack-Addons {
-    param ($modFolder)
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$modFolder
+    )
 
-    # Path to Addon Builder (change this if using PBOProject)
-    $addonBuilderPath = (Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Bohemia Interactive\AddonBuilder" -ErrorAction Stop).path
-    Write-Host "Arma Tools Path: $addonBuilderPath"  -ForegroundColor Blue
+    # Normalize the path
+    $modFolder = (Resolve-Path -LiteralPath $modFolder).Path
 
-    # Pack the addon
-    if (!(Test-Path $addonBuilderPath)) {
-        Write-Host "Addon Builder not found from ($addonBuilderPath). Check the path or use another PBO tool."
+    # Path to Addon Builder
+    $addonBuilderPath = (
+        Get-ItemProperty `
+            -Path "HKLM:\SOFTWARE\WOW6432Node\Bohemia Interactive\AddonBuilder" `
+            -ErrorAction Stop
+    ).Path
+
+    Write-Host "Arma Tools Path: $addonBuilderPath" -ForegroundColor Blue
+
+    if (!(Test-Path -LiteralPath $addonBuilderPath)) {
+        Write-Host "Addon Builder not found at: $addonBuilderPath" -ForegroundColor Red
         return $false
     }
 
-    # --- Delete existing .pbo files ---
-    $addonFolderPath = Join-Path $modFolder "addons"
-    if (Test-Path $addonFolderPath) {
-        $existingPBOS = Get-ChildItem -Path $addonFolderPath -Filter *.pbo -File
-        foreach ($pbo in $existingPBOS) {
-            Write-Host "Deleting existing PBO: $($pbo.FullName)" -ForegroundColor DarkYellow
-            Remove-Item $pbo.FullName -Force
-        }
+    $addonBuilderExe = Join-Path $addonBuilderPath "AddonBuilder.exe"
+
+    if (!(Test-Path -LiteralPath $addonBuilderExe)) {
+        Write-Host "AddonBuilder.exe not found at: $addonBuilderExe" -ForegroundColor Red
+        return $false
     }
 
-    # Get all subfolders in addons directory
-    $addonFolders = Get-ChildItem "$modFolder\addons" -Directory
+    $addonsPath = Join-Path $modFolder "addons"
+
+    if (!(Test-Path -LiteralPath $addonsPath)) {
+        Write-Host "Addons directory not found: $addonsPath" -ForegroundColor Red
+        return $false
+    }
+
+    # Delete existing PBO files
+    $existingPbos = Get-ChildItem `
+        -LiteralPath $addonsPath `
+        -Filter "*.pbo" `
+        -File
+
+    foreach ($pbo in $existingPbos) {
+        Write-Host "Deleting existing PBO: $($pbo.FullName)" `
+            -ForegroundColor DarkYellow
+
+        Remove-Item -LiteralPath $pbo.FullName -Force
+    }
+
+    # Get addon source folders
+    $addonFolders = Get-ChildItem `
+        -LiteralPath $addonsPath `
+        -Directory
+
     $i = 0
+
     foreach ($folder in $addonFolders) {
-        $sourceAddonFolder = $($folder.FullName)
-        $addonFolder = "$modFolder\addons\"
+        $sourceAddonFolder = $folder.FullName
+        $outputFolder = $addonsPath
 
-        Write-Host "Packing addon: $sourceAddonFolder" -ForegroundColor Yellow
+        Write-Host "Packing addon: $sourceAddonFolder" `
+            -ForegroundColor Yellow
 
-        & "$addonBuilderPath\AddonBuilder.exe" "$sourceAddonFolder" "$addonFolder" -packonly
+        & $addonBuilderExe `
+            $sourceAddonFolder `
+            $outputFolder `
+            -packonly
 
-        # Verify if the PBO file was created
-        # Check process exit code
-        $pboFile = "$addonFolder$($folder.Name).pbo"
-        if (!(Test-Path $pboFile)) {
-            Write-Host "Addon Builder failed with exit code $($process.ExitCode) for $($folder.Name)." -ForegroundColor Red
-            exit $false
+        $exitCode = $LASTEXITCODE
+
+        $pboFile = Join-Path `
+            $outputFolder `
+            "$($folder.Name).pbo"
+
+        if ($exitCode -ne 0 -or !(Test-Path -LiteralPath $pboFile)) {
+            Write-Host `
+                "Addon Builder failed with exit code $exitCode for $($folder.Name)." `
+                -ForegroundColor Red
+
+            return $false
         }
 
-        Write-Host "Addon packed successfully: $pboFile" -ForegroundColor Green
-        $i = $i + 1
+        Write-Host "Addon packed successfully: $pboFile" `
+            -ForegroundColor Green
+
+        $i++
     }
 
-    Write-Host "All addons ($i) processed." -ForegroundColor Green
+    Write-Host "All addons ($i) processed." `
+        -ForegroundColor Green
 
     return $true
 }
