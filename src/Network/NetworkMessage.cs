@@ -14,7 +14,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using DynTypeSerializer;
-using static DynTypeNetwork.Settings.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace DynTypeNetwork;
 
@@ -126,8 +126,7 @@ public static class MessageBuilder
 
         msg.TargetId = NetworkMessage.NormalizeTargetIds(msg.TargetId);
 
-        if (LogItem(LogLevel.Debug))
-            Console.WriteLine($"{(msg.SenderId == Server.SERVER_ID ? "[SERVER]" : "[CLIENT]")} (CreateMessage) SenderId:{msg.SenderId}, TargetId:{string.Join(",", msg.TargetId)}, MessageId:{msg.MessageId}: {msg.Payload}");
+        Log.Debug($"{(msg.SenderId == Server.SERVER_ID ? "[SERVER]" : "[CLIENT]")} (CreateMessage) SenderId:{msg.SenderId}, TargetId:{string.Join(",", msg.TargetId)}, MessageId:{msg.MessageId}: {msg.Payload}");
 
         var buffer = new List<byte>();
 
@@ -188,7 +187,7 @@ public static class MessageBuilder
             payload = Encoding.UTF8.GetString(data, offset, payloadLength);
         }
 
-        if (LogItem(LogLevel.Debug)) Console.WriteLine($"{(targetIds.Contains(Server.SERVER_ID) ? "[SERVER]" : "[CLIENT]")} (ReadMessage) MessageType:{messageType}, SenderId:{senderId}, TargetId:{string.Join(",", targetIds)}, MessageId:{messageId}: {payload}");
+        Log.Debug($"{(targetIds.Contains(Server.SERVER_ID) ? "[SERVER]" : "[CLIENT]")} (ReadMessage) MessageType:{messageType}, SenderId:{senderId}, TargetId:{string.Join(",", targetIds)}, MessageId:{messageId}: {payload}");
 
         return new NetworkMessage
         {
@@ -236,7 +235,7 @@ public static class MessageBuilder
 
         msg.TargetId = NetworkMessage.NormalizeTargetIds(msg.TargetId);
 
-        if (LogItem(LogLevel.Debug)) Console.WriteLine($"{(msg.SenderId == Server.SERVER_ID ? "[SERVER]" : "[CLIENT]")} (CreateMessage) SenderId:{msg.SenderId}, TargetId:{string.Join(",", msg.TargetId)}, MessageId:{msg.MessageId}: {msg.Payload}");
+        Log.Debug($"{(msg.SenderId == Server.SERVER_ID ? "[SERVER]" : "[CLIENT]")} (CreateMessage) SenderId:{msg.SenderId}, TargetId:{string.Join(",", msg.TargetId)}, MessageId:{msg.MessageId}: {msg.Payload}");
 
         byte[] messageBytes = new byte[4 + 4 + 4 + (msg.TargetId.Length * 4) + 2 + 2 + 8 + 4 + payloadLength]; // checksum + sender + target-count + targets + header + payload
         int offset = 4; // leave space for checksum
@@ -301,7 +300,7 @@ public static class MessageBuilder
         if (includeData && payloadLength > 0)
             payload = Encoding.UTF8.GetString(packet, offset, payloadLength);
 
-        if (LogItem(LogLevel.Debug)) Console.WriteLine($"{(targetIds.Contains(Server.SERVER_ID) ? "[SERVER]" : "[CLIENT]")} (ReadMessage) SenderId:{sender}, TargetId:{string.Join(",", targetIds)}, MessageId:{messageId}: {payload}");
+        Log.Debug($"{(targetIds.Contains(Server.SERVER_ID) ? "[SERVER]" : "[CLIENT]")} (ReadMessage) SenderId:{sender}, TargetId:{string.Join(",", targetIds)}, MessageId:{messageId}: {payload}");
 
         return new NetworkMessage
         {
@@ -368,7 +367,7 @@ public static class MessageBuilder
 
             if (result == null && !isVoidMethod) throw new Exception("Result was expected, but not returned");
         } catch (Exception ex) {
-            if (LogItem(LogLevel.Debug)) Console.WriteLine(ex);
+            Log.Debug(ex.ToString());
         }
 
         return result;
@@ -407,7 +406,7 @@ public static class MessageBuilder
             bool isVoidMethod = MethodBuilder.GetAvailableServerMethods().FirstOrDefault(m => m.Name.Equals(request.MethodName, StringComparison.OrdinalIgnoreCase))?.ReturnType == null;
             if (result == null && !isVoidMethod) throw new Exception("Result was expected, but not returned");
         } catch (Exception ex) {
-            if (LogItem(LogLevel.Debug)) Console.WriteLine(ex);
+            Log.Debug(ex.ToString());
             success = false;
             //result = ex.Message;
         }
@@ -435,12 +434,11 @@ public static class MessageBuilder
         if (!success) wrapperType.GetProperty("ErrorMessage")!.SetValue(responseWrapper, result?.ToString());
 
         if (LogItem(LogLevel.Debug)) Console.WriteLine($"{(msg.SenderId == Server.SERVER_ID ? "[SERVER]" : "[CLIENT]")} Sending response for method: SUCCESS:{success}, ({responseType}):{Serializer.Serialize(result)}");
-
         byte[] packet = CreateMessage(responseMessage, responseWrapper);
         await stream.WriteAsync(packet, token);
         */
 
-        if (LogItem(LogLevel.Debug)) Console.WriteLine($"{(responseMessage.SenderId == Server.SERVER_ID ? "[SERVER]" : "[CLIENT]")} Sending response for method: SUCCESS:{success}, ({(result == null ? "null" : result.GetType().Name)}):{Serializer.Serialize(result)}");
+        Log.Debug($"{(responseMessage.SenderId == Server.SERVER_ID ? "[SERVER]" : "[CLIENT]")} Sending response for method: SUCCESS:{success}, ({(result == null ? "null" : result.GetType().Name)}):{Serializer.Serialize(result)}");
         
         byte[] packet = CreatePacket(responseMessage, result);
         await stream.WriteAsync(packet, token);

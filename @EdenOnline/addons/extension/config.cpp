@@ -34,6 +34,7 @@ class CfgFunctions
             class callExtension {};
 			class callExtensionAsync {};
             class initExtensionEvents {};
+			class handleExtensionMessage {};
 		};
 		class Functions_Objects
 		{

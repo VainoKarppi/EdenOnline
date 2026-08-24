@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using static DynTypeNetwork.Settings.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace DynTypeNetwork;
 
@@ -146,7 +146,7 @@ public static class MethodBuilder {
             && parameters.Length == 1
             && parameters[0].ParameterType == typeof(object[]);
 
-        if (LogItem(LogLevel.Debug)) Console.WriteLine($"Invoking:{methodName} with args: [{string.Join(", ", finalArgs.Select(a => a?.ToString() ?? "null"))}] ({finalArgs.Length})");
+        Log.Debug($"Invoking:{methodName} with args: [{string.Join(", ", finalArgs.Select(a => a?.ToString() ?? "null"))}] ({finalArgs.Length})");
         
         if (isReflectionWrapper)
             return (T?)del.DynamicInvoke([finalArgs]);

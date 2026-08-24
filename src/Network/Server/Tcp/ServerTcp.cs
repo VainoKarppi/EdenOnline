@@ -6,7 +6,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using DynTypeSerializer;
-using static DynTypeNetwork.Settings.Logging;
+using Microsoft.Extensions.Logging;
 
 
 namespace DynTypeNetwork;
@@ -22,7 +22,7 @@ public static partial class Server
         _tcpListener = new TcpListener(IPAddress.Any, port);
         _tcpListener.Start();
         _ = AcceptTcpClientsAsync();
-        if (LogItem(LogLevel.Info)) Console.WriteLine("[SERVER] TCP Server started");
+        Log.Info("[SERVER] TCP Server started");
     }
 
     private static async Task AcceptTcpClientsAsync()
@@ -45,13 +45,13 @@ public static partial class Server
                     }
                     catch (Exception ex)
                     {
-                        if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Client {client.Id} thread exception: {ex}");
+                        Log.Info($"[SERVER] Client {client.Id} thread exception: {ex}");
                     }
                 }, null);
             } catch {}
         }
 
-        if (LogItem(LogLevel.Info)) Console.WriteLine("[SERVER TCP] Receive loop stopped.");
+        Log.Info("[SERVER TCP] Receive loop stopped.");
     }
 
     private static async Task HandleTcpClientAsync(Connection client, CancellationToken token)
@@ -105,12 +105,12 @@ public static partial class Server
                         continue;
 
                     default:
-                        if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Unknown message type from client {client.Id}: {msg.MessageType}");
+                        Log.Info($"[SERVER] Unknown message type from client {client.Id}: {msg.MessageType}");
                         continue;
                 }
             }
         } catch (Exception ex) {
-            if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Client {client.Id} disconnected unexpectedly. Reason: {ex.Message}");
+            Log.Info($"[SERVER] Client {client.Id} disconnected unexpectedly. Reason: {ex.Message}");
         }
 
         await ClientDisconnected(client, clientDisconnectSuccess);
@@ -163,7 +163,7 @@ public static partial class Server
             
             // If MessageId > 0, we expect a response from each client, which we will aggregate and send back to the sender once all responses are received or timeout occurs.
 
-            if (LogItem(LogLevel.Info)) Console.WriteLine($"[NETWORK] Broadcasting message {message.MessageId} from {message.SenderId} to client {client.Id} and waiting for response");
+            Log.Info($"[NETWORK] Broadcasting message {message.MessageId} from {message.SenderId} to client {client.Id} and waiting for response");
 
             tasks.Add(Task.Run(async () =>
             {
@@ -184,7 +184,7 @@ public static partial class Server
 
                 NetworkMessage? returnMessage = await WaitWithTimeout(requestId);
 
-                if (LogItem(LogLevel.Info)) Console.WriteLine($"[NETWORK] Received response for broadcast message {message.MessageId} from client {client.Id}");
+                Log.Info($"[NETWORK] Received response for broadcast message {message.MessageId} from client {client.Id}");
                 if (returnMessage == null || returnMessage.Payload == null) return null;
 
                 return MessageBuilder.UnpackPayload<object>(returnMessage.Payload);
@@ -232,7 +232,7 @@ public static partial class Server
     /// </summary>
     private static async Task ForwardTcpMessageToTarget(Connection sender, NetworkMessage message)
     {
-        if (LogItem(LogLevel.Info)) Console.WriteLine($"[NETWORK] Forwarding message {message.MessageId} from {message.SenderId} to {message.TargetId}");
+        Log.Info($"[NETWORK] Forwarding message {message.MessageId} from {message.SenderId} to {message.TargetId}");
 
         Connection? target = null;
         int targetId = message.TargetId.FirstOrDefault(t => t > 0);
@@ -284,7 +284,7 @@ public static partial class Server
 
         await client.GetStream().WriteAsync(requestPacket);
 
-        if (LogItem(LogLevel.Debug)) Console.WriteLine($"[SERVER] Authentication request sent to client {client.Id}. Waiting for response...");
+        Log.Debug($"[SERVER] Authentication request sent to client {client.Id}. Waiting for response...");
     }
 
     private static async Task HandleAuthenticationResponseAsync(Connection client, NetworkMessage msg)
@@ -293,7 +293,7 @@ public static partial class Server
 
         (bool success, string? error) = await Authentication.ServerValidateAsync(authenticationParameters);
 
-        if (LogItem(LogLevel.Debug)) Console.WriteLine($"[SERVER] Authentication result for client {client.Id}: " + $"{(success ? "SUCCESS" : "FAILURE")} " + $"ERROR: {error ?? "None"}");
+        Log.Debug($"[SERVER] Authentication result for client {client.Id}: " + $"{(success ? "SUCCESS" : "FAILURE")} " + $"ERROR: {error ?? "None"}");
 
         client.Authenticated = success;
 

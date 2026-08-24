@@ -9,7 +9,7 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using DynTypeSerializer;
-using static DynTypeNetwork.Settings.Logging;
+using Microsoft.Extensions.Logging;
 
 
 namespace DynTypeNetwork;
@@ -85,7 +85,7 @@ public static partial class Client
     private static async Task WaitForAuthenticationAsync()
     {
         if (Authentication.Enabled && !Authentication.ClientAuthenticated == null) {
-            if (LogItem(LogLevel.Debug)) Console.WriteLine("[CLIENT] Sending server message saying we are ready to recieve authentication check request...");
+            Log.Debug("[CLIENT] Sending server message saying we are ready to recieve authentication check request...");
 
             // Send server a message saying that we are ready to receive the
             await SendDataInternalAsync(Server.SERVER_ID, MessageType.AuthenticationReady);
@@ -140,13 +140,13 @@ public static partial class Client
 
                     if (msg.MessageType == MessageType.AuthenticationRequest) {
                         if (!Authentication.HasClientAuthentication) {
-                            if (LogItem(LogLevel.Info)) Console.WriteLine("[CLIENT] Server requested authentication, but no client authentication method has been registered.");
+                            Log.Info("[CLIENT] Server requested authentication, but no client authentication method has been registered.");
 
                             throw new InvalidOperationException("Server requested authentication, but no client authentication method has been registered.");
                         }
                         object[]? authenticationData = await Authentication.GetClientAuthenticationAsync();
 
-                        if (LogItem(LogLevel.Debug)) Console.WriteLine($"[CLIENT] Authentication data: {string.Join(", ", authenticationData ?? [])}");
+                        Log.Debug($"[CLIENT] Authentication data: {string.Join(", ", authenticationData ?? [])}");
 
                         NetworkMessage response = new()
                         {
@@ -221,7 +221,7 @@ public static partial class Client
             catch (OperationCanceledException)
             {
                 // normal shutdown
-                if (LogItem(LogLevel.Info)) Console.WriteLine("[CLIENT] TCP receive loop cancelled.");
+                Log.Info("[CLIENT] TCP receive loop cancelled.");
             }
             catch (Exception ex) when (ex is ObjectDisposedException || ex is IOException)
             {
@@ -229,17 +229,17 @@ public static partial class Client
                 if (_cts.Token.IsCancellationRequested)
                 {
                     // Client disconnected on purpose
-                    if (LogItem(LogLevel.Info)) Console.WriteLine("[CLIENT] Disconnected by client request (intentional disconnect).");
+                    Log.Info("[CLIENT] Disconnected by client request (intentional disconnect).");
                 } else {
                     // Connection was forcibly closed
-                    if (LogItem(LogLevel.Info)) Console.WriteLine($"[CLIENT] Connection lost: {ex.Message}");
+                    Log.Info($"[CLIENT] Connection lost: {ex.Message}");
                     await HandleServerShutdown(DisconnectReason.ConnectionLost);
                 }
 
             }
             catch (Exception ex)
             {
-                if (LogItem(LogLevel.Info)) Console.WriteLine($"[CLIENT] Receive loop exception: {ex}");
+                Log.Info($"[CLIENT] Receive loop exception: {ex}");
                 await HandleServerShutdown(DisconnectReason.ConnectionError);
             }
         });

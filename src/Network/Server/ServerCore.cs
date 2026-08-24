@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using DynTypeSerializer;
-using static DynTypeNetwork.Settings.Logging;
+using Microsoft.Extensions.Logging;
 
 
 namespace DynTypeNetwork;
@@ -80,7 +80,7 @@ public static partial class Server
     // ── Stop server ───────────────────────────
     public static async Task StopAsync()
     {
-        if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Server shutdown requested");
+        Log.Info($"[SERVER] Server shutdown requested");
         OnServerShutdown?.Invoke(DisconnectReason.ServerShutdown);
 
         // Send disconnect message to clients, before clearing list and closing connections
@@ -135,13 +135,13 @@ public static partial class Server
             HandshakeMessage? payload = MessageBuilder.UnpackPayload<HandshakeMessage>(message.Payload);
 
             if (payload == null) {
-                if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Invalid handshake from client {client.Id}");
+                Log.Info($"[SERVER] Invalid handshake from client {client.Id}");
                 client.Close();
                 return;
             }
 
             if (string.IsNullOrEmpty(payload.ClientPublicKey)) {
-                if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Missing client public key for handshake from {client.Id}");
+                Log.Info($"[SERVER] Missing client public key for handshake from {client.Id}");
                 client.Close();
                 return;
             }
@@ -224,7 +224,7 @@ public static partial class Server
                 OnClientDisconnected?.Invoke(client.Id, false, DisconnectReason.ConnectionError);
             }
 
-            if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Handshake failed for client {client.Id}: {ex.Message}");
+            Log.Info($"[SERVER] Handshake failed for client {client.Id}: {ex.Message}");
 
             // TODO get real HandshakeFailureReason
             await InvokeEventAsync(() => OnHandshakeFailed?.Invoke(HandshakeFailureReason.Unknown, ex.Message));

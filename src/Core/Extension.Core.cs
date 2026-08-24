@@ -64,6 +64,89 @@ public static partial class Extension {
         }
     }
 
+    // ---------------------------------------------------------------------
+    // Outbound batching.
+    //
+    // SendToArma() is often called hundreds of times within a single frame
+    // (e.g. ObjectSyncData bursts while syncing a mission). Arma's callback
+    // buffer only accepts ~100 entries per frame, so instead of queueing
+    // every message individually they are first accumulated here and then
+    // coalesced into ONE callback. The callback's "function" is set to
+    // BatchMethodFlag and its data is an array of [method, dataArray]
+    // pairs. SQF detects the flag and unpacks the batch automatically.
+    // ---------------------------------------------------------------------
+    private const int BatchThreshold = 300;
+
+    // How long the batcher keeps collecting after the first message of a
+    // burst before flushing whatever it has. Keeps latency bounded for
+    // low-rate traffic while still absorbing frame-sized bursts.
+    private static readonly TimeSpan BatchFlushDelay = TimeSpan.FromMilliseconds(16);
+
+    // The "function" name used for a coalesced batch of messages.
+    private const string BatchMethodFlag = "BATCH";
+
+    private static readonly BlockingCollection<(string method, string data)> _batch = new(new ConcurrentQueue<(string, string)>());
+
+    private static readonly Thread _batchWorker = CreateBatchWorker();
+
+    private static Thread CreateBatchWorker() {
+        Thread t = new(ProcessBatch) {
+            IsBackground = true,
+            Name = "EdenOnline.ArmaCallbackBatcher"
+        };
+        t.Start();
+        return t;
+    }
+
+    private static void ProcessBatch() {
+        while (true) {
+            // Block until at least one message is waiting.
+            if (!_batch.TryTake(out (string method, string data) first, Timeout.Infinite)) continue;
+
+            var batch = new List<(string method, string data)> { first };
+            DateTime flushAt = DateTime.UtcNow + BatchFlushDelay;
+
+            // Keep draining while a burst is in progress: stop when the
+            // threshold is hit or when the queue goes quiet for a frame.
+            while (batch.Count < BatchThreshold) {
+                int remainingMs = (int)(flushAt - DateTime.UtcNow).TotalMilliseconds;
+                if (remainingMs <= 0) break;
+                if (!_batch.TryTake(out (string method, string data) next, remainingMs)) break;
+                batch.Add(next);
+            }
+
+            FlushBatch(batch);
+        }
+    }
+
+    private static void FlushBatch(List<(string method, string data)> batch) {
+        if (batch.Count == 0) return;
+
+        // A single message isn't a batch - pass it straight through.
+        if (batch.Count == 1) {
+            _outbox.Add(batch[0]);
+            return;
+        }
+
+        // Build [[method1, data1], [method2, data2], ...]. Each data element
+        // is already a serialized Arma array, so it slots in as-is.
+        var sb = new StringBuilder(batch.Count * 64);
+        sb.Append('[');
+        for (int i = 0; i < batch.Count; i++) {
+            if (i > 0) sb.Append(',');
+            sb.Append("[\"").Append(batch[i].method).Append("\",")
+              .Append(batch[i].data).Append(']');
+        }
+        sb.Append(']');
+
+        string payload = sb.ToString();
+        int byteCount = Encoding.UTF8.GetByteCount(payload);
+
+        Debug(@$"EXTENSION >> ARMA >> [""{ExtensionName}"", ""{BatchMethodFlag}"", {payload}] (batched x{batch.Count}, {byteCount} bytes)");
+
+        _outbox.Add((BatchMethodFlag, payload));
+    }
+
     /// <summary>
     /// Invokes Arma's registered callback pointer, if any. Contains the only
     /// unsafe code in this class - the unsafe block is scoped to just the
@@ -202,11 +285,13 @@ public static partial class Extension {
 
 
     /// <summary>
-    /// Queues a response to be sent back to Arma 3. Delivery happens
-    /// asynchronously on a dedicated worker thread, which automatically
-    /// waits for the next frame and retries if Arma's callback buffer is
-    /// full - there is no cap on how many calls can be queued this way, so
-    /// this is safe to call in bursts of thousands.
+    /// Queues a response to be sent back to Arma 3. Messages are first
+    /// accumulated by a batching worker, which coalesces bursts of calls
+    /// into a single callback (see <see cref="BatchMethodFlag"/>). Delivery
+    /// then happens asynchronously on a dedicated worker thread, which
+    /// automatically waits for the next frame and retries if Arma's
+    /// callback buffer is full - there is no cap on how many calls can be
+    /// queued this way, so this is safe to call in bursts of thousands.
     /// </summary>
     /// <param name="method"></param>
     /// <param name="data"></param>
@@ -223,7 +308,7 @@ public static partial class Extension {
 
         Debug(@$"EXTENSION >> ARMA >> [""{ExtensionName}"", ""{method}"", ""{dataString}""] (queued)");
 
-        _outbox.Add((method, dataString));
+        _batch.Add((method, dataString));
 
         return true;
     }

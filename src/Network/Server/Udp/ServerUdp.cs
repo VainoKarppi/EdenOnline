@@ -5,7 +5,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using DynTypeSerializer;
-using static DynTypeNetwork.Settings.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace DynTypeNetwork;
 
@@ -20,7 +20,7 @@ public static partial class Server
     {
         _udpListener = new UdpClient(port);
         StartUdpServerReceiveLoop(port);
-        if (LogItem(LogLevel.Info)) Console.WriteLine("[SERVER] UDP Server started");
+        Log.Info("[SERVER] UDP Server started");
     }
 
     private static void StartUdpServerReceiveLoop(int port)
@@ -70,7 +70,7 @@ public static partial class Server
                             }
                             catch (Exception ex)
                             {
-                                if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER UDP] Method execution failed: {ex}");
+                                Log.Info($"[SERVER UDP] Method execution failed: {ex}");
                             }
                         }, _cts.Token);
                     }
@@ -81,7 +81,7 @@ public static partial class Server
                         {
                             if (!Clients.TryGetValue(targetId, out var targetClient) || targetClient.UdpEndpoint == null)
                             {
-                                if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER UDP] Cannot forward, target {targetId} not available.");
+                                Log.Info($"[SERVER UDP] Cannot forward, target {targetId} not available.");
                                 continue;
                             }
 
@@ -109,11 +109,11 @@ public static partial class Server
                 }
                 catch (Exception ex)
                 {
-                    if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER UDP] Receive loop error: {ex.Message}");
+                    Log.Info($"[SERVER UDP] Receive loop error: {ex.Message}");
                 }
             }
 
-            if (LogItem(LogLevel.Info)) Console.WriteLine("[SERVER UDP] Receive loop stopped.");
+            Log.Info("[SERVER UDP] Receive loop stopped.");
         }, _cts.Token);
     }
 

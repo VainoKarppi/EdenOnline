@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Reflection;
-using static EdenOnline.Logger;
+using static EdenOnline.ArmaLog;
 using static DynTypeNetwork.MethodBuilder;
 
 namespace EdenOnline;
@@ -21,9 +22,9 @@ public static partial class ExtensionPlugin
     /// </summary>
     public static void Main()
     {
+        ConfigureLogging();
+
         Log("Called EdenOnline Main method");
-        CurrentLogLevel = LogLevel.Info;
-        DynTypeNetwork.Settings.Logging.CurrentLogLevel = DynTypeNetwork.Settings.Logging.LogLevel.Info;
 
         DynTypeNetwork.Settings.EnableVersionCheck = false;
 
@@ -46,6 +47,29 @@ public static partial class ExtensionPlugin
         };
 
         Log("EdenOnline Extension Initialized");
+    }
+
+    /// <summary>
+    /// Composition root: wires up the file-backed loggers for every subsystem
+    /// this host references. Core initializes itself; ArmaPlugin, DynTypeSerializer
+    /// and DynTypeNetwork each get their own log file here.
+    /// </summary>
+    private static void ConfigureLogging()
+    {
+        Extension.InitializeLogging();
+
+        string logsDir = Path.Combine(
+            Path.GetDirectoryName(Extension.AssemblyDirectory) ?? AppContext.BaseDirectory,
+            $"{Extension.ExtensionName}_Logs");
+
+        ArmaLog.Configure(
+            Logging.LogFactory.CreateFileLoggerFactory(logsDir, "ArmaPlugin.log"));
+
+        DynTypeSerializer.Logging.SerializerLogging.Configure(
+            Logging.LogFactory.CreateFileLoggerFactory(logsDir, "DynTypeSerializer.log").CreateLogger("DynTypeSerializer"));
+
+        DynTypeNetwork.Log.Configure(
+            Logging.LogFactory.CreateFileLoggerFactory(logsDir, "Network.log"));
     }
 
     /// <summary>

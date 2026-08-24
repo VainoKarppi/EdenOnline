@@ -7,8 +7,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using DynTypeSerializer;
-using static DynTypeNetwork.Settings.Logging;
-
+using Microsoft.Extensions.Logging;
 
 
 namespace DynTypeNetwork;
@@ -60,7 +59,7 @@ public static partial class Client
                 }
                 catch (Exception ex)
                 {
-                    if (LogItem(LogLevel.Info)) Console.WriteLine($"[CLIENT UDP] Invalid packet: {ex.Message}");
+                    Log.Info($"[CLIENT UDP] Invalid packet: {ex.Message}");
                     continue; // ignore bad packets
                 }
 
@@ -82,7 +81,7 @@ public static partial class Client
                     }
                     catch (Exception ex)
                     {
-                        if (LogItem(LogLevel.Info)) Console.WriteLine($"[CLIENT UDP] Method execution failed: {ex}");
+                        Log.Info($"[CLIENT UDP] Method execution failed: {ex}");
                     }
                 }, token);
             }
@@ -93,7 +92,7 @@ public static partial class Client
             }
             catch (SocketException ex) when (ex.SocketErrorCode == SocketError.InvalidArgument)
             {
-                if (LogItem(LogLevel.Info))  Console.WriteLine("[CLIENT UDP] Socket invalid, recreating socket in 1s...");
+                Log.Info("[CLIENT UDP] Socket invalid, recreating socket in 1s...");
                 client.Dispose();
 
                 try
@@ -109,7 +108,7 @@ public static partial class Client
             }
             catch (Exception ex)
             {
-                if (LogItem(LogLevel.Info)) Console.WriteLine($"[CLIENT UDP] Receive loop crashed: {ex}");
+                Log.Info($"[CLIENT UDP] Receive loop crashed: {ex}");
                 await Task.Delay(1000, token);
             }
         }

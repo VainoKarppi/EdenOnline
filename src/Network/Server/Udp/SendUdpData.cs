@@ -9,7 +9,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using DynTypeSerializer;
-using static DynTypeNetwork.Settings.Logging;
+using Microsoft.Extensions.Logging;
 
 
 namespace DynTypeNetwork;
@@ -53,7 +53,7 @@ public static partial class Server
 
                 await _udpListener!.SendAsync(packet, packet.Length, client.UdpEndpoint);
             } catch (Exception ex) {
-                if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER UDP] Failed to send to client {client.Id}: {ex.Message}");
+                Log.Info($"[SERVER UDP] Failed to send to client {client.Id}: {ex.Message}");
             }
         }
 

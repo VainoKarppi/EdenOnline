@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using DynTypeNetwork;
-using static EdenOnline.Logger;
+using static EdenOnline.ArmaLog;
 
 namespace EdenOnline;
 

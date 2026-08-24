@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DynTypeNetwork;
-using static EdenOnline.Logger;
+using static EdenOnline.ArmaLog;
 
 
 namespace EdenOnline;
@@ -72,7 +72,7 @@ public static partial class ArmaMethods
     {
         Authentication.SetClientAuthentication(() =>
         {
-            Console.WriteLine("[CLIENT] Sending authentication data to server...");
+            Debug("[CLIENT] Sending authentication data to server...");
             return Task.FromResult<object[]?>([worldname, armaVersion, modHashes, password]);
         });
     }

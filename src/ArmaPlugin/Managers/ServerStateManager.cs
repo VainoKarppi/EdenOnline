@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
-using static EdenOnline.Logger;
+using static EdenOnline.ArmaLog;
 using EdenOnline;
 
 using System.Text.Json;
