@@ -62,8 +62,7 @@ public class ServerNetworkMethods {
 
     public static bool UpdateObjectConfirmed(ArmaObject armaObject)
     {
-        ServerStateManager.ServerObjectManager.AddOrUpdateObject(armaObject);
-        return true;
+        return ServerStateManager.ServerObjectManager.AddOrUpdateObjectIfRevisionCurrent(armaObject);
     }
     public static bool RemoveObject(string objectID)
     {

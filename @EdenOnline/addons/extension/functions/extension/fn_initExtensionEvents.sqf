@@ -79,7 +79,7 @@ if (_previousObjectDragEachFrame >= 0) then {
 
 EOEX_var_ObjectDragEachFrameId = addMissionEventHandler ["EachFrame", {
 	private _now = diag_tickTime;
-	private _expiredObjectIDs = [];
+	private _expiredDrags = [];
 	{
 		private _objectID = _x;
 		private _state = _y;
@@ -119,9 +119,10 @@ EOEX_var_ObjectDragEachFrameId = addMissionEventHandler ["EachFrame", {
 				_state getOrDefault ["basePosition", getPosATL _entity],
 				_state getOrDefault ["baseRotation", [getDir _entity, 0, 0]]
 			] call EOEX_fnc_applyObjectDragTransform;
-			[_state getOrDefault ["dragID", ""], _state getOrDefault ["lastSequence", -1]]
+			private _dragID = _state getOrDefault ["dragID", ""];
+			[_dragID, _state getOrDefault ["lastSequence", -1]]
 				call EOEX_fnc_rememberEndedObjectDrag;
-			_expiredObjectIDs pushBack _objectID;
+			_expiredDrags pushBack [_objectID, _dragID];
 			continue;
 		};
 
@@ -143,7 +144,16 @@ EOEX_var_ObjectDragEachFrameId = addMissionEventHandler ["EachFrame", {
 		EOEX_var_RemoteObjectDrags set [_objectID, _state];
 	} forEach EOEX_var_RemoteObjectDrags;
 
-	{ EOEX_var_RemoteObjectDrags deleteAt _x } forEach _expiredObjectIDs;
+	{
+		_x params ["_objectID", "_dragID"];
+		EOEX_var_RemoteObjectDrags deleteAt _objectID;
+		if (_dragID != "") then {
+			[_objectID, _dragID] spawn {
+				params ["_objectID", "_dragID"];
+				["ExpireObjectDrag", [_objectID, _dragID], false, 5] call EOEX_fnc_callExtensionAsync;
+			};
+		};
+	} forEach _expiredDrags;
 }];
 
 // Object creation is deliberately moved out of ExtensionCallback. The callback

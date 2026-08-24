@@ -82,6 +82,17 @@ Assert(!await rejectedAcquisitionSessions.WaitForAcquisitionAsync(
         "contested-object", "019d-rejected", TimeSpan.FromMilliseconds(100)),
     "Any peer rejection must prevent a local proposal from being reported as acquired.");
 
+var supersededAcquisitionSessions = new ObjectDragSessionManager();
+var supersededStart = new ObjectDragStart("superseded-object", "019d-superseded");
+supersededAcquisitionSessions.TryBeginAcquisition(2, supersededStart, [3]);
+Task<bool> supersededAcquisition = supersededAcquisitionSessions.WaitForAcquisitionAsync(
+    "superseded-object", "019d-superseded", TimeSpan.FromSeconds(1));
+Assert(supersededAcquisitionSessions.TryStart(3, new ObjectDragStart(
+        "superseded-object", "019d-new-generation") { Generation = 1 }) == ObjectDragStartResult.Replaced,
+    "A newer persisted object generation must supersede an older pending proposal.");
+Assert(!await supersededAcquisition,
+    "A superseded proposal must wake its waiter and fail acquisition immediately.");
+
 var disconnectSessions = new ObjectDragSessionManager();
 disconnectSessions.TryStart(7, new ObjectDragStart("disconnect-a", "drag-a"));
 disconnectSessions.TryStart(7, new ObjectDragStart("disconnect-b", "drag-b"));
@@ -109,6 +120,19 @@ Assert(retryableEndSessions.TryGetActive("retryable-end", out ObjectDragSession?
     "A prepared END must retain its session until both external writes succeed.");
 Assert(retryableEndSessions.TryPrepareEnd(2, retryableEnd),
     "Retrying the same END after a transport failure must remain valid.");
+var laterRetryEnd = new ObjectDragEnd(
+    "retryable-end", "ending-drag", 1,
+    [1.0, 2.0, 3.0], [0.0, 0.0, 90.0], generation: 0, nextGeneration: 99);
+Assert(retryableEndSessions.TryPrepareEnd(2, laterRetryEnd)
+    && retryableEndSessions.TryGetActive("retryable-end", out preparedEnd)
+    && ReferenceEquals(preparedEnd!.PreparedEnd, retryableEnd),
+    "END retries must retain the first prepared generation and payload.");
+Assert(retryableEndSessions.TryMarkEndPersistenceAttempted(2, retryableEnd)
+    && preparedEnd!.EndPersistenceAttempted,
+    "Once persistence may have happened, cleanup must never roll peers back with cancellation.");
+Assert(retryableEndSessions.TryMarkEndPersisted(2, retryableEnd)
+    && preparedEnd!.EndPersisted,
+    "A confirmed server write must be retained so abort cleanup never rolls peers back.");
 Assert(!retryableEndSessions.TryAdvance(2, new ObjectDragUpdate(
     "retryable-end", "ending-drag", 2,
     [9.0, 9.0, 9.0], [0.0, 0.0, 0.0])),
@@ -116,6 +140,52 @@ Assert(!retryableEndSessions.TryAdvance(2, new ObjectDragUpdate(
 Assert(retryableEndSessions.TryEnd(2, retryableEnd)
     && !retryableEndSessions.TryGetActive("retryable-end", out _),
     "A prepared END must be committed only after persistence and broadcast succeed.");
+
+var abandonedEndSessions = new ObjectDragSessionManager();
+abandonedEndSessions.TryStart(2, new ObjectDragStart("abandoned-end", "abandoned-drag"));
+var abandonedEnd = new ObjectDragEnd(
+    "abandoned-end", "abandoned-drag", 1,
+    [4.0, 5.0, 6.0], [0.0, 0.0, 180.0]);
+Assert(abandonedEndSessions.TryPrepareEnd(2, abandonedEnd),
+    "A failed END test must first enter the prepared state.");
+Assert(abandonedEndSessions.TryExpire("abandoned-end", "abandoned-drag")
+    && abandonedEndSessions.TryGetActive("abandoned-end", out ObjectDragSession? timedOutEnd)
+    && timedOutEnd!.IsTimedOut,
+    "An inactive drag must stop blocking new reservations without losing its reliable END identity.");
+Assert(abandonedEndSessions.TryEnd(2, abandonedEnd),
+    "A reliable END received after inactivity cleanup must remain authoritative.");
+
+var revisionGuardObjects = new ClientStateManager();
+revisionGuardObjects.AddOrUpdateObject(new ArmaObject("revision-guard", new Dictionary<string, object?>
+{
+    ["Position"] = new object[] { 20.0, 0.0, 0.0 }
+}) { Timestamp = 20 });
+Assert(!revisionGuardObjects.AddOrUpdateObjectIfRevisionCurrent(new ArmaObject(
+    "revision-guard",
+    new Dictionary<string, object?> { ["Position"] = new object[] { 10.0, 0.0, 0.0 } }) { Timestamp = 10 }),
+    "A delayed prepared END must not overwrite a newer persisted object generation.");
+Assert(revisionGuardObjects.TryGetObject("revision-guard", out ArmaObject? guardedObject)
+    && guardedObject!.Timestamp == 20,
+    "Rejecting a stale END must retain the newer server revision.");
+Assert(revisionGuardObjects.AddOrUpdateObjectIfRevisionCurrent(new ArmaObject(
+    "revision-guard",
+    new Dictionary<string, object?> { ["Rotation"] = new object[] { 0.0, 0.0, 90.0 } }) { Timestamp = 20 }),
+    "Retrying the same prepared END revision must remain idempotent.");
+revisionGuardObjects.RemoveObject("revision-guard");
+Assert(!revisionGuardObjects.AddOrUpdateObjectIfRevisionCurrent(new ArmaObject(
+    "revision-guard",
+    new Dictionary<string, object?> { ["Position"] = new object[] { 30.0, 0.0, 0.0 } }) { Timestamp = 30 })
+    && !revisionGuardObjects.TryGetObject("revision-guard", out _),
+    "A delayed prepared END must not resurrect an object that was deleted.");
+
+var expiredStartSessions = new ObjectDragSessionManager();
+expiredStartSessions.TryStart(2, new ObjectDragStart("expired-start", "orphaned-drag"));
+Assert(expiredStartSessions.TryExpire("expired-start", "orphaned-drag"),
+    "A partially delivered START must become replaceable after the inactivity timeout.");
+Assert(expiredStartSessions.TryStart(3, new ObjectDragStart("expired-start", "replacement-drag")) == ObjectDragStartResult.Replaced,
+    "An expired START must not lock the object forever.");
+Assert(expiredStartSessions.TryStart(2, new ObjectDragStart("expired-start", "orphaned-drag")) == ObjectDragStartResult.Rejected,
+    "Replacing an expired session must still reject delayed packets from its old Drag ID.");
 
 var joiningClientSessions = new ObjectDragSessionManager();
 joiningClientSessions.ObserveGeneration("joined-object", 42);

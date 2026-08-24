@@ -195,7 +195,8 @@ public static partial class ArmaMethods
         Log("[CLIENT] Syncing client list and usernames...");
         await Client.SendTcpMessageAsync(1, "RegisterUserName", clientID, username);
 
-        ClientStateManager.UsernameList = await Client.RequestTcpDataAsync<Dictionary<int, string>>(1, "GetAllUsernames") ?? [];
+        Dictionary<int, string> usernames = await Client.RequestTcpDataAsync<Dictionary<int, string>>(1, "GetAllUsernames") ?? [];
+        ClientStateManager.UsernameList = new(usernames);
 
         if (ClientStateManager.UsernameList != null && ClientStateManager.UsernameList.Count > 0)
         {

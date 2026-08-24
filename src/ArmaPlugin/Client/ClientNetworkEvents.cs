@@ -45,7 +45,7 @@ public class ClientNetworkEvents {
 
         Log($"[CLIENT] Other client disconnected: {otherClientId} ({username}). Success: {success}, Reason: {reason}");
         // Remove the user from local username list and notify Arma UI
-        ClientStateManager.UsernameList.Remove(otherClientId);
+        ClientStateManager.UsernameList.TryRemove(otherClientId, out _);
         foreach (ObjectDragSession session in ClientStateManager.ObjectDragSessions.ReleaseOwner(otherClientId))
             Extension.SendToArma("ObjectDragCancelled", [session.ObjectId, session.DragId]);
 

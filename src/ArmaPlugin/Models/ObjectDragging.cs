@@ -108,6 +108,10 @@ public sealed class ObjectDragSession
     public long Generation { get; }
     public long LastSequence { get; internal set; }
     public bool IsEnding { get; internal set; }
+    public bool IsTimedOut { get; internal set; }
+    public bool EndPersistenceAttempted { get; internal set; }
+    public bool EndPersisted { get; internal set; }
+    public ObjectDragEnd? PreparedEnd { get; internal set; }
 
     internal ObjectDragSession(string objectId, string dragId, int ownerClientId, long generation)
     {
@@ -162,8 +166,10 @@ public sealed class ObjectDragSessionManager
                 return ObjectDragStartResult.Duplicate;
 
             if (start.Generation < current.Generation) return ObjectDragStartResult.Rejected;
-            if (start.Generation > current.Generation)
+            if (start.Generation > current.Generation || current.IsTimedOut)
             {
+                CloseAcquisition(current.ObjectId, current.DragId);
+                RememberClosedDrag(current.DragId);
                 generations[start.ObjectId] = start.Generation;
                 sessions[start.ObjectId] = new ObjectDragSession(start.ObjectId, start.DragId, ownerClientId, start.Generation);
                 return ObjectDragStartResult.Replaced;
@@ -299,6 +305,7 @@ public sealed class ObjectDragSessionManager
                 || current.OwnerClientId != ownerClientId
                 || current.DragId != update.DragId
                 || current.IsEnding
+                || current.IsTimedOut
                 || update.Sequence <= current.LastSequence)
                 return false;
 
@@ -322,7 +329,46 @@ public sealed class ObjectDragSessionManager
                 || end.FinalSequence < current.LastSequence)
                 return false;
 
-            current.IsEnding = true;
+            if (!current.IsEnding)
+            {
+                current.IsEnding = true;
+                current.PreparedEnd = end;
+            }
+            return true;
+        }
+    }
+
+    public bool TryMarkEndPersisted(int ownerClientId, ObjectDragEnd end)
+    {
+        ValidateIdentity(ownerClientId, end.ObjectId, end.DragId);
+
+        lock (gate)
+        {
+            if (!sessions.TryGetValue(end.ObjectId, out ObjectDragSession? current)
+                || current.OwnerClientId != ownerClientId
+                || current.DragId != end.DragId
+                || current.PreparedEnd?.NextGeneration != end.NextGeneration)
+                return false;
+
+            current.EndPersistenceAttempted = true;
+            current.EndPersisted = true;
+            return true;
+        }
+    }
+
+    public bool TryMarkEndPersistenceAttempted(int ownerClientId, ObjectDragEnd end)
+    {
+        ValidateIdentity(ownerClientId, end.ObjectId, end.DragId);
+
+        lock (gate)
+        {
+            if (!sessions.TryGetValue(end.ObjectId, out ObjectDragSession? current)
+                || current.OwnerClientId != ownerClientId
+                || current.DragId != end.DragId
+                || current.PreparedEnd?.NextGeneration != end.NextGeneration)
+                return false;
+
+            current.EndPersistenceAttempted = true;
             return true;
         }
     }
@@ -344,7 +390,7 @@ public sealed class ObjectDragSessionManager
 
             generations[end.ObjectId] = Math.Max(generations.GetValueOrDefault(end.ObjectId), end.NextGeneration);
             RememberClosedDrag(end.DragId);
-            acquisitions.Remove((end.ObjectId, end.DragId));
+            CloseAcquisition(end.ObjectId, end.DragId);
             return sessions.Remove(end.ObjectId);
         }
     }
@@ -356,13 +402,34 @@ public sealed class ObjectDragSessionManager
         lock (gate)
         {
             RememberClosedDrag(dragId);
-            acquisitions.Remove((objectId, dragId));
+            CloseAcquisition(objectId, dragId);
             if (!sessions.TryGetValue(objectId, out ObjectDragSession? current)
                 || current.OwnerClientId != ownerClientId
                 || current.DragId != dragId)
                 return false;
 
             return sessions.Remove(objectId);
+        }
+    }
+
+    /// <summary>
+    /// Marks an exact drag inactive after the local Arma-side timeout. It no
+    /// longer blocks a replacement START, but its reliable END remains valid.
+    /// </summary>
+    public bool TryExpire(string objectId, string dragId)
+    {
+        if (string.IsNullOrWhiteSpace(objectId)) throw new ArgumentException("Object ID cannot be empty.", nameof(objectId));
+        if (string.IsNullOrWhiteSpace(dragId)) throw new ArgumentException("Drag ID cannot be empty.", nameof(dragId));
+
+        lock (gate)
+        {
+            if (!sessions.TryGetValue(objectId, out ObjectDragSession? current)
+                || current.DragId != dragId)
+                return false;
+
+            CloseAcquisition(objectId, dragId);
+            current.IsTimedOut = true;
+            return true;
         }
     }
 
@@ -378,7 +445,7 @@ public sealed class ObjectDragSessionManager
             foreach (ObjectDragSession session in released)
             {
                 RememberClosedDrag(session.DragId);
-                acquisitions.Remove((session.ObjectId, session.DragId));
+                CloseAcquisition(session.ObjectId, session.DragId);
                 sessions.Remove(session.ObjectId);
             }
 
@@ -416,5 +483,11 @@ public sealed class ObjectDragSessionManager
         closedDragOrder.Enqueue(dragId);
         while (closedDragOrder.Count > ClosedDragLimit)
             closedDragIds.Remove(closedDragOrder.Dequeue());
+    }
+
+    private void CloseAcquisition(string objectId, string dragId)
+    {
+        if (!acquisitions.Remove((objectId, dragId), out Acquisition? acquisition)) return;
+        acquisition.Completion.TrySetResult(false);
     }
 }

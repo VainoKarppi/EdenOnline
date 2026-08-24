@@ -64,6 +64,7 @@ EOEX_fnc_finishLocalObjectDrags = {
 			};
 			if !(_ended) then {
 				diag_log format ["[EdenOnline] END_DRAG failed for %1/%2: %3", _objectID, _dragID, _lastResult];
+				["AbortObjectDrag", [_objectID, _dragID], false, 5] call EOEX_fnc_callExtensionAsync;
 				["The final object position could not be synchronized.", 1, 8] call BIS_fnc_3DENNotification;
 			};
 		};

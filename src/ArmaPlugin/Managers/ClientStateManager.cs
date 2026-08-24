@@ -8,10 +8,12 @@ namespace EdenOnline;
 
 public class ClientStateManager
 {
+    private readonly object objectsGate = new();
+
     /// <summary>
     /// Tracks connected client IDs and their usernames on the client side.
     /// </summary>
-    public static Dictionary<int, string> UsernameList { get; set; } = [];
+    public static ConcurrentDictionary<int, string> UsernameList { get; set; } = [];
     public static ObjectDragSessionManager ObjectDragSessions { get; } = new();
 
     public ConcurrentDictionary<string, ArmaObject> Objects { get; set; } = new();
@@ -20,6 +22,33 @@ public class ClientStateManager
     public void AddOrUpdateObject(ArmaObject obj) {
         if (obj is null) return;
 
+        lock (objectsGate)
+        {
+            AddOrUpdateObjectLocked(obj);
+        }
+    }
+
+    /// <summary>
+    /// Atomically applies an object revision unless a newer revision is already
+    /// stored. Equal revisions are accepted so END retries remain idempotent.
+    /// </summary>
+    public bool AddOrUpdateObjectIfRevisionCurrent(ArmaObject obj)
+    {
+        ArgumentNullException.ThrowIfNull(obj);
+
+        lock (objectsGate)
+        {
+            if (!Objects.TryGetValue(obj.Id, out ArmaObject? existing)
+                || existing.Timestamp > obj.Timestamp)
+                return false;
+
+            AddOrUpdateObjectLocked(obj);
+            return true;
+        }
+    }
+
+    private void AddOrUpdateObjectLocked(ArmaObject obj)
+    {
         if (Objects.TryGetValue(obj.Id, out var existing) && existing is not null) {
             foreach (var kvp in obj.Attributes) {
                 existing.Attributes[kvp.Key] = kvp.Value;
@@ -37,36 +66,51 @@ public class ClientStateManager
     /// <summary>Remove object by Id.</summary>
     public bool RemoveObject(string id)
     {
-        return Objects.TryRemove(id, out _);
+        lock (objectsGate)
+        {
+            return Objects.TryRemove(id, out _);
+        }
     }
 
     /// <summary>Get object by Id.</summary>
     public bool TryGetObject(string id, out ArmaObject? obj)
     {
-        return Objects.TryGetValue(id, out obj);
+        lock (objectsGate)
+        {
+            return Objects.TryGetValue(id, out obj);
+        }
     }
 
     /// <summary>Get a snapshot of all objects (for broadcasting to clients).</summary>
     public List<ArmaObject> GetAllObjects()
     {
-        return [.. Objects.Values];
+        lock (objectsGate)
+        {
+            return [.. Objects.Values];
+        }
     }
 
     /// <summary>Clear all objects (e.g., when mission ends).</summary>
     public void Clear()
     {
-        Objects.Clear();
+        lock (objectsGate)
+        {
+            Objects.Clear();
+        }
     }
 
     /// <summary>Update object properties safely if it exists.</summary>
     public bool UpdateObject(string id, ArmaObject armaObject)
     {
-        if (Objects.ContainsKey(id))
+        lock (objectsGate)
         {
-            Objects[id] = armaObject;
-            return true;
+            if (Objects.ContainsKey(id))
+            {
+                Objects[id] = armaObject;
+                return true;
+            }
+            return false;
         }
-        return false;
     }
 }
 

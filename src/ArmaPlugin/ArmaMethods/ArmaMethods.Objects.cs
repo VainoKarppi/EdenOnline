@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -13,6 +14,8 @@ namespace EdenOnline;
 /// </summary>
 public static partial class ArmaMethods
 {
+    private static readonly ConcurrentDictionary<(string ObjectId, string DragId), byte> objectDragEndRetries = [];
+
     /// <summary>
     /// Confirms that every initial host object and connection reached the server.
     /// Remote clients are admitted only after this succeeds.
@@ -146,14 +149,19 @@ public static partial class ArmaMethods
                     objectID,
                     dragID,
                     TimeSpan.FromMilliseconds(750));
+                acquired = acquired
+                    && ClientStateManager.ObjectDragSessions.TryGetActive(objectID, out ObjectDragSession? active)
+                    && active!.OwnerClientId == Client.ClientID
+                    && active.DragId == dragID;
                 if (acquired) return dragID;
-
-                await Client.SendTcpMessageAsync(-1, nameof(ClientNetworkMethods.CancelObjectDrag), start);
             }
             finally
             {
                 if (!acquired)
+                {
+                    await BroadcastObjectDragCancellationAsync(start);
                     ClientStateManager.ObjectDragSessions.TryCancel(Client.ClientID, objectID, dragID);
+                }
             }
 
             if (attempt + 1 < acquisitionAttempts)
@@ -164,6 +172,177 @@ public static partial class ArmaMethods
         }
 
         return "";
+    }
+
+    /// <summary>
+    /// Releases a prepared drag after SQF exhausted its reliable END retries.
+    /// An attempted final write is completed idempotently in the background;
+    /// only a drag that never attempted persistence may be cancelled.
+    /// </summary>
+    public static async Task<bool> AbortObjectDrag(string objectID, string dragID)
+    {
+        if (string.IsNullOrWhiteSpace(objectID))
+            throw new ArgumentException("Object ID cannot be empty.", nameof(objectID));
+        if (string.IsNullOrWhiteSpace(dragID))
+            throw new ArgumentException("Drag ID cannot be empty.", nameof(dragID));
+        if (!ClientStateManager.ObjectDragSessions.TryGetActive(objectID, out ObjectDragSession? active)
+            || active!.OwnerClientId != Client.ClientID
+            || active.DragId != dragID)
+            return false;
+
+        ObjectDragEnd? preparedEnd = active.PreparedEnd;
+        if (active.EndPersistenceAttempted && preparedEnd is not null)
+        {
+            bool completed = false;
+            try
+            {
+                completed = await CompletePreparedObjectDragEndAsync(preparedEnd);
+            }
+            catch (Exception ex)
+            {
+                Log($"[CLIENT] Failed to complete prepared object drag '{dragID}': {ex.Message}");
+            }
+
+            if (!completed)
+                SchedulePreparedObjectDragEndRetry(preparedEnd);
+            return completed;
+        }
+
+        var start = new ObjectDragStart(objectID, dragID) { Generation = active.Generation };
+        bool cancelled = false;
+        try
+        {
+            cancelled = await BroadcastObjectDragCancellationAsync(start);
+            return cancelled;
+        }
+        finally
+        {
+            ClientStateManager.ObjectDragSessions.TryCancel(Client.ClientID, objectID, dragID);
+        }
+    }
+
+    /// <summary>
+    /// Mirrors the Arma-side remote-drag inactivity timeout into the extension
+    /// so a lost START cancellation or END cannot leave a permanent C# lock.
+    /// </summary>
+    public static bool ExpireObjectDrag(string objectID, string dragID)
+    {
+        return ClientStateManager.ObjectDragSessions.TryExpire(objectID, dragID);
+    }
+
+    private static async Task<bool> BroadcastObjectDragCancellationAsync(ObjectDragStart start)
+    {
+        const int cancellationAttempts = 3;
+        for (int attempt = 0; attempt < cancellationAttempts; attempt++)
+        {
+            try
+            {
+                await Client.SendTcpMessageAsync(-1, nameof(ClientNetworkMethods.CancelObjectDrag), start);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log($"[CLIENT] Failed to cancel object drag '{start.DragId}' (attempt {attempt + 1}/{cancellationAttempts}): {ex.Message}");
+                if (attempt + 1 < cancellationAttempts)
+                    await Task.Delay(100 * (attempt + 1));
+            }
+        }
+
+        return false;
+    }
+
+    private static async Task<bool> BroadcastObjectDragEndAsync(ObjectDragEnd end, bool logFailures = true)
+    {
+        const int endAttempts = 3;
+        for (int attempt = 0; attempt < endAttempts; attempt++)
+        {
+            try
+            {
+                await Client.SendTcpMessageAsync(-1, nameof(ClientNetworkMethods.EndObjectDrag), end);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (logFailures)
+                    Log($"[CLIENT] Failed to finish object drag '{end.DragId}' (attempt {attempt + 1}/{endAttempts}): {ex.Message}");
+                if (attempt + 1 < endAttempts)
+                    await Task.Delay(100 * (attempt + 1));
+            }
+        }
+
+        return false;
+    }
+
+    private static async Task<bool> CompletePreparedObjectDragEndAsync(
+        ObjectDragEnd end,
+        bool logBroadcastFailures = true)
+    {
+        if (!ClientStateManager.ObjectDragSessions.TryGetActive(end.ObjectId, out ObjectDragSession? active)
+            || active!.OwnerClientId != Client.ClientID
+            || active.DragId != end.DragId)
+            return false;
+
+        if (!active.EndPersisted)
+        {
+            var finalObject = new ArmaObject(end.ObjectId, new Dictionary<string, object?>
+            {
+                ["Position"] = end.Position,
+                ["Rotation"] = end.Rotation
+            }) { Timestamp = end.NextGeneration };
+            bool persisted = await Client.RequestTcpDataAsync<bool>(
+                Server.SERVER_ID,
+                nameof(ServerNetworkMethods.UpdateObjectConfirmed),
+                finalObject);
+            if (!persisted)
+            {
+                Log($"[CLIENT] Prepared END '{end.DragId}' was superseded by a newer server object revision.");
+                ClientStateManager.ObjectDragSessions.TryCancel(Client.ClientID, end.ObjectId, end.DragId);
+                return true;
+            }
+            if (!ClientStateManager.ObjectDragSessions.TryMarkEndPersisted(Client.ClientID, end))
+                return false;
+        }
+
+        if (!await BroadcastObjectDragEndAsync(end, logBroadcastFailures)) return false;
+        return ClientStateManager.ObjectDragSessions.TryEnd(Client.ClientID, end);
+    }
+
+    private static void SchedulePreparedObjectDragEndRetry(ObjectDragEnd end)
+    {
+        var key = (end.ObjectId, end.DragId);
+        if (!objectDragEndRetries.TryAdd(key, 0)) return;
+        _ = RetryPreparedObjectDragEndAsync(key, end);
+    }
+
+    private static async Task RetryPreparedObjectDragEndAsync(
+        (string ObjectId, string DragId) key,
+        ObjectDragEnd end)
+    {
+        try
+        {
+            int failureCount = 0;
+            while (ClientStateManager.ObjectDragSessions.TryGetActive(end.ObjectId, out ObjectDragSession? active)
+                && active!.OwnerClientId == Client.ClientID
+                && active.DragId == end.DragId)
+            {
+                try
+                {
+                    if (await CompletePreparedObjectDragEndAsync(end, logBroadcastFailures: false)) return;
+                }
+                catch (Exception ex)
+                {
+                    failureCount++;
+                    if (failureCount == 1 || failureCount % 30 == 0)
+                        Log($"[CLIENT] Prepared END retry still pending for '{end.DragId}': {ex.Message}");
+                }
+
+                await Task.Delay(TimeSpan.FromSeconds(1));
+            }
+        }
+        finally
+        {
+            objectDragEndRetries.TryRemove(key, out _);
+        }
     }
 
     /// <summary>
@@ -220,21 +399,15 @@ public static partial class ArmaMethods
             active.Generation,
             nextGeneration);
         if (!ClientStateManager.ObjectDragSessions.TryPrepareEnd(Client.ClientID, end)) return false;
+        if (!ClientStateManager.ObjectDragSessions.TryGetActive(objectID, out active)
+            || active!.PreparedEnd is not ObjectDragEnd preparedEnd)
+            return false;
 
-        var finalObject = new ArmaObject(objectID, new Dictionary<string, object?>
-        {
-            ["Position"] = position,
-            ["Rotation"] = rotation
-        }) { Timestamp = nextGeneration };
-        bool persisted = await Client.RequestTcpDataAsync<bool>(
-            Server.SERVER_ID,
-            nameof(ServerNetworkMethods.UpdateObjectConfirmed),
-            finalObject);
-        if (!persisted)
-            throw new InvalidOperationException("The final drag state could not be stored on the server.");
+        if (!active.EndPersistenceAttempted
+            && !ClientStateManager.ObjectDragSessions.TryMarkEndPersistenceAttempted(Client.ClientID, preparedEnd))
+            return false;
 
-        await Client.SendTcpMessageAsync(-1, nameof(ClientNetworkMethods.EndObjectDrag), end);
-        return ClientStateManager.ObjectDragSessions.TryEnd(Client.ClientID, end);
+        return await CompletePreparedObjectDragEndAsync(preparedEnd);
     }
 
     private static long ParseDragSequence(double sequence, bool allowZero)
