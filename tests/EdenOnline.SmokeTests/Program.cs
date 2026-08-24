@@ -60,23 +60,27 @@ Assert(!dragSessions.TryAdvance(2, new ObjectDragUpdate(
     [999.0, 999.0, 999.0], [0.0, 0.0, 0.0])),
     "Late UDP from an ended drag must not affect a newer drag of the same object.");
 
-var collisionOrderA = new ObjectDragSessionManager();
-var collisionOrderB = new ObjectDragSessionManager();
-var lowerPriorityDrag = new ObjectDragStart("contested-object", "019d-drag-100");
-var higherPriorityDrag = new ObjectDragStart("contested-object", "019d-drag-200");
-Assert(collisionOrderA.TryStart(2, higherPriorityDrag) == ObjectDragStartResult.Accepted,
-    "A locally observed drag should initially acquire an unlocked object.");
-Assert(collisionOrderA.TryStart(3, lowerPriorityDrag) == ObjectDragStartResult.Replaced,
-    "A deterministic lower Drag ID must replace a simultaneous contender.");
-Assert(collisionOrderB.TryStart(3, lowerPriorityDrag) == ObjectDragStartResult.Accepted,
-    "The same contender must acquire the object when observed first.");
-Assert(collisionOrderB.TryStart(2, higherPriorityDrag) == ObjectDragStartResult.Rejected,
-    "The deterministic winner must not depend on START_DRAG arrival order.");
-Assert(collisionOrderA.TryGetActive("contested-object", out ObjectDragSession? winnerA)
-    && collisionOrderB.TryGetActive("contested-object", out ObjectDragSession? winnerB)
-    && winnerA!.DragId == lowerPriorityDrag.DragId
-    && winnerB!.DragId == lowerPriorityDrag.DragId,
-    "All peers must converge on the same drag winner.");
+var acquisitionSessions = new ObjectDragSessionManager();
+var acquisitionStart = new ObjectDragStart("acquired-object", "019d-acquisition");
+Assert(acquisitionSessions.TryBeginAcquisition(2, acquisitionStart, [3, 4]) == ObjectDragStartResult.Accepted,
+    "A local drag proposal must reserve the object while peer acknowledgements are collected.");
+acquisitionSessions.AcknowledgeAcquisition(3, new ObjectDragStartAcknowledgement(
+    "acquired-object", "019d-acquisition", accepted: true));
+acquisitionSessions.AcknowledgeAcquisition(4, new ObjectDragStartAcknowledgement(
+    "acquired-object", "019d-acquisition", accepted: true));
+Assert(await acquisitionSessions.WaitForAcquisitionAsync(
+        "acquired-object", "019d-acquisition", TimeSpan.FromMilliseconds(100)),
+    "A drag must become active only after every expected peer accepted its proposal.");
+
+var rejectedAcquisitionSessions = new ObjectDragSessionManager();
+var rejectedAcquisitionStart = new ObjectDragStart("contested-object", "019d-rejected");
+Assert(rejectedAcquisitionSessions.TryBeginAcquisition(2, rejectedAcquisitionStart, [3]) == ObjectDragStartResult.Accepted,
+    "A competing drag starts as a proposal until peers vote.");
+rejectedAcquisitionSessions.AcknowledgeAcquisition(3, new ObjectDragStartAcknowledgement(
+    "contested-object", "019d-rejected", accepted: false));
+Assert(!await rejectedAcquisitionSessions.WaitForAcquisitionAsync(
+        "contested-object", "019d-rejected", TimeSpan.FromMilliseconds(100)),
+    "Any peer rejection must prevent a local proposal from being reported as acquired.");
 
 var disconnectSessions = new ObjectDragSessionManager();
 disconnectSessions.TryStart(7, new ObjectDragStart("disconnect-a", "drag-a"));
@@ -90,6 +94,28 @@ Assert(releasedDrags.Count == 2
     "Disconnecting a client must release exactly that client's remote drag locks.");
 Assert(disconnectSessions.TryStart(7, new ObjectDragStart("disconnect-a", "drag-a")) == ObjectDragStartResult.Rejected,
     "A delayed START_DRAG from a disconnected owner must not recreate its released lock.");
+Assert(disconnectSessions.TryStart(9, new ObjectDragStart("disconnect-a", "fresh-drag")) == ObjectDragStartResult.Accepted,
+    "Disconnect cancellation must not advance a generation that later joiners cannot observe.");
+
+var retryableEndSessions = new ObjectDragSessionManager();
+retryableEndSessions.TryStart(2, new ObjectDragStart("retryable-end", "ending-drag"));
+var retryableEnd = new ObjectDragEnd(
+    "retryable-end", "ending-drag", 1,
+    [1.0, 2.0, 3.0], [0.0, 0.0, 90.0]);
+Assert(retryableEndSessions.TryPrepareEnd(2, retryableEnd),
+    "END must enter a retryable prepared state before persistence and broadcast.");
+Assert(retryableEndSessions.TryGetActive("retryable-end", out ObjectDragSession? preparedEnd)
+    && preparedEnd!.IsEnding,
+    "A prepared END must retain its session until both external writes succeed.");
+Assert(retryableEndSessions.TryPrepareEnd(2, retryableEnd),
+    "Retrying the same END after a transport failure must remain valid.");
+Assert(!retryableEndSessions.TryAdvance(2, new ObjectDragUpdate(
+    "retryable-end", "ending-drag", 2,
+    [9.0, 9.0, 9.0], [0.0, 0.0, 0.0])),
+    "UDP updates must stop once END preparation begins.");
+Assert(retryableEndSessions.TryEnd(2, retryableEnd)
+    && !retryableEndSessions.TryGetActive("retryable-end", out _),
+    "A prepared END must be committed only after persistence and broadcast succeed.");
 
 var joiningClientSessions = new ObjectDragSessionManager();
 joiningClientSessions.ObserveGeneration("joined-object", 42);

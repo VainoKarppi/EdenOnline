@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using DynTypeNetwork;
 using static EdenOnline.Logger;
@@ -114,30 +115,55 @@ public static partial class ArmaMethods
         if (string.IsNullOrWhiteSpace(objectID))
             throw new ArgumentException("Object ID cannot be empty.", nameof(objectID));
 
-        string dragID = Guid.CreateVersion7().ToString("N");
-        var start = new ObjectDragStart(objectID, dragID)
+        const int acquisitionAttempts = 3;
+        for (int attempt = 0; attempt < acquisitionAttempts; attempt++)
         {
-            Generation = ClientStateManager.ObjectDragSessions.GetGeneration(objectID)
-        };
-        ObjectDragStartResult result = ClientStateManager.ObjectDragSessions.TryStart(Client.ClientID, start);
-        if (result is not ObjectDragStartResult.Accepted)
-            throw new InvalidOperationException($"Object '{objectID}' is already being dragged.");
+            int[] expectedPeerIds = ClientStateManager.UsernameList.Keys
+                .Where(clientId => clientId > Server.SERVER_ID && clientId != Client.ClientID)
+                .Distinct()
+                .ToArray();
+            int clientRank = expectedPeerIds
+                .Append(Client.ClientID)
+                .Order()
+                .ToList()
+                .IndexOf(Client.ClientID);
+            string dragID = Guid.CreateVersion7().ToString("N");
+            var start = new ObjectDragStart(objectID, dragID)
+            {
+                Generation = ClientStateManager.ObjectDragSessions.GetGeneration(objectID)
+            };
+            ObjectDragStartResult result = ClientStateManager.ObjectDragSessions.TryBeginAcquisition(
+                Client.ClientID,
+                start,
+                expectedPeerIds);
+            if (result is not ObjectDragStartResult.Accepted) return "";
 
-        try
-        {
-            await Client.SendTcpMessageAsync(-1, nameof(ClientNetworkMethods.StartObjectDrag), start);
-        }
-        catch
-        {
-            ClientStateManager.ObjectDragSessions.TryCancel(Client.ClientID, objectID, dragID);
-            throw;
+            bool acquired = false;
+            try
+            {
+                await Client.SendTcpMessageAsync(-1, nameof(ClientNetworkMethods.StartObjectDrag), start);
+                acquired = await ClientStateManager.ObjectDragSessions.WaitForAcquisitionAsync(
+                    objectID,
+                    dragID,
+                    TimeSpan.FromMilliseconds(750));
+                if (acquired) return dragID;
+
+                await Client.SendTcpMessageAsync(-1, nameof(ClientNetworkMethods.CancelObjectDrag), start);
+            }
+            finally
+            {
+                if (!acquired)
+                    ClientStateManager.ObjectDragSessions.TryCancel(Client.ClientID, objectID, dragID);
+            }
+
+            if (attempt + 1 < acquisitionAttempts)
+            {
+                int backoffMilliseconds = Math.Min(350, 75 * (clientRank + 1) * (attempt + 1));
+                await Task.Delay(backoffMilliseconds);
+            }
         }
 
-        return ClientStateManager.ObjectDragSessions.TryGetActive(objectID, out ObjectDragSession? active)
-            && active!.OwnerClientId == Client.ClientID
-            && active.DragId == dragID
-                ? dragID
-                : "";
+        return "";
     }
 
     /// <summary>
@@ -193,28 +219,22 @@ public static partial class ArmaMethods
             rotation,
             active.Generation,
             nextGeneration);
-        if (!ClientStateManager.ObjectDragSessions.TryEnd(Client.ClientID, end)) return false;
+        if (!ClientStateManager.ObjectDragSessions.TryPrepareEnd(Client.ClientID, end)) return false;
 
-        Exception? persistenceFailure = null;
-        try
+        var finalObject = new ArmaObject(objectID, new Dictionary<string, object?>
         {
-            var finalObject = new ArmaObject(objectID, new Dictionary<string, object?>
-            {
-                ["Position"] = position,
-                ["Rotation"] = rotation
-            }) { Timestamp = nextGeneration };
-            await Client.SendTcpMessageAsync(Server.SERVER_ID, nameof(ServerNetworkMethods.UpdateObject), finalObject);
-        }
-        catch (Exception ex)
-        {
-            persistenceFailure = ex;
-        }
+            ["Position"] = position,
+            ["Rotation"] = rotation
+        }) { Timestamp = nextGeneration };
+        bool persisted = await Client.RequestTcpDataAsync<bool>(
+            Server.SERVER_ID,
+            nameof(ServerNetworkMethods.UpdateObjectConfirmed),
+            finalObject);
+        if (!persisted)
+            throw new InvalidOperationException("The final drag state could not be stored on the server.");
 
         await Client.SendTcpMessageAsync(-1, nameof(ClientNetworkMethods.EndObjectDrag), end);
-        if (persistenceFailure is not null)
-            throw new InvalidOperationException("The final drag state could not be stored on the server.", persistenceFailure);
-
-        return true;
+        return ClientStateManager.ObjectDragSessions.TryEnd(Client.ClientID, end);
     }
 
     private static long ParseDragSequence(double sequence, bool allowZero)

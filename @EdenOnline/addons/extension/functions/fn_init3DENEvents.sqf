@@ -43,14 +43,27 @@ EOEX_fnc_finishLocalObjectDrags = {
 		([_entity] call EOEX_fnc_readObjectDragTransform) params ["_position", "_rotation"];
 		[_objectID, _dragID, _sequence, _position, _rotation] spawn {
 			params ["_objectID", "_dragID", "_sequence", "_position", "_rotation"];
-			private _result = [
-				"EndObjectDrag",
-				[_objectID, _dragID, _sequence, _position, _rotation],
-				false,
-				5
-			] call EOEX_fnc_callExtensionAsync;
-			if !(_result isEqualType [] && {count _result > 0} && {_result select 0}) then {
-				diag_log format ["[EdenOnline] END_DRAG failed for %1/%2: %3", _objectID, _dragID, _result];
+			private _ended = false;
+			private _lastResult = [false, ["END_DRAG was not attempted"]];
+			for "_attempt" from 0 to 2 do {
+				_lastResult = [
+					"EndObjectDrag",
+					[_objectID, _dragID, _sequence, _position, _rotation],
+					false,
+					5
+				] call EOEX_fnc_callExtensionAsync;
+				if (
+					_lastResult isEqualType []
+					&& {count _lastResult > 1}
+					&& {_lastResult select 0}
+					&& {(_lastResult select 1) param [0, false]}
+				) exitWith {
+					_ended = true;
+				};
+				uiSleep ([0.1, 0.25, 0.5] select _attempt);
+			};
+			if !(_ended) then {
+				diag_log format ["[EdenOnline] END_DRAG failed for %1/%2: %3", _objectID, _dragID, _lastResult];
 				["The final object position could not be synchronized.", 1, 8] call BIS_fnc_3DENNotification;
 			};
 		};
@@ -93,8 +106,8 @@ EOEX_fnc_beginLocalObjectDrag = {
 		};
 
 		private _dragID = (_result select 1) param [0, ""];
-		// An empty result means a simultaneous remote START won the
-		// deterministic Drag ID arbitration while this TCP send was pending.
+		// An empty result means at least one peer rejected the reservation or
+		// another drag already owns the object.
 		if (_dragID == "" || {_objectID in EOEX_var_RemoteObjectDrags}) exitWith {
 			[_entity, _basePosition, _baseRotation] call EOEX_fnc_applyObjectDragTransform;
 		};

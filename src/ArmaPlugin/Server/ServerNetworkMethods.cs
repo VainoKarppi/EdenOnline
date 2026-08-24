@@ -57,8 +57,13 @@ public class ServerNetworkMethods {
 
     public static void UpdateObject(ArmaObject armaObject)
     {
-        // Only update local server database
+        _ = UpdateObjectConfirmed(armaObject);
+    }
+
+    public static bool UpdateObjectConfirmed(ArmaObject armaObject)
+    {
         ServerStateManager.ServerObjectManager.AddOrUpdateObject(armaObject);
+        return true;
     }
     public static bool RemoveObject(string objectID)
     {

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace EdenOnline;
 
@@ -41,6 +42,22 @@ public sealed class ObjectDragUpdate
         Sequence = sequence;
         Position = position;
         Rotation = rotation;
+    }
+}
+
+public sealed class ObjectDragStartAcknowledgement
+{
+    public string ObjectId { get; set; } = "";
+    public string DragId { get; set; } = "";
+    public bool Accepted { get; set; }
+
+    public ObjectDragStartAcknowledgement() { }
+
+    public ObjectDragStartAcknowledgement(string objectId, string dragId, bool accepted)
+    {
+        ObjectId = objectId;
+        DragId = dragId;
+        Accepted = accepted;
     }
 }
 
@@ -90,6 +107,7 @@ public sealed class ObjectDragSession
     public int OwnerClientId { get; }
     public long Generation { get; }
     public long LastSequence { get; internal set; }
+    public bool IsEnding { get; internal set; }
 
     internal ObjectDragSession(string objectId, string dragId, int ownerClientId, long generation)
     {
@@ -105,9 +123,20 @@ public sealed class ObjectDragSession
 /// </summary>
 public sealed class ObjectDragSessionManager
 {
+    private sealed class Acquisition(IEnumerable<int> expectedPeerIds)
+    {
+        public HashSet<int> ExpectedPeerIds { get; } = [.. expectedPeerIds];
+        public HashSet<int> AcceptedPeerIds { get; } = [];
+        public TaskCompletionSource<bool> Completion { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    private const int ClosedDragLimit = 4096;
     private readonly object gate = new();
     private readonly Dictionary<string, ObjectDragSession> sessions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> generations = new(StringComparer.Ordinal);
+    private readonly Dictionary<(string ObjectId, string DragId), Acquisition> acquisitions = [];
+    private readonly HashSet<string> closedDragIds = new(StringComparer.Ordinal);
+    private readonly Queue<string> closedDragOrder = new();
 
     public ObjectDragStartResult TryStart(int ownerClientId, ObjectDragStart start)
     {
@@ -117,6 +146,8 @@ public sealed class ObjectDragSessionManager
 
         lock (gate)
         {
+            if (closedDragIds.Contains(start.DragId)) return ObjectDragStartResult.Rejected;
+
             long knownGeneration = generations.GetValueOrDefault(start.ObjectId);
             if (start.Generation < knownGeneration) return ObjectDragStartResult.Rejected;
 
@@ -138,14 +169,82 @@ public sealed class ObjectDragSessionManager
                 return ObjectDragStartResult.Replaced;
             }
 
-            int priority = string.CompareOrdinal(start.DragId, current.DragId);
-            if (priority < 0 || priority == 0 && ownerClientId < current.OwnerClientId)
+            return ObjectDragStartResult.Rejected;
+        }
+    }
+
+    public ObjectDragStartResult TryBeginAcquisition(
+        int ownerClientId,
+        ObjectDragStart start,
+        IEnumerable<int> expectedPeerIds)
+    {
+        ObjectDragStartResult result = TryStart(ownerClientId, start);
+        if (result is not ObjectDragStartResult.Accepted) return result;
+
+        lock (gate)
+        {
+            var acquisition = new Acquisition(expectedPeerIds.Where(peerId => peerId != ownerClientId));
+            acquisitions[(start.ObjectId, start.DragId)] = acquisition;
+            if (acquisition.ExpectedPeerIds.Count == 0)
+                acquisition.Completion.TrySetResult(true);
+        }
+
+        return result;
+    }
+
+    public void AcknowledgeAcquisition(int peerClientId, ObjectDragStartAcknowledgement acknowledgement)
+    {
+        if (peerClientId < 1) throw new ArgumentOutOfRangeException(nameof(peerClientId));
+        if (string.IsNullOrWhiteSpace(acknowledgement.ObjectId))
+            throw new ArgumentException("Object ID cannot be empty.", nameof(acknowledgement));
+        if (string.IsNullOrWhiteSpace(acknowledgement.DragId))
+            throw new ArgumentException("Drag ID cannot be empty.", nameof(acknowledgement));
+
+        lock (gate)
+        {
+            if (!acquisitions.TryGetValue((acknowledgement.ObjectId, acknowledgement.DragId), out Acquisition? acquisition))
+                return;
+
+            if (!acknowledgement.Accepted)
             {
-                sessions[start.ObjectId] = new ObjectDragSession(start.ObjectId, start.DragId, ownerClientId, start.Generation);
-                return ObjectDragStartResult.Replaced;
+                acquisition.Completion.TrySetResult(false);
+                return;
             }
 
-            return ObjectDragStartResult.Rejected;
+            if (acquisition.ExpectedPeerIds.Contains(peerClientId))
+                acquisition.AcceptedPeerIds.Add(peerClientId);
+
+            if (acquisition.AcceptedPeerIds.IsSupersetOf(acquisition.ExpectedPeerIds))
+                acquisition.Completion.TrySetResult(true);
+        }
+    }
+
+    public async Task<bool> WaitForAcquisitionAsync(
+        string objectId,
+        string dragId,
+        TimeSpan timeout)
+    {
+        Task<bool> completion;
+        lock (gate)
+        {
+            if (!acquisitions.TryGetValue((objectId, dragId), out Acquisition? acquisition)) return false;
+            completion = acquisition.Completion.Task;
+        }
+
+        try
+        {
+            return await completion.WaitAsync(timeout);
+        }
+        catch (TimeoutException)
+        {
+            return false;
+        }
+        finally
+        {
+            lock (gate)
+            {
+                acquisitions.Remove((objectId, dragId));
+            }
         }
     }
 
@@ -199,10 +298,31 @@ public sealed class ObjectDragSessionManager
             if (!sessions.TryGetValue(update.ObjectId, out ObjectDragSession? current)
                 || current.OwnerClientId != ownerClientId
                 || current.DragId != update.DragId
+                || current.IsEnding
                 || update.Sequence <= current.LastSequence)
                 return false;
 
             current.LastSequence = update.Sequence;
+            return true;
+        }
+    }
+
+    public bool TryPrepareEnd(int ownerClientId, ObjectDragEnd end)
+    {
+        ValidateIdentity(ownerClientId, end.ObjectId, end.DragId);
+        if (end.FinalSequence < 0) return false;
+
+        lock (gate)
+        {
+            if (!sessions.TryGetValue(end.ObjectId, out ObjectDragSession? current)
+                || current.OwnerClientId != ownerClientId
+                || current.DragId != end.DragId
+                || current.Generation != end.Generation
+                || end.NextGeneration <= current.Generation
+                || end.FinalSequence < current.LastSequence)
+                return false;
+
+            current.IsEnding = true;
             return true;
         }
     }
@@ -223,6 +343,8 @@ public sealed class ObjectDragSessionManager
                 return false;
 
             generations[end.ObjectId] = Math.Max(generations.GetValueOrDefault(end.ObjectId), end.NextGeneration);
+            RememberClosedDrag(end.DragId);
+            acquisitions.Remove((end.ObjectId, end.DragId));
             return sessions.Remove(end.ObjectId);
         }
     }
@@ -233,6 +355,8 @@ public sealed class ObjectDragSessionManager
 
         lock (gate)
         {
+            RememberClosedDrag(dragId);
+            acquisitions.Remove((objectId, dragId));
             if (!sessions.TryGetValue(objectId, out ObjectDragSession? current)
                 || current.OwnerClientId != ownerClientId
                 || current.DragId != dragId)
@@ -253,9 +377,8 @@ public sealed class ObjectDragSessionManager
                 .ToList();
             foreach (ObjectDragSession session in released)
             {
-                generations[session.ObjectId] = Math.Max(
-                    generations.GetValueOrDefault(session.ObjectId),
-                    checked(session.Generation + 1));
+                RememberClosedDrag(session.DragId);
+                acquisitions.Remove((session.ObjectId, session.DragId));
                 sessions.Remove(session.ObjectId);
             }
 
@@ -268,8 +391,13 @@ public sealed class ObjectDragSessionManager
         lock (gate)
         {
             List<ObjectDragSession> released = [.. sessions.Values];
+            foreach (Acquisition acquisition in acquisitions.Values)
+                acquisition.Completion.TrySetResult(false);
             sessions.Clear();
             generations.Clear();
+            acquisitions.Clear();
+            closedDragIds.Clear();
+            closedDragOrder.Clear();
             return released;
         }
     }
@@ -279,5 +407,14 @@ public sealed class ObjectDragSessionManager
         if (ownerClientId < 1) throw new ArgumentOutOfRangeException(nameof(ownerClientId));
         if (string.IsNullOrWhiteSpace(objectId)) throw new ArgumentException("Object ID cannot be empty.", nameof(objectId));
         if (string.IsNullOrWhiteSpace(dragId)) throw new ArgumentException("Drag ID cannot be empty.", nameof(dragId));
+    }
+
+    private void RememberClosedDrag(string dragId)
+    {
+        if (!closedDragIds.Add(dragId)) return;
+
+        closedDragOrder.Enqueue(dragId);
+        while (closedDragOrder.Count > ClosedDragLimit)
+            closedDragIds.Remove(closedDragOrder.Dequeue());
     }
 }

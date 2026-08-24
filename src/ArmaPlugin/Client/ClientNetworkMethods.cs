@@ -70,6 +70,24 @@ public class ClientNetworkMethods {
                 request.SenderId
             ]);
         }
+
+        _ = SendObjectDragAcknowledgementAsync(
+            request.SenderId,
+            new ObjectDragStartAcknowledgement(
+                start.ObjectId,
+                start.DragId,
+                result is ObjectDragStartResult.Accepted or ObjectDragStartResult.Replaced or ObjectDragStartResult.Duplicate));
+    }
+
+    public static void AcknowledgeObjectDrag(NetworkMessage request, ObjectDragStartAcknowledgement acknowledgement)
+    {
+        ClientStateManager.ObjectDragSessions.AcknowledgeAcquisition(request.SenderId, acknowledgement);
+    }
+
+    public static void CancelObjectDrag(NetworkMessage request, ObjectDragStart start)
+    {
+        if (!ClientStateManager.ObjectDragSessions.TryCancel(request.SenderId, start.ObjectId, start.DragId)) return;
+        Extension.SendToArma("ObjectDragCancelled", [start.ObjectId, start.DragId]);
     }
 
     public static void UpdateObjectDrag(NetworkMessage request, ObjectDragUpdate update)
@@ -96,6 +114,23 @@ public class ClientNetworkMethods {
             end.Position,
             end.Rotation
         ]);
+    }
+
+    private static async Task SendObjectDragAcknowledgementAsync(
+        int ownerClientId,
+        ObjectDragStartAcknowledgement acknowledgement)
+    {
+        try
+        {
+            await Client.SendTcpMessageAsync(
+                ownerClientId,
+                nameof(AcknowledgeObjectDrag),
+                acknowledgement);
+        }
+        catch (Exception ex)
+        {
+            Log($"[CLIENT] Failed to acknowledge object drag '{acknowledgement.DragId}': {ex.Message}");
+        }
     }
 
     public static void RemoveObject(string objectID) {

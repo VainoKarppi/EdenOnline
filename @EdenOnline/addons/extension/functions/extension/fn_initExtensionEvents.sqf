@@ -95,6 +95,22 @@ EOEX_var_ObjectDragEachFrameId = addMissionEventHandler ["EachFrame", {
 			_state set ["object", _entity];
 		};
 		if (isNull _entity) then { continue };
+		if !(_state getOrDefault ["baseResolved", true]) then {
+			private _resolvedPosition = (_entity get3DENAttribute "Position") param [0, getPosATL _entity];
+			private _resolvedRotation = (_entity get3DENAttribute "Rotation") param [0, [getDir _entity, 0, 0]];
+			_state set ["basePosition", _resolvedPosition];
+			_state set ["baseRotation", _resolvedRotation];
+			_state set ["baseAttributes", createHashMapFromArray (_entity get3DENAttributes "")];
+			_state set ["fromPosition", _resolvedPosition];
+			_state set ["currentPosition", _resolvedPosition];
+			_state set ["fromRotation", _resolvedRotation];
+			_state set ["currentRotation", _resolvedRotation];
+			if ((_state getOrDefault ["lastSequence", 0]) == 0) then {
+				_state set ["toPosition", _resolvedPosition];
+				_state set ["toRotation", _resolvedRotation];
+			};
+			_state set ["baseResolved", true];
+		};
 
 		private _lastPacketTime = _state getOrDefault ["lastPacketTime", _now];
 		if ((_now - _lastPacketTime) > 5) then {
@@ -502,6 +518,7 @@ EOEX_fnc_dispatchExtensionCallback = {
 						["basePosition", _basePosition],
 						["baseRotation", _baseRotation],
 						["baseAttributes", _baseAttributes],
+						["baseResolved", !isNull _entity],
 						["fromPosition", _basePosition],
 						["toPosition", _basePosition],
 						["currentPosition", _basePosition],
@@ -562,7 +579,14 @@ EOEX_fnc_dispatchExtensionCallback = {
 						};
 						if (_matches isNotEqualTo []) then { _entity = _matches # 0 };
 					};
-					[_entity, _position, _rotation] call EOEX_fnc_applyObjectDragTransform;
+					if (isNull _entity) then {
+						private _pendingUpdate = EOEX_var_PendingObjectUpdates getOrDefault [_objectID, createHashMap];
+						_pendingUpdate set ["Position", _position];
+						_pendingUpdate set ["Rotation", _rotation];
+						EOEX_var_PendingObjectUpdates set [_objectID, _pendingUpdate];
+					} else {
+						[_entity, _position, _rotation] call EOEX_fnc_applyObjectDragTransform;
+					};
 					EOEX_var_RemoteObjectDrags deleteAt _objectID;
 				};
 
