@@ -61,11 +61,14 @@ EOEX_var_PendingObjectCreates = [];
 EOEX_var_FailedObjectUploadBatches = [];
   EOEX_var_SyncConnections = [];
   EOEX_var_SyncConnectionKeys = createHashMap;
-	EOEX_var_LocalObjectDrags = createHashMap;
-	EOEX_var_PendingObjectDrags = createHashMap;
-	EOEX_var_RemoteObjectDrags = createHashMap;
-	EOEX_var_EndedObjectDrags = createHashMap;
-	EOEX_var_EndedObjectDragOrder = [];
+	EOEX_fnc_resetObjectDragState = {
+		EOEX_var_LocalObjectDrags = createHashMap;
+		EOEX_var_PendingObjectDrags = createHashMap;
+		EOEX_var_RemoteObjectDrags = createHashMap;
+		EOEX_var_EndedObjectDrags = createHashMap;
+		EOEX_var_EndedObjectDragOrder = [];
+	};
+	call EOEX_fnc_resetObjectDragState;
 
   EOEX_var_IsHost = false;
 

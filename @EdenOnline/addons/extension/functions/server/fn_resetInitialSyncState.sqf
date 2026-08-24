@@ -59,8 +59,6 @@ EOEX_var_ObjectSyncReleaseFrame = -1;
 EOEX_var_Objects = createHashMap;
 EOEX_var_SyncConnections = [];
 EOEX_var_SyncConnectionKeys = createHashMap;
-EOEX_var_LocalObjectDrags = createHashMap;
-EOEX_var_PendingObjectDrags = createHashMap;
-EOEX_var_RemoteObjectDrags = createHashMap;
-EOEX_var_EndedObjectDrags = createHashMap;
-EOEX_var_EndedObjectDragOrder = [];
+if !(isNil "EOEX_fnc_resetObjectDragState") then {
+	call EOEX_fnc_resetObjectDragState;
+};

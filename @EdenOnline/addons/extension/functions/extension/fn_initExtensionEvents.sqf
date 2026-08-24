@@ -468,11 +468,22 @@ EOEX_fnc_dispatchExtensionCallback = {
 					private _baseRotation = if (isNull _entity) then { [0, 0, 0] } else {
 						(_entity get3DENAttribute "Rotation") param [0, [getDir _entity, 0, 0]]
 					};
+					private _baseAttributes = if (isNull _entity) then { createHashMap } else {
+						createHashMapFromArray (_entity get3DENAttributes "")
+					};
+
+					private _pendingLocalState = EOEX_var_PendingObjectDrags getOrDefault [_objectID, createHashMap];
+					if (count _pendingLocalState > 0) then {
+						_basePosition = _pendingLocalState getOrDefault ["basePosition", _basePosition];
+						_baseRotation = _pendingLocalState getOrDefault ["baseRotation", _baseRotation];
+						_baseAttributes = _pendingLocalState getOrDefault ["baseAttributes", _baseAttributes];
+					};
 
 					private _localState = EOEX_var_LocalObjectDrags getOrDefault [_objectID, createHashMap];
 					if (count _localState > 0) then {
 						_basePosition = _localState getOrDefault ["basePosition", _basePosition];
 						_baseRotation = _localState getOrDefault ["baseRotation", _baseRotation];
+						_baseAttributes = _localState getOrDefault ["baseAttributes", _baseAttributes];
 						EOEX_var_LocalObjectDrags deleteAt _objectID;
 					};
 
@@ -490,6 +501,7 @@ EOEX_fnc_dispatchExtensionCallback = {
 						["lastSequence", 0],
 						["basePosition", _basePosition],
 						["baseRotation", _baseRotation],
+						["baseAttributes", _baseAttributes],
 						["fromPosition", _basePosition],
 						["toPosition", _basePosition],
 						["currentPosition", _basePosition],
@@ -538,9 +550,18 @@ EOEX_fnc_dispatchExtensionCallback = {
 					_data params ["_objectID", "_dragID", "_finalSequence", "_position", "_rotation"];
 					[_dragID, _finalSequence] call EOEX_fnc_rememberEndedObjectDrag;
 					private _state = EOEX_var_RemoteObjectDrags getOrDefault [_objectID, createHashMap];
-					if (count _state == 0 || {_state getOrDefault ["dragID", ""] != _dragID}) exitWith {};
+					if (count _state > 0 && {_state getOrDefault ["dragID", ""] != _dragID}) exitWith {};
 
 					private _entity = _state getOrDefault ["object", objNull];
+					if (isNull _entity) then {
+						_entity = EOEX_var_Objects getOrDefault [_objectID, objNull];
+					};
+					if (isNull _entity) then {
+						private _matches = (all3DENEntities # 0) select {
+							_x getVariable ["EOEX_var_objectID", ""] == _objectID
+						};
+						if (_matches isNotEqualTo []) then { _entity = _matches # 0 };
+					};
 					[_entity, _position, _rotation] call EOEX_fnc_applyObjectDragTransform;
 					EOEX_var_RemoteObjectDrags deleteAt _objectID;
 				};
@@ -559,11 +580,7 @@ EOEX_fnc_dispatchExtensionCallback = {
 				};
 
 				case "ObjectDragReset": {
-					EOEX_var_LocalObjectDrags = createHashMap;
-					EOEX_var_PendingObjectDrags = createHashMap;
-					EOEX_var_RemoteObjectDrags = createHashMap;
-					EOEX_var_EndedObjectDrags = createHashMap;
-					EOEX_var_EndedObjectDragOrder = [];
+					call EOEX_fnc_resetObjectDragState;
 				};
 
 				case "ObjectUpdated": {

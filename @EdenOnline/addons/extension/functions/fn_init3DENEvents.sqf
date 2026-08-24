@@ -67,18 +67,27 @@ EOEX_fnc_beginLocalObjectDrag = {
 	) exitWith {};
 
 	([_entity] call EOEX_fnc_readObjectDragTransform) params ["_basePosition", "_baseRotation"];
-	EOEX_var_PendingObjectDrags set [_objectID, [_entity, false, _basePosition, _baseRotation]];
+	private _baseAttributes = createHashMapFromArray (_entity get3DENAttributes "");
+	EOEX_var_PendingObjectDrags set [_objectID, createHashMapFromArray [
+		["object", _entity],
+		["released", false],
+		["basePosition", _basePosition],
+		["baseRotation", _baseRotation],
+		["baseAttributes", _baseAttributes]
+	]];
 	[_entity, _objectID] spawn {
 		params ["_entity", "_objectID"];
 		private _result = ["StartObjectDrag", [_objectID], false, 5] call EOEX_fnc_callExtensionAsync;
-		private _pending = EOEX_var_PendingObjectDrags getOrDefault [_objectID, []];
-		if (_pending isEqualTo []) exitWith {};
-		private _releasedBeforeStart = _pending param [1, false];
-		private _basePosition = _pending param [2, getPosATL _entity];
-		private _baseRotation = _pending param [3, [getDir _entity, 0, 0]];
+		private _pending = EOEX_var_PendingObjectDrags getOrDefault [_objectID, createHashMap];
+		if (count _pending == 0) exitWith {};
+		private _releasedBeforeStart = _pending getOrDefault ["released", false];
+		private _basePosition = _pending getOrDefault ["basePosition", getPosATL _entity];
+		private _baseRotation = _pending getOrDefault ["baseRotation", [getDir _entity, 0, 0]];
+		private _baseAttributes = _pending getOrDefault ["baseAttributes", createHashMap];
 		EOEX_var_PendingObjectDrags deleteAt _objectID;
 
 		if !(_result isEqualType [] && {count _result > 1} && {_result select 0}) exitWith {
+			[_entity, _basePosition, _baseRotation] call EOEX_fnc_applyObjectDragTransform;
 			diag_log format ["[EdenOnline] START_DRAG failed for %1: %2", _objectID, _result];
 			["Object dragging could not be synchronized.", 1, 8] call BIS_fnc_3DENNotification;
 		};
@@ -86,7 +95,9 @@ EOEX_fnc_beginLocalObjectDrag = {
 		private _dragID = (_result select 1) param [0, ""];
 		// An empty result means a simultaneous remote START won the
 		// deterministic Drag ID arbitration while this TCP send was pending.
-		if (_dragID == "" || {_objectID in EOEX_var_RemoteObjectDrags}) exitWith {};
+		if (_dragID == "" || {_objectID in EOEX_var_RemoteObjectDrags}) exitWith {
+			[_entity, _basePosition, _baseRotation] call EOEX_fnc_applyObjectDragTransform;
+		};
 
 		private _state = createHashMapFromArray [
 			["object", _entity],
@@ -94,7 +105,8 @@ EOEX_fnc_beginLocalObjectDrag = {
 			["sequence", 0],
 			["lastSend", diag_tickTime - 0.1],
 			["basePosition", _basePosition],
-			["baseRotation", _baseRotation]
+			["baseRotation", _baseRotation],
+			["baseAttributes", _baseAttributes]
 		];
 		EOEX_var_LocalObjectDrags set [_objectID, _state];
 
@@ -327,12 +339,23 @@ add3DENEventHandler ["OnEntityAttributeChanged", {
 	if (_entity isEqualType objNull && {_entity getVariable ["EOEX_var_createPending", false]}) exitWith {};
 	if (_entity isEqualType objNull && {_property isEqualType ""}) then {
 		private _objectID = _entity getVariable ["EOEX_var_objectID", ""];
+		private _remoteState = EOEX_var_RemoteObjectDrags getOrDefault [_objectID, createHashMap];
+		if (count _remoteState > 0) exitWith {
+			private _baseAttributes = _remoteState getOrDefault ["baseAttributes", createHashMap];
+			if (_property in _baseAttributes) then {
+				private _previousApplyingRemoteChanges = EOEX_var_ApplyingRemoteChanges;
+				EOEX_var_ApplyingRemoteChanges = true;
+				ignore3DENHistory {
+					_entity set3DENAttribute [_property, _baseAttributes get _property];
+				};
+				EOEX_var_ApplyingRemoteChanges = _previousApplyingRemoteChanges;
+			};
+		};
 		if (
 			(toLower _property) in ["position", "rotation"]
 			&& {
 				_objectID in EOEX_var_LocalObjectDrags
-				|| {_objectID in EOEX_var_PendingObjectDrags}
-				|| {_objectID in EOEX_var_RemoteObjectDrags}
+					|| {_objectID in EOEX_var_PendingObjectDrags}
 			}
 		) exitWith {};
 	};
@@ -380,6 +403,18 @@ EOEX_var_OnEntityDraggedId = add3DENEventHandler ["OnEntityDragged", {
 	};
 }];
 
+remove3DENEventHandler ["OnSelectionChange", missionNamespace getVariable ["EOEX_var_ObjectDragSelectionId", -1]];
+EOEX_var_ObjectDragSelectionId = add3DENEventHandler ["OnSelectionChange", {
+	private _selectedObjects = get3DENSelected "object";
+	private _lockedObjects = _selectedObjects select {
+		private _objectID = _x getVariable ["EOEX_var_objectID", ""];
+		_objectID in EOEX_var_RemoteObjectDrags
+	};
+	if (_lockedObjects isNotEqualTo []) then {
+		set3DENSelected (_selectedObjects - _lockedObjects);
+	};
+}];
+
 private _display3DEN = findDisplay 313;
 if !(isNull _display3DEN) then {
 	private _previousMouseUp = uiNamespace getVariable ["EOEX_var_ObjectDragMouseUpId", -1];
@@ -392,7 +427,7 @@ if !(isNull _display3DEN) then {
 		if (_button != 0) exitWith {};
 
 		{
-			_y set [1, true];
+			_y set ["released", true];
 			EOEX_var_PendingObjectDrags set [_x, _y];
 		} forEach EOEX_var_PendingObjectDrags;
 		[] call EOEX_fnc_finishLocalObjectDrags;
