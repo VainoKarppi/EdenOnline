@@ -232,7 +232,10 @@ public static partial class ArmaMethods
 
         Extension.SendToArma("ObjectSyncCount", [objects.Count]);
         foreach (ArmaObject obj in objects)
+        {
+            ClientStateManager.ObjectDragSessions.ObserveGeneration(obj.Id, obj.Timestamp);
             Extension.SendToArma("ObjectSyncData", [obj.Id, obj.Attributes]);
+        }
 
         Log($"[CLIENT] Object sync complete. Total objects synced: {objects.Count}");
     }

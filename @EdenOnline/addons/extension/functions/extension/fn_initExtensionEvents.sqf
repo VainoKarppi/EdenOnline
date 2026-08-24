@@ -16,6 +16,120 @@ EOEX_fnc_reportLiveSyncFailure = {
 	};
 };
 
+EOEX_fnc_rememberEndedObjectDrag = {
+	params ["_dragID", ["_finalSequence", -1]];
+	if (_dragID == "") exitWith {};
+	if !(_dragID in EOEX_var_EndedObjectDrags) then {
+		EOEX_var_EndedObjectDragOrder pushBack _dragID;
+	};
+	EOEX_var_EndedObjectDrags set [_dragID, _finalSequence];
+
+	// Bound the stale-packet tombstones. An active drag also requires an exact
+	// Drag ID match, so older entries are safe to retire after this window.
+	while {count EOEX_var_EndedObjectDragOrder > 1024} do {
+		private _expiredDragID = EOEX_var_EndedObjectDragOrder deleteAt 0;
+		EOEX_var_EndedObjectDrags deleteAt _expiredDragID;
+	};
+};
+
+EOEX_fnc_applyObjectDragTransform = {
+	params ["_entity", "_position", "_rotation"];
+	if (
+		isNull _entity
+		|| {!(_position isEqualType [])}
+		|| {!(_rotation isEqualType [])}
+		|| {count _position != 3}
+		|| {count _rotation != 3}
+	) exitWith { false };
+
+	private _previousApplyingRemoteChanges = missionNamespace getVariable ["EOEX_var_ApplyingRemoteChanges", false];
+	EOEX_var_ApplyingRemoteChanges = true;
+	ignore3DENHistory {
+		_entity set3DENAttribute ["Position", _position];
+		_entity set3DENAttribute ["Rotation", _rotation];
+	};
+	EOEX_var_ApplyingRemoteChanges = _previousApplyingRemoteChanges;
+	true
+};
+
+EOEX_fnc_lerpObjectDragVector = {
+	params ["_from", "_to", "_amount"];
+	[
+		(_from select 0) + ((_to select 0) - (_from select 0)) * _amount,
+		(_from select 1) + ((_to select 1) - (_from select 1)) * _amount,
+		(_from select 2) + ((_to select 2) - (_from select 2)) * _amount
+	]
+};
+
+EOEX_fnc_lerpObjectDragRotation = {
+	params ["_from", "_to", "_amount"];
+	private _rotation = [];
+	for "_index" from 0 to 2 do {
+		private _fromAngle = _from select _index;
+		private _delta = (((_to select _index) - _fromAngle + 540) % 360) - 180;
+		_rotation pushBack (_fromAngle + _delta * _amount);
+	};
+	_rotation
+};
+
+private _previousObjectDragEachFrame = missionNamespace getVariable ["EOEX_var_ObjectDragEachFrameId", -1];
+if (_previousObjectDragEachFrame >= 0) then {
+	removeMissionEventHandler ["EachFrame", _previousObjectDragEachFrame];
+};
+
+EOEX_var_ObjectDragEachFrameId = addMissionEventHandler ["EachFrame", {
+	private _now = diag_tickTime;
+	private _expiredObjectIDs = [];
+	{
+		private _objectID = _x;
+		private _state = _y;
+		private _entity = _state getOrDefault ["object", objNull];
+		if (isNull _entity) then {
+			_entity = EOEX_var_Objects getOrDefault [_objectID, objNull];
+			if (isNull _entity) then {
+				private _matches = (all3DENEntities # 0) select {
+					_x getVariable ["EOEX_var_objectID", ""] == _objectID
+				};
+				if (_matches isNotEqualTo []) then { _entity = _matches # 0 };
+			};
+			_state set ["object", _entity];
+		};
+		if (isNull _entity) then { continue };
+
+		private _lastPacketTime = _state getOrDefault ["lastPacketTime", _now];
+		if ((_now - _lastPacketTime) > 5) then {
+			[
+				_entity,
+				_state getOrDefault ["basePosition", getPosATL _entity],
+				_state getOrDefault ["baseRotation", [getDir _entity, 0, 0]]
+			] call EOEX_fnc_applyObjectDragTransform;
+			[_state getOrDefault ["dragID", ""], _state getOrDefault ["lastSequence", -1]]
+				call EOEX_fnc_rememberEndedObjectDrag;
+			_expiredObjectIDs pushBack _objectID;
+			continue;
+		};
+
+		private _startTime = _state getOrDefault ["startTime", _now];
+		private _duration = _state getOrDefault ["duration", 0.1];
+		private _amount = if (_duration > 0) then { (_now - _startTime) / _duration } else { 1 };
+		_amount = 0 max (_amount min 1);
+
+		private _fromPosition = _state getOrDefault ["fromPosition", getPosATL _entity];
+		private _toPosition = _state getOrDefault ["toPosition", _fromPosition];
+		private _fromRotation = _state getOrDefault ["fromRotation", [getDir _entity, 0, 0]];
+		private _toRotation = _state getOrDefault ["toRotation", _fromRotation];
+		private _position = [_fromPosition, _toPosition, _amount] call EOEX_fnc_lerpObjectDragVector;
+		private _rotation = [_fromRotation, _toRotation, _amount] call EOEX_fnc_lerpObjectDragRotation;
+
+		[_entity, _position, _rotation] call EOEX_fnc_applyObjectDragTransform;
+		_state set ["currentPosition", _position];
+		_state set ["currentRotation", _rotation];
+		EOEX_var_RemoteObjectDrags set [_objectID, _state];
+	} forEach EOEX_var_RemoteObjectDrags;
+
+	{ EOEX_var_RemoteObjectDrags deleteAt _x } forEach _expiredObjectIDs;
+}];
+
 // Object creation is deliberately moved out of ExtensionCallback. The callback
 // only queues data; this frame-budgeted worker keeps Eden responsive for large
 // snapshots and avoids deleteAt 0 / O(n^2) queue behavior by using an offset.
@@ -248,13 +362,15 @@ EOEX_fnc_dispatchExtensionCallback = {
 			&& {_method in [
 				"ObjectSyncCount", "ConnectionSyncCount", "ObjectSyncData",
 				"ObjectCreated", "ObjectUpdated", "ObjectRemoved",
+				"ObjectDragStarted", "ObjectDragUpdated", "ObjectDragEnded",
+				"ObjectDragCancelled", "ObjectDragReset",
 				"CreateSyncConnection", "ConnectionSyncData",
 				"RemoveSyncConnection"
 			]}
 		) exitWith {};
 
 
-		if (EOEX_var_DEBUG && {!(_method in ["CameraUpdate", "ASYNC_RESPONSE", "ObjectSyncData", "ObjectCreated", "CreateSyncConnection", "ConnectionSyncData"])}) then {
+		if (EOEX_var_DEBUG && {!(_method in ["CameraUpdate", "ASYNC_RESPONSE", "ObjectSyncData", "ObjectCreated", "ObjectDragUpdated", "CreateSyncConnection", "ConnectionSyncData"])}) then {
 			diag_log "=========================================================================================";
 			diag_log _function;
 			diag_log _data;
@@ -332,6 +448,122 @@ EOEX_fnc_dispatchExtensionCallback = {
 					EOEX_var_ObjectSyncQueue pushBack [_data select 0, _data select 1, false];
 					EOEX_var_ObjectSyncApplying = true;
 					EOEX_var_ApplyingRemoteChanges = true;
+				};
+
+				case "ObjectDragStarted": {
+					_data params ["_objectID", "_dragID", "_ownerClientID"];
+					if (_dragID in EOEX_var_EndedObjectDrags) exitWith {};
+
+					private _entity = EOEX_var_Objects getOrDefault [_objectID, objNull];
+					if (isNull _entity) then {
+						private _matches = (all3DENEntities # 0) select {
+							_x getVariable ["EOEX_var_objectID", ""] == _objectID
+						};
+						if (_matches isNotEqualTo []) then { _entity = _matches # 0 };
+					};
+
+					private _basePosition = if (isNull _entity) then { [0, 0, 0] } else {
+						(_entity get3DENAttribute "Position") param [0, getPosATL _entity]
+					};
+					private _baseRotation = if (isNull _entity) then { [0, 0, 0] } else {
+						(_entity get3DENAttribute "Rotation") param [0, [getDir _entity, 0, 0]]
+					};
+
+					private _localState = EOEX_var_LocalObjectDrags getOrDefault [_objectID, createHashMap];
+					if (count _localState > 0) then {
+						_basePosition = _localState getOrDefault ["basePosition", _basePosition];
+						_baseRotation = _localState getOrDefault ["baseRotation", _baseRotation];
+						EOEX_var_LocalObjectDrags deleteAt _objectID;
+					};
+
+					private _previousRemoteState = EOEX_var_RemoteObjectDrags getOrDefault [_objectID, createHashMap];
+					if (count _previousRemoteState > 0) then {
+						_basePosition = _previousRemoteState getOrDefault ["basePosition", _basePosition];
+						_baseRotation = _previousRemoteState getOrDefault ["baseRotation", _baseRotation];
+					};
+
+					private _now = diag_tickTime;
+					private _state = createHashMapFromArray [
+						["object", _entity],
+						["dragID", _dragID],
+						["ownerClientID", _ownerClientID],
+						["lastSequence", 0],
+						["basePosition", _basePosition],
+						["baseRotation", _baseRotation],
+						["fromPosition", _basePosition],
+						["toPosition", _basePosition],
+						["currentPosition", _basePosition],
+						["fromRotation", _baseRotation],
+						["toRotation", _baseRotation],
+						["currentRotation", _baseRotation],
+						["startTime", _now],
+						["duration", 0.1],
+						["lastPacketTime", _now]
+					];
+					EOEX_var_RemoteObjectDrags set [_objectID, _state];
+
+					if (!isNull _entity && {_entity in (get3DENSelected "object")}) then {
+						set3DENSelected ((get3DENSelected "object") - [_entity]);
+					};
+				};
+
+				case "ObjectDragUpdated": {
+					_data params ["_objectID", "_dragID", "_sequence", "_position", "_rotation"];
+					if (_dragID in EOEX_var_EndedObjectDrags) exitWith {};
+					private _state = EOEX_var_RemoteObjectDrags getOrDefault [_objectID, createHashMap];
+					if (
+						count _state == 0
+						|| {_state getOrDefault ["dragID", ""] != _dragID}
+						|| {_sequence <= (_state getOrDefault ["lastSequence", 0])}
+						|| {!(_position isEqualType [])}
+						|| {!(_rotation isEqualType [])}
+						|| {count _position != 3}
+						|| {count _rotation != 3}
+					) exitWith {};
+
+					private _now = diag_tickTime;
+					private _lastPacketTime = _state getOrDefault ["lastPacketTime", _now - 0.1];
+					_state set ["fromPosition", _state getOrDefault ["currentPosition", _position]];
+					_state set ["toPosition", _position];
+					_state set ["fromRotation", _state getOrDefault ["currentRotation", _rotation]];
+					_state set ["toRotation", _rotation];
+					_state set ["startTime", _now];
+					_state set ["duration", 0.05 max ((_now - _lastPacketTime) min 0.25)];
+					_state set ["lastPacketTime", _now];
+					_state set ["lastSequence", _sequence];
+					EOEX_var_RemoteObjectDrags set [_objectID, _state];
+				};
+
+				case "ObjectDragEnded": {
+					_data params ["_objectID", "_dragID", "_finalSequence", "_position", "_rotation"];
+					[_dragID, _finalSequence] call EOEX_fnc_rememberEndedObjectDrag;
+					private _state = EOEX_var_RemoteObjectDrags getOrDefault [_objectID, createHashMap];
+					if (count _state == 0 || {_state getOrDefault ["dragID", ""] != _dragID}) exitWith {};
+
+					private _entity = _state getOrDefault ["object", objNull];
+					[_entity, _position, _rotation] call EOEX_fnc_applyObjectDragTransform;
+					EOEX_var_RemoteObjectDrags deleteAt _objectID;
+				};
+
+				case "ObjectDragCancelled": {
+					_data params ["_objectID", "_dragID"];
+					[_dragID, -1] call EOEX_fnc_rememberEndedObjectDrag;
+					private _state = EOEX_var_RemoteObjectDrags getOrDefault [_objectID, createHashMap];
+					if (count _state == 0 || {_state getOrDefault ["dragID", ""] != _dragID}) exitWith {};
+					[
+						_state getOrDefault ["object", objNull],
+						_state getOrDefault ["basePosition", [0, 0, 0]],
+						_state getOrDefault ["baseRotation", [0, 0, 0]]
+					] call EOEX_fnc_applyObjectDragTransform;
+					EOEX_var_RemoteObjectDrags deleteAt _objectID;
+				};
+
+				case "ObjectDragReset": {
+					EOEX_var_LocalObjectDrags = createHashMap;
+					EOEX_var_PendingObjectDrags = createHashMap;
+					EOEX_var_RemoteObjectDrags = createHashMap;
+					EOEX_var_EndedObjectDrags = createHashMap;
+					EOEX_var_EndedObjectDragOrder = [];
 				};
 
 				case "ObjectUpdated": {

@@ -12,6 +12,7 @@ public class ClientStateManager
     /// Tracks connected client IDs and their usernames on the client side.
     /// </summary>
     public static Dictionary<int, string> UsernameList { get; set; } = [];
+    public static ObjectDragSessionManager ObjectDragSessions { get; } = new();
 
     public ConcurrentDictionary<string, ArmaObject> Objects { get; set; } = new();
 

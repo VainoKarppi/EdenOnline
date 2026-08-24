@@ -21,12 +21,15 @@ namespace EdenOnline;
 
 
 public class ClientNetworkEvents {
-    public static async void OnConnected(int clientId) {
-        
+    public static void OnConnected(int clientId) {
+        ClientStateManager.ObjectDragSessions.Clear();
+        Extension.SendToArma("ObjectDragReset", []);
     }
 
     public static void OnDisconnected(bool success, DisconnectReason reason) {
         Log($"[CLIENT] Client disconnected from server. Success: {success}, Reason: {reason}");
+        ClientStateManager.ObjectDragSessions.Clear();
+        Extension.SendToArma("ObjectDragReset", []);
     }
 
     public static async Task OnServerShutdown(DisconnectReason reason) {
@@ -43,6 +46,9 @@ public class ClientNetworkEvents {
         Log($"[CLIENT] Other client disconnected: {otherClientId} ({username}). Success: {success}, Reason: {reason}");
         // Remove the user from local username list and notify Arma UI
         ClientStateManager.UsernameList.Remove(otherClientId);
+        foreach (ObjectDragSession session in ClientStateManager.ObjectDragSessions.ReleaseOwner(otherClientId))
+            Extension.SendToArma("ObjectDragCancelled", [session.ObjectId, session.DragId]);
+
         try {
             var otherUsersArray = ClientStateManager.UsernameList
                 .Where(x => x.Key != Client.ClientID)

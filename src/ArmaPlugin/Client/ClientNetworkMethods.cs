@@ -45,15 +45,59 @@ public class ClientNetworkMethods {
     }
 
     public static void CreateObject(ArmaObject createdObj) {
+        ClientStateManager.ObjectDragSessions.ObserveGeneration(createdObj.Id, createdObj.Timestamp);
         Extension.SendToArma("ObjectCreated", [createdObj.Id, createdObj.Attributes]);
     }
     public static void CreateObjectsBatch(List<ArmaObject> createdObjects) {
-        foreach (ArmaObject createdObject in createdObjects)
+        foreach (ArmaObject createdObject in createdObjects) {
+            ClientStateManager.ObjectDragSessions.ObserveGeneration(createdObject.Id, createdObject.Timestamp);
             Extension.SendToArma("ObjectCreated", [createdObject.Id, createdObject.Attributes]);
+        }
     }
     public static void UpdateObject(ArmaObject updatedObj) {
+        ClientStateManager.ObjectDragSessions.ObserveGeneration(updatedObj.Id, updatedObj.Timestamp);
         Extension.SendToArma("ObjectUpdated", [updatedObj.Id, updatedObj.Attributes]);
     }
+
+    public static void StartObjectDrag(NetworkMessage request, ObjectDragStart start)
+    {
+        ObjectDragStartResult result = ClientStateManager.ObjectDragSessions.TryStart(request.SenderId, start);
+        if (result is ObjectDragStartResult.Accepted or ObjectDragStartResult.Replaced)
+        {
+            Extension.SendToArma("ObjectDragStarted", [
+                start.ObjectId,
+                start.DragId,
+                request.SenderId
+            ]);
+        }
+    }
+
+    public static void UpdateObjectDrag(NetworkMessage request, ObjectDragUpdate update)
+    {
+        if (!ClientStateManager.ObjectDragSessions.TryAdvance(request.SenderId, update)) return;
+
+        Extension.SendToArma("ObjectDragUpdated", [
+            update.ObjectId,
+            update.DragId,
+            update.Sequence,
+            update.Position,
+            update.Rotation
+        ]);
+    }
+
+    public static void EndObjectDrag(NetworkMessage request, ObjectDragEnd end)
+    {
+        if (!ClientStateManager.ObjectDragSessions.TryEnd(request.SenderId, end)) return;
+
+        Extension.SendToArma("ObjectDragEnded", [
+            end.ObjectId,
+            end.DragId,
+            end.FinalSequence,
+            end.Position,
+            end.Rotation
+        ]);
+    }
+
     public static void RemoveObject(string objectID) {
         Extension.SendToArma("ObjectRemoved", [objectID]);
     }

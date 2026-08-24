@@ -39,6 +39,7 @@ public static partial class ArmaMethods
 
 
         ArmaObject obj = new(objectID, metadata);
+        ClientStateManager.ObjectDragSessions.ObserveGeneration(obj.Id, obj.Timestamp);
         await Client.SendTcpMessageAsync(0, "CreateObject", obj);
 
         return obj.Id;
@@ -54,6 +55,8 @@ public static partial class ArmaMethods
             throw new Exception("Client is not connected. Cannot create objects.");
 
         List<ArmaObject> objects = ParseObjectBatch(objectData);
+        foreach (ArmaObject obj in objects)
+            ClientStateManager.ObjectDragSessions.ObserveGeneration(obj.Id, obj.Timestamp);
         await Client.SendTcpMessageAsync(0, "CreateObjectsBatch", objects);
     }
 
@@ -97,7 +100,130 @@ public static partial class ArmaMethods
             throw new Exception("Client is not connected. Cannot update object.");
 
         ArmaObject obj = new(objectID, metadata);
+        ClientStateManager.ObjectDragSessions.ObserveGeneration(obj.Id, obj.Timestamp);
         await Client.SendTcpMessageAsync(0, "UpdateObject", obj);
+    }
+
+    /// <summary>
+    /// Starts a peer-to-peer drag session and returns the client-generated Drag ID.
+    /// </summary>
+    public static async Task<string> StartObjectDrag(string objectID)
+    {
+        if (!Client.IsTcpConnected())
+            throw new Exception("Client is not connected. Cannot start object dragging.");
+        if (string.IsNullOrWhiteSpace(objectID))
+            throw new ArgumentException("Object ID cannot be empty.", nameof(objectID));
+
+        string dragID = Guid.CreateVersion7().ToString("N");
+        var start = new ObjectDragStart(objectID, dragID)
+        {
+            Generation = ClientStateManager.ObjectDragSessions.GetGeneration(objectID)
+        };
+        ObjectDragStartResult result = ClientStateManager.ObjectDragSessions.TryStart(Client.ClientID, start);
+        if (result is not ObjectDragStartResult.Accepted)
+            throw new InvalidOperationException($"Object '{objectID}' is already being dragged.");
+
+        try
+        {
+            await Client.SendTcpMessageAsync(-1, nameof(ClientNetworkMethods.StartObjectDrag), start);
+        }
+        catch
+        {
+            ClientStateManager.ObjectDragSessions.TryCancel(Client.ClientID, objectID, dragID);
+            throw;
+        }
+
+        return ClientStateManager.ObjectDragSessions.TryGetActive(objectID, out ObjectDragSession? active)
+            && active!.OwnerClientId == Client.ClientID
+            && active.DragId == dragID
+                ? dragID
+                : "";
+    }
+
+    /// <summary>
+    /// Sends an unordered drag sample to all other clients. Sequence checks on
+    /// both the extension and SQF side discard duplicates and stale packets.
+    /// </summary>
+    public static async Task<bool> UpdateObjectDrag(
+        string objectID,
+        string dragID,
+        double sequence,
+        object[] position,
+        object[] rotation)
+    {
+        if (!Client.IsUdpConnected())
+            throw new Exception("Client is not connected. Cannot update object dragging.");
+
+        long sequenceNumber = ParseDragSequence(sequence, allowZero: false);
+        var update = new ObjectDragUpdate(objectID, dragID, sequenceNumber, position, rotation);
+        if (!ClientStateManager.ObjectDragSessions.TryAdvance(Client.ClientID, update)) return false;
+
+        await Client.SendUdpMessageAsync(-1, nameof(ClientNetworkMethods.UpdateObjectDrag), update);
+        return true;
+    }
+
+    /// <summary>
+    /// Ends a drag through reliable TCP and stores the same final transform in
+    /// the server snapshot used by clients that join later.
+    /// </summary>
+    public static async Task<bool> EndObjectDrag(
+        string objectID,
+        string dragID,
+        double finalSequence,
+        object[] position,
+        object[] rotation)
+    {
+        if (!Client.IsTcpConnected())
+            throw new Exception("Client is not connected. Cannot end object dragging.");
+
+        long sequenceNumber = ParseDragSequence(finalSequence, allowZero: true);
+        if (!ClientStateManager.ObjectDragSessions.TryGetActive(objectID, out ObjectDragSession? active)
+            || active!.OwnerClientId != Client.ClientID
+            || active.DragId != dragID)
+            return false;
+
+        long nextGeneration = Math.Max(
+            DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            checked(active.Generation + 1));
+        var end = new ObjectDragEnd(
+            objectID,
+            dragID,
+            sequenceNumber,
+            position,
+            rotation,
+            active.Generation,
+            nextGeneration);
+        if (!ClientStateManager.ObjectDragSessions.TryEnd(Client.ClientID, end)) return false;
+
+        Exception? persistenceFailure = null;
+        try
+        {
+            var finalObject = new ArmaObject(objectID, new Dictionary<string, object?>
+            {
+                ["Position"] = position,
+                ["Rotation"] = rotation
+            }) { Timestamp = nextGeneration };
+            await Client.SendTcpMessageAsync(Server.SERVER_ID, nameof(ServerNetworkMethods.UpdateObject), finalObject);
+        }
+        catch (Exception ex)
+        {
+            persistenceFailure = ex;
+        }
+
+        await Client.SendTcpMessageAsync(-1, nameof(ClientNetworkMethods.EndObjectDrag), end);
+        if (persistenceFailure is not null)
+            throw new InvalidOperationException("The final drag state could not be stored on the server.", persistenceFailure);
+
+        return true;
+    }
+
+    private static long ParseDragSequence(double sequence, bool allowZero)
+    {
+        double minimum = allowZero ? 0 : 1;
+        if (!double.IsFinite(sequence) || sequence < minimum || sequence > long.MaxValue || sequence != Math.Truncate(sequence))
+            throw new ArgumentOutOfRangeException(nameof(sequence), "Drag sequence must be a non-negative integer in range.");
+
+        return (long)sequence;
     }
 
     /// <summary>

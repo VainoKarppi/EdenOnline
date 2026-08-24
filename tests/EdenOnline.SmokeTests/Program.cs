@@ -31,6 +31,73 @@ Assert(roundTrip.Id == camera.Id, "ArmaCamera.Id should round-trip.");
 Assert(roundTrip.Position.Length == 3, "ArmaCamera.Position should round-trip.");
 Assert(roundTrip.Direction.Length == 3, "ArmaCamera.Direction should round-trip.");
 
+var dragSessions = new ObjectDragSessionManager();
+var dragStart = new ObjectDragStart("object-dragged", "019d-drag-a");
+Assert(dragSessions.TryStart(2, dragStart) == ObjectDragStartResult.Accepted,
+    "The first drag start for an object must acquire its session.");
+Assert(dragSessions.TryAdvance(2, new ObjectDragUpdate(
+    "object-dragged", "019d-drag-a", 1,
+    [10.0, 20.0, 0.0], [0.0, 0.0, 45.0])),
+    "The active drag owner must be able to advance the sequence.");
+Assert(!dragSessions.TryAdvance(2, new ObjectDragUpdate(
+    "object-dragged", "019d-drag-a", 1,
+    [11.0, 20.0, 0.0], [0.0, 0.0, 45.0])),
+    "Duplicate UDP sequence numbers must be discarded.");
+var dragEnd = new ObjectDragEnd(
+    "object-dragged", "019d-drag-a", 2,
+    [12.0, 20.0, 0.0], [0.0, 0.0, 45.0]);
+Assert(dragSessions.TryEnd(2, dragEnd), "The active owner must be able to end its drag.");
+Assert(!dragSessions.TryAdvance(2, new ObjectDragUpdate(
+    "object-dragged", "019d-drag-a", 2,
+    [999.0, 999.0, 999.0], [0.0, 0.0, 0.0])),
+    "UDP updates received after END_DRAG must be discarded.");
+Assert(dragSessions.TryStart(4, new ObjectDragStart("object-dragged", "019d-stale-contender")) == ObjectDragStartResult.Rejected,
+    "A delayed competing START_DRAG from an ended generation must not reopen the object lock.");
+Assert(dragSessions.TryStart(3, new ObjectDragStart("object-dragged", "019d-drag-b") { Generation = 1 }) == ObjectDragStartResult.Accepted,
+    "An object must become draggable again under a new Drag ID after END_DRAG.");
+Assert(!dragSessions.TryAdvance(2, new ObjectDragUpdate(
+    "object-dragged", "019d-drag-a", 3,
+    [999.0, 999.0, 999.0], [0.0, 0.0, 0.0])),
+    "Late UDP from an ended drag must not affect a newer drag of the same object.");
+
+var collisionOrderA = new ObjectDragSessionManager();
+var collisionOrderB = new ObjectDragSessionManager();
+var lowerPriorityDrag = new ObjectDragStart("contested-object", "019d-drag-100");
+var higherPriorityDrag = new ObjectDragStart("contested-object", "019d-drag-200");
+Assert(collisionOrderA.TryStart(2, higherPriorityDrag) == ObjectDragStartResult.Accepted,
+    "A locally observed drag should initially acquire an unlocked object.");
+Assert(collisionOrderA.TryStart(3, lowerPriorityDrag) == ObjectDragStartResult.Replaced,
+    "A deterministic lower Drag ID must replace a simultaneous contender.");
+Assert(collisionOrderB.TryStart(3, lowerPriorityDrag) == ObjectDragStartResult.Accepted,
+    "The same contender must acquire the object when observed first.");
+Assert(collisionOrderB.TryStart(2, higherPriorityDrag) == ObjectDragStartResult.Rejected,
+    "The deterministic winner must not depend on START_DRAG arrival order.");
+Assert(collisionOrderA.TryGetActive("contested-object", out ObjectDragSession? winnerA)
+    && collisionOrderB.TryGetActive("contested-object", out ObjectDragSession? winnerB)
+    && winnerA!.DragId == lowerPriorityDrag.DragId
+    && winnerB!.DragId == lowerPriorityDrag.DragId,
+    "All peers must converge on the same drag winner.");
+
+var disconnectSessions = new ObjectDragSessionManager();
+disconnectSessions.TryStart(7, new ObjectDragStart("disconnect-a", "drag-a"));
+disconnectSessions.TryStart(7, new ObjectDragStart("disconnect-b", "drag-b"));
+disconnectSessions.TryStart(8, new ObjectDragStart("still-connected", "drag-c"));
+IReadOnlyList<ObjectDragSession> releasedDrags = disconnectSessions.ReleaseOwner(7);
+Assert(releasedDrags.Count == 2
+    && !disconnectSessions.TryGetActive("disconnect-a", out _)
+    && !disconnectSessions.TryGetActive("disconnect-b", out _)
+    && disconnectSessions.TryGetActive("still-connected", out _),
+    "Disconnecting a client must release exactly that client's remote drag locks.");
+Assert(disconnectSessions.TryStart(7, new ObjectDragStart("disconnect-a", "drag-a")) == ObjectDragStartResult.Rejected,
+    "A delayed START_DRAG from a disconnected owner must not recreate its released lock.");
+
+var joiningClientSessions = new ObjectDragSessionManager();
+joiningClientSessions.ObserveGeneration("joined-object", 42);
+Assert(joiningClientSessions.TryStart(9, new ObjectDragStart("joined-object", "stale-start")) == ObjectDragStartResult.Rejected,
+    "A joining client must reject drag starts older than the synchronized object revision.");
+Assert(joiningClientSessions.TryStart(9, new ObjectDragStart("joined-object", "current-start") { Generation = 42 }) == ObjectDragStartResult.Accepted,
+    "A joining client must accept a drag based on its synchronized object revision.");
+
 var setMissionAttributeMethod = typeof(ArmaMethods).GetMethod("SetMissionAttribute", BindingFlags.Public | BindingFlags.Static);
 Assert(setMissionAttributeMethod is not null, "SetMissionAttribute should exist.");
 
