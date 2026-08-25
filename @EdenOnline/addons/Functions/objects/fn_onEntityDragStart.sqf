@@ -32,8 +32,9 @@ if !(missionNamespace getVariable ["Eden_MoveActive", false]) then {
     missionNamespace setVariable ["Eden_MoveLastUpdate", _now];
 
     // Send START_MOVE via TCP
-    ["StartObjectDrag", [_moveId, _delta], true] spawn EOEX_fnc_callExtensionAsync;
+    ["StartObjectDrag", [_moveId, _objectIds], true] spawn EOEX_fnc_callExtensionAsync;
 };
+
 
 // Send movement updates at 10 Hz
 private _lastUpdate = missionNamespace getVariable ["Eden_MoveLastUpdate", 0];

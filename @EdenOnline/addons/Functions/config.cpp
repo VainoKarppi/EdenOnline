@@ -6,7 +6,6 @@ class CfgPatches
 		weapons[] = {};
 		requiredAddons[] = { "A3_Functions_F", "3DEN"};
 		requiredVersion = 2.22;
-		fileName = "extension.pbo";
 		author[]= {"Razer"};
 	};
 };
@@ -15,89 +14,93 @@ class CfgPatches
 
 class CfgFunctions
 {
-	class Extension {
-		tag = "EOEX";
-		class Functions_Main
-		{
-			file = "\extension\functions";
-			class init3DENEvents {};
-		};
-		class Functions_Camera
-		{
-			file = "\extension\functions\camera";
-			class drawCameras {};
-		};
-		class Functions_Extension
-		{
-			file = "\extension\functions\extension";
-			class initExtension {};
-            class callExtension {};
-			class callExtensionAsync {};
-            class initExtensionEvents {};
-			class handleExtensionMessage {};
-		};
-		class Functions_Objects
-		{
-			file = "\extension\functions\objects";
-            class createObject {};
-            class deleteObject {};
-            class updateObjectAttributes {};
+    class EdenOnline {
+        tag = "EOEX";
+        class Functions_Camera {
+            file = "Functions\camera";
+            class drawCameras { recompile = 1; };
+        };
+        class Functions_Extension {
+            file = "Functions\extension";
 
-            class getObjectType {};
+            // Must not be recompiled.
+            class reloadFunctions {};
+            class initExtension {};
 
-            class createSyncConnection {};
-            class removeSyncConnection {};
+            class init3DENEvents { recompile = 1; };
+            class callExtension { recompile = 1; };
+            class callExtensionAsync { recompile = 1; };
+            class initExtensionEvents { recompile = 1; };
+            class handleExtensionMessage { recompile = 1; };
+        };
 
-            class onReceiveCreateSyncConnection {};
-            class onReceiveRemoveSyncConnection {};
+        class Functions_Objects {
+            file = "Functions\objects";
 
-			class getId {};
+            class createObject { recompile = 1; };
+            class deleteObject { recompile = 1; };
+            class updateObjectAttributes { recompile = 1; };
 
-            class moveInterpolation {};
+            class getObjectType { recompile = 1; };
 
-            class receiveDragStart {};
-            class receiveDragUpdate {};
-            class receiveDragEnd {};
+            class createSyncConnection { recompile = 1; };
+            class removeSyncConnection { recompile = 1; };
 
-            class onEntityDragStart {};
-            class onEntityDragEnd {};
-		};
-        class Functions_Markers
-		{
-			file = "\extension\functions\markers";
-            class createMarker {};
-            class deleteMarker {};
-            class updateMarker {};
-		};
-        class Functions_Triggers
-		{
-			file = "\extension\functions\triggers";
-            class createTrigger {};
-            class deleteTrigger {};
-            class updateTrigger {};
-		};
-        class Functions_Mission
-		{
-			file = "\extension\functions\mission";
-            class updateMissionAttributes {};
-		};
-		class Functions_Server
-		{
-			file = "\extension\functions\server";
-			class startServer {};
-			class connect {};
-			class disconnect {};
-		};
-		class Functions_UI
-		{
-			file = "\extension\functions\ui";
-			class showConnectDialog {};
-            class togglePlayButtons {};
+            class onReceiveCreateSyncConnection { recompile = 1; };
+            class onReceiveRemoveSyncConnection { recompile = 1; };
 
-            class showPlayersDialog {};
-            class updateClientList {};
-		};
-	};
+            class getId { recompile = 1; };
+
+            class moveInterpolation { recompile = 1; };
+
+            class receiveDragStart { recompile = 1; };
+            class receiveDragUpdate { recompile = 1; };
+            class receiveDragEnd { recompile = 1; };
+
+            class onEntityDragStart { recompile = 1; };
+            class onEntityDragEnd { recompile = 1; };
+        };
+
+        class Functions_Markers {
+            file = "Functions\markers";
+
+            class createMarker { recompile = 1; };
+            class deleteMarker { recompile = 1; };
+            class updateMarker { recompile = 1; };
+        };
+
+        class Functions_Triggers {
+            file = "Functions\triggers";
+
+            class createTrigger { recompile = 1; };
+            class deleteTrigger { recompile = 1; };
+            class updateTrigger { recompile = 1; };
+        };
+
+        class Functions_Mission {
+            file = "Functions\mission";
+
+            class updateMissionAttributes { recompile = 1; };
+        };
+
+        class Functions_Server {
+            file = "Functions\server";
+
+            class startServer { recompile = 1; };
+            class connect { recompile = 1; };
+            class disconnect { recompile = 1; };
+        };
+
+        class Functions_UI {
+            file = "Functions\ui";
+
+            class showConnectDialog { recompile = 1; };
+            class togglePlayButtons { recompile = 1; };
+
+            class showPlayersDialog { recompile = 1; };
+            class updateClientList { recompile = 1; };
+        };
+    };
 };
 
 

@@ -1,6 +1,7 @@
 // EOEX_fnc_initExtension
 if !(isNil "EOEX_var_extensionRequests") exitWith { true }; // Extension already initialized
 
+[] call EOEX_fnc_reloadFunctions;
 
 diag_log "Initializing EdenOnline C# Extension";
 
@@ -48,4 +49,4 @@ diag_log formatText ["VERSION: %1",_data];
 call EOEX_fnc_initExtensionEvents;
 
 
-true
+false

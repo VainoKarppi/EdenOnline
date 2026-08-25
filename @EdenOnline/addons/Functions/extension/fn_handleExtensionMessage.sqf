@@ -8,12 +8,10 @@ if (_function == "") exitWith {};
 
 // Rest API requests
 if (_function == "ApiServerCommand") exitWith {
-	diag_log _function;
-	diag_log _data;
-	// [RPT] 17:30:07 "ERROR: _method:ApiServerCommand, _data:[""function"",""MYTAG_fnc_test"",""hint ""]"
-	_data params ["_type","_subFunction","_code"];
+	// _data:[""function"",""MYTAG_fnc_test""]"
+	_data params ["_type","_subFunction"];
 	if (_type == "function") then {
-		missionNamespace setVariable [_subFunction, compile _code];
+		[_subFunction] call EOEX_fnc_reloadFunctions;
 	};
 };
 
@@ -110,7 +108,7 @@ if (_method == "ASYNC_RESPONSE") then {
 			
 			{
 				_object set3DENAttribute [_x, _y];
-			} foreach _attributeMap;
+			} forEach _attributeMap;
 
 			_object setVariable ["EOEX_var_objectID",_id];
 		};

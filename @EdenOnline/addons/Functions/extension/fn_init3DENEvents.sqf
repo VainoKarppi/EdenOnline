@@ -1,6 +1,6 @@
 // EOEX_fnc_init3DENEvents
 
-
+// loadFile "\z\eoex\addons\Functions\extension\fn_init3DENEvents.sqf"
 diag_log "3DEN Online Events Initialized";
 
 // Used to queue multiple attribute changes into a single array of changes.

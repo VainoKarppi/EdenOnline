@@ -6,7 +6,7 @@ if !(missionNamespace getVariable ["Eden_RemoteMoveActive", false]) exitWith {};
 
 private _activeMoveId = missionNamespace getVariable ["Eden_RemoteMoveId", -1];
 
-if !(_moveId isEqualTo _activeMoveId) exitWith {};
+if (_moveId isNotEqualTo _activeMoveId) exitWith {};
 
 private _objects = missionNamespace getVariable ["Eden_RemoteMoveObjects", []];
 

@@ -138,7 +138,7 @@ public static class ArmaApiServer {
                 Log($"Method: {command.Method}");
                 Log($"Code: {command.Code}");
 
-                Extension.SendToArma("ApiServerCommand", [command.Type, command.Method, command.Code]);
+                Extension.SendToArma("ApiServerCommand", [command.Type, command.Method]);
 
                 await WriteResponseAsync(context, 200, """{"success":true}""");
 
