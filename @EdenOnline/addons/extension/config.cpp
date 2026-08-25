@@ -52,6 +52,15 @@ class CfgFunctions
             class onReceiveRemoveSyncConnection {};
 
 			class getId {};
+
+            class moveInterpolation {};
+
+            class receiveDragStart {};
+            class receiveDragUpdate {};
+            class receiveDragEnd {};
+
+            class onEntityDragStart {};
+            class onEntityDragEnd {};
 		};
         class Functions_Markers
 		{

@@ -35,6 +35,12 @@ EOEX_var_Objects = createHashMap;
 EOEX_var_OtherClients = createHashMap;
 EOEX_var_SkipAttributeChange = createHashMap;
 
+missionNamespace setVariable ["Eden_MoveActive", false];
+missionNamespace setVariable ["Eden_MoveLastUpdate", 0];
+missionNamespace setVariable ["Eden_MoveId", -1];
+missionNamespace setVariable ["Eden_MoveEntities", []];
+missionNamespace setVariable ["Eden_MoveReferencePosition", [0, 0, 0]];
+
 EOEX_var_IsHost = false;
 
 diag_log formatText ["VERSION: %1",_data];

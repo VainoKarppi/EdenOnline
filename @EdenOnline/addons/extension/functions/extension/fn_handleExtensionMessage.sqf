@@ -59,6 +59,18 @@ if (_method == "ASYNC_RESPONSE") then {
 } else {
 	// IS data that we need to process (call in)
 	switch (_method) do {
+		case "StartObjectDrag": {
+			[_data select 0, _data select 1] call EOEX_fnc_receiveDragStart;
+		};
+
+		case "UpdateObjectDrag": {
+			[_data select 0, _data select 1] call EOEX_fnc_receiveDragUpdate;
+		};
+
+		case "EndObjectDrag": {
+			[_data select 0, _data select 1] call EOEX_fnc_receiveDragEnd;
+		};
+
 		case "CreateSyncConnection": {
 			[_data select 0, _data select 1, _data select 2] call EOEX_fnc_onReceiveCreateSyncConnection;
 		};
@@ -144,7 +156,6 @@ if (_method == "ASYNC_RESPONSE") then {
 		};
 
 		case "UpdateClientList": {
-			diag_log _data;
 			[_data select 0] spawn EOEX_fnc_updateClientList;
 		};
 

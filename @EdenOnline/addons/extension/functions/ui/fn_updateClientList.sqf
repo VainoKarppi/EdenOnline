@@ -1,8 +1,7 @@
 // EOEX_fnc_updateClientList
 
-
-params ["_otherClients",[]];
-// [[id,"name1"],[id,"name2"]]
+// _otherClients: [[id,"name1"],[id,"name2"]]
+params ["_otherClients"];
 
 
 // Make an independent copy of the previous client list

@@ -54,6 +54,18 @@ public class ClientNetworkMethods {
         Extension.SendToArma("ObjectRemoved", [objectID]);
     }
 
+    public static void StartObjectDrag(string moveId, object[] objectIds) {
+        Extension.SendToArma("StartObjectDrag", [moveId, objectIds]);
+    }
+
+    public static void UpdateObjectDrag(string moveId, object[] delta) {
+        Extension.SendToArma("UpdateObjectDrag", [moveId, delta]);
+    }
+
+    public static void EndObjectDrag(string moveId, object[] finalPositions) {
+        Extension.SendToArma("EndObjectDrag", [moveId, finalPositions]);
+    }
+
     public static void CreateSyncConnection(ArmaSyncConnection connection) {
         Extension.SendToArma("CreateSyncConnection", [connection.FromID, connection.ToID, connection.Type]);
     }
