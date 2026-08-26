@@ -24,8 +24,10 @@ class CfgFunctions
             file = "Functions\extension";
 
             // Must not be recompiled.
-            class reloadFunctions {};
             class initExtension {};
+            class reloadFunctions {};
+            class reloadFunctionFromFile {};
+            
 
             class init3DENEvents { recompile = 1; };
             class callExtension { recompile = 1; };

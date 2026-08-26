@@ -8,10 +8,12 @@ if (_function == "") exitWith {};
 
 // Rest API requests
 if (_function == "ApiServerCommand") exitWith {
-	// _data:[""function"",""MYTAG_fnc_test""]"
+	diag_log _data;
+	// _data:[""recompile"",""MYTAG_fnc_test""]"
 	_data params ["_type","_subFunction"];
-	if (_type == "function") then {
-		[_subFunction] call EOEX_fnc_reloadFunctions;
+	if (_type == "recompile") then {
+		diag_log _subFunction;
+		[_subFunction] call EOEX_fnc_reloadFunctionFromFile;
 	};
 };
 

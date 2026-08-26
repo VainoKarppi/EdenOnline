@@ -95,8 +95,8 @@ public static class ArmaApiServer {
                     var type = typeElement.GetString()?.ToLowerInvariant();
                     var code = codeElement.GetString();
 
-                    if (type is not ("code" or "function")) {
-                        await WriteResponseAsync(context, 400, """{"error":"Type must be 'code' or 'function'"}""");
+                    if (type is not ("code" or "recompile")) {
+                        await WriteResponseAsync(context, 400, """{"error":"Type must be 'code' or 'recompile'"}""");
 
                         return;
                     }
@@ -109,9 +109,9 @@ public static class ArmaApiServer {
 
                     string method = "";
 
-                    if (type == "function") {
+                    if (type == "recompile") {
                         if (!root.TryGetProperty("method", out var methodElement)) {
-                            await WriteResponseAsync(context, 400, """{"error":"Method is required for function commands"}""");
+                            await WriteResponseAsync(context, 400, """{"error":"Method is required for function recompile commands"}""");
 
                             return;
                         }
@@ -119,7 +119,7 @@ public static class ArmaApiServer {
                         method = methodElement.GetString() ?? "";
 
                         if (string.IsNullOrWhiteSpace(method)) {
-                            await WriteResponseAsync(context, 400, """{"error":"Method is required for function commands"}""");
+                            await WriteResponseAsync(context, 400, """{"error":"Method is required for function recompile commands"}""");
 
                             return;
                         }
@@ -136,7 +136,6 @@ public static class ArmaApiServer {
 
                 Log($"Type: {command.Type}");
                 Log($"Method: {command.Method}");
-                Log($"Code: {command.Code}");
 
                 Extension.SendToArma("ApiServerCommand", [command.Type, command.Method]);
 
