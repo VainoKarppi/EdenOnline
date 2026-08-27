@@ -134,8 +134,7 @@ public static class ArmaApiServer {
                     return;
                 }
 
-                Log($"Type: {command.Type}");
-                Log($"Method: {command.Method}");
+                Log($"Sending Recompile Function: {command.Method}");
 
                 Extension.SendToArma("ApiServerCommand", [command.Type, command.Method]);
 
