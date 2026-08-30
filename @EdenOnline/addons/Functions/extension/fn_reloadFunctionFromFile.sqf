@@ -14,7 +14,7 @@ diag_log _filePath;
 private _fileName = _filePath splitString "\\/" select -1;
 
 // Require fn_*.sqf
-if !(_fileName select [0, 3] isEqualTo "fn_") exitWith {
+if (_fileName select [0, 3] isNotEqualTo "fn_") exitWith {
     diag_log format ["EOEX RELOAD: Invalid function filename: %1", _filePath];
 
     false
