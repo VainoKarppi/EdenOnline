@@ -268,6 +268,27 @@ function Build-Project {
         return $true
     } else {
         Write-Host "Build failed." -ForegroundColor Red
+        
+        # Check if this is a platform linker error (NativeAOT prerequisite issue)
+        $buildOutput = $stdOut + $stdErr
+        if ($buildOutput -match "Platform linker not found") {
+            Write-Host ""
+            Write-Host "========================================================" -ForegroundColor Yellow -BackgroundColor DarkRed
+            Write-Host "  MISSING C++ BUILD TOOLS - ACTION REQUIRED!" -ForegroundColor Yellow -BackgroundColor DarkRed
+            Write-Host "========================================================" -ForegroundColor Yellow -BackgroundColor DarkRed
+            Write-Host ""
+            Write-Host "The NativeAOT compiler requires the C++ Desktop Development workload." -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "Please run the following command in your terminal:" -ForegroundColor Cyan
+            Write-Host ""
+            Write-Host "winget install --id Microsoft.VisualStudio.2022.BuildTools --override ""--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended""" -ForegroundColor White -BackgroundColor DarkBlue
+            Write-Host ""
+            Write-Host "After the installation completes, CLOSE and RESTART your terminal." -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "========================================================" -ForegroundColor Yellow -BackgroundColor DarkRed
+            Write-Host ""
+        }
+        
         return $false
     }
 }
