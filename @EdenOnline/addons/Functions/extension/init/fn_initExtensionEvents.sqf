@@ -17,8 +17,8 @@ addMissionEventHandler ["ExtensionCallback",{
 		// of [_function, _data] pairs. Unpack and dispatch each one.
 		if (_function == "BATCH") exitWith {
 			{
-				_x params ["_subFunction", "_subData"];
-				[_subFunction, _subData] call EOEX_fnc_handleExtensionMessage;
+				// _x params ["_subFunction", "_subData"];
+				_x call EOEX_fnc_handleExtensionMessage;
 			} forEach _data;
 		};
 

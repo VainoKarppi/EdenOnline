@@ -20,18 +20,27 @@ class CfgFunctions
         class Functions_Extension {
             file = "Functions\extension";
 
-            // Must not be recompiled.
-            class initExtension {};
-            class reloadFunctions {};
-            class reloadFunctionFromFile {};
-            
-
-            class init3DENEvents { recompile = 1; };
+            class handleExtensionMessage { recompile = 1; };
             class callExtension { recompile = 1; };
             class callExtensionAsync { recompile = 1; };
-            class initExtensionEvents { recompile = 1; };
-            class handleExtensionMessage { recompile = 1; };
         };
+
+        class Functions_Extension_Init {
+            file = "Functions\extension\init";
+
+            // Must not be recompiled.
+            class initExtension {};
+            class initExtensionEvents { recompile = 1; };
+            class init3DENEvents { recompile = 1; };
+        };
+
+        class Functions_Extension_Compile {
+            file = "Functions\extension\compile";
+
+            class reloadFunctions {};
+            class reloadFunctionFromFile {};
+        };
+
 
         class Functions_Objects_Helpers {
             file = "Functions\objects\helpers";

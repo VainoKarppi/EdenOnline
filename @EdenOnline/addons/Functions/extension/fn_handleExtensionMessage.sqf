@@ -106,7 +106,7 @@ if (_method == "ASYNC_RESPONSE") then {
 		};
 
 		case "ObjectRemoved": {
-			_id call EOEX_fnc_receiveObjectDelete;
+			_data call EOEX_fnc_receiveObjectDelete;
 			
 		};
 
