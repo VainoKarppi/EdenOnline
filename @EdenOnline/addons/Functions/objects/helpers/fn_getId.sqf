@@ -1,18 +1,18 @@
 // EOEX_fnc_getId
 params ["_object"];
 
-if (isNil "_object") exitwith {};
 
-if (_object isEqualType objNull && {_object getVariable ["EOEX_var_objectID",""] != ""}) exitWith {
+if (!isNil "_object" && {_object isEqualType objNull && {_object getVariable ["EOEX_var_objectID",""] != ""}}) exitWith {
     _object getVariable "EOEX_var_objectID";
 };
 
 // Existing marker
-if (_object isEqualType "" && {!isNil "EOEX_var_Markers"}) then {
+if (!isNil "_object" && {_object isEqualType "" && {!isNil "EOEX_var_Markers"}}) then {
     private _id = ""; 
     { 
         _id = _x; 
-        if (_y == _object) exitWith {_id}; 
+        if (_y == _object) exitWith {_id};
+        _id = "";
     } foreach EOEX_var_Markers; 
     if (_id != "") exitWith { breakWith _id };
 };
@@ -38,13 +38,14 @@ private _generateRandomId = {
 private _id = call _generateRandomId;
 
 // Object
-if (_object isEqualType objNull) exitWith {
+if (!isNil "_object" && {_object isEqualType objNull}) exitWith {
     _object setVariable ["EOEX_var_objectID",_id];
     _id
 };
 
+
 // Marker
-if (_object isEqualType "") exitWith {
+if (!isNil "_object" && {_object isEqualType ""}) exitWith {
     EOEX_var_Markers set [_id, _object];
     _id
 };

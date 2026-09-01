@@ -5,8 +5,8 @@ params ["_object"];
 
 if (isNil "_object") exitWith {};
 
-if (_object isKindOf "EmptyDetector") exitWith {"Trigger"};
-if (_object isKindOf "Logic") exitWith {"Logic"};
+if (_object isEqualType objNull && {_object isKindOf "EmptyDetector"}) exitWith {"Trigger"};
+if (_object isEqualType objNull && {_object isKindOf "Logic"}) exitWith {"Logic"};
 
 if (_object isEqualType objNull) exitWith {"Object"}; // Has to be object, if not Trigger or Logic
 

@@ -9,6 +9,8 @@ if (_entity in allGroups) exitWith {};
 
 // TODO check if marker
 if (_entity isEqualType "") exitWith {
+	// TODO queue marker attribute updates to avoid sending multiple updates in a single frame
+	// TODO send data to server
 	diag_log _entity;
 	diag_log _property;
 	diag_log "marker edited";

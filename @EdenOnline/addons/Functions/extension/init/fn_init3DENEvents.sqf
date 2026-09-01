@@ -20,23 +20,14 @@ add3DENEventHandler ["OnEditableEntityAdded", {
 	diag_log typeName _entity;
 	diag_log _entity;
 
+    private _type = _entity call EOEX_fnc_getObjectType;
+
 	// Object, Trigger, System
-	if (_entity isEqualType objNull) exitWith {
+	if (_type == "Object" || _type == "Trigger" || _type == "Logic") exitWith {
         
         // Already added as object
         private _id = _entity getVariable "EOEX_var_objectID";
         if !(isNil "_id") exitWith {};
-
-        private _type = "Object";
-		if (_entity isKindOf "EmptyDetector") then {
-			_type = "Trigger";
-		};
-
-        if (_entity isKindOf "Logic") then {
-            _type = "Logic";
-        };
-
-        
 
         diag_log "NEW OBJECT CREATED";
 
@@ -44,20 +35,19 @@ add3DENEventHandler ["OnEditableEntityAdded", {
 	};
 
 	// Group
-	if (_entity isEqualType grpNull) exitWith {
+	if (_type == "Group") exitWith {
         // TODO similiar to SyncConnection, but for groups
 		diag_log _entity;
 		diag_log "GROUP CREATED";
 	};
 
 	// Marker
-	if (_entity isEqualType "") exitWith {
-        // TODO Add request from client to server first, to validate that marker variable name is unique, then create marker on all clients
-		[_entity] spawn EOEX_fnc_createMarker
+	if (_type == "Marker") exitWith {
+		[_entity] call EOEX_fnc_sendCreateMarker
 	};
 
 	// Waypoint
-	if (_entity isEqualType []) exitWith {
+	if (_type == "Waypoint") exitWith {
         _waypoint = +_entity;
         _entity params ["_entity","_index"];
 
@@ -71,13 +61,17 @@ add3DENEventHandler ["OnEditableEntityAdded", {
 	};
 
 	// LAYER OR COMMENT
-	if (_entity isEqualType 0) exitWith {
+	if (_type == "Layer") exitWith {
 		// TODO Comment runs: updateObjectAttributes for some reason?
 		diag_log _entity;
 		diag_log "LAYER OR COMMENT CREATED";
 	};
 
-
+    if (_type == "Comment") exitWith {
+        // TODO Comment runs: updateObjectAttributes for some reason?
+        diag_log _entity;
+        diag_log "COMMENT CREATED";
+    };
 }];
 
 removeAll3DENEventHandlers "OnEditableEntityRemoved";
@@ -98,7 +92,7 @@ add3DENEventHandler ["OnEditableEntityRemoved", {
 
     // MARKER
     if (_entity isEqualType "") exitWith {
-        [_entity] call EOEX_fnc_deleteMarker;
+        [_entity] call EOEX_fnc_sendDeleteMarker;
     };
 }];
 
