@@ -219,7 +219,7 @@ public static partial class ArmaMethods
                 throw new Exception("Failed to sync objects: Received null from server");
 
             foreach (var obj in objects)
-                Extension.SendToArma("ObjectSyncData", [obj.Id, obj.Attributes]);
+                Extension.SendToArma("ObjectSyncData", [obj.Id, obj.Type, obj.Attributes]);
         }
 
         if (objectCount != finalCount) Error($"[CLIENT] Object sync failed! ExpectedSyncCount: {objectCount}, Received: {finalCount}");

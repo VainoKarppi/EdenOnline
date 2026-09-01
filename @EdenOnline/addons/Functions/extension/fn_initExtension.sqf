@@ -36,6 +36,8 @@ EOEX_var_Objects = createHashMap;
 EOEX_var_OtherClients = createHashMap;
 EOEX_var_SkipAttributeChange = createHashMap;
 
+EOEX_var_Markers = createHashMap;
+
 missionNamespace setVariable ["Eden_MoveActive", false];
 missionNamespace setVariable ["Eden_MoveLastUpdate", 0];
 missionNamespace setVariable ["Eden_MoveId", -1];
@@ -47,6 +49,9 @@ EOEX_var_IsHost = false;
 diag_log formatText ["VERSION: %1",_data];
 
 call EOEX_fnc_initExtensionEvents;
+
+// Register the EachFrame interpolation handler
+[] call EOEX_fnc_moveInterpolation;
 
 
 false

@@ -41,11 +41,11 @@ if (Build-Project -projectPath $projectPath -destinationPath $modFolder) {
             if ($Message -match "ERROR:\s*") {
                 $color = "Red"
             } elseif ($Message -match "DEBUG:\s*") {
-                $color = "DarkGray"
+                $color = "Gray"
             } elseif ($Message -match "INFO:\s*") {
                 $color = "Cyan"
             } elseif ($Type -eq "EXT") {
-                $color = "Yellow"
+                $color = "DarkGray"
             } elseif ($Type -eq "RPT") {
                 $color = "Green"
             } else {

@@ -25,10 +25,27 @@ public static partial class Client
 
     public static async Task<int> ConnectAsync(string host, int port, bool startUdp = false, string? customHash = null)
     {
+        host = await ResolveIPv4Async(host);
+        
         int userId = await ConnectTcp(host, port, customHash);
         if (startUdp) await ConnectUdp(host, port);
 
         return userId;
+    }
+
+    private static async Task<string> ResolveIPv4Async(string host)
+    {
+        if (IPAddress.TryParse(host, out var ip) && ip.AddressFamily == AddressFamily.InterNetwork) {
+            return host;
+        }
+
+        var addresses = await Dns.GetHostAddressesAsync(host);
+
+        var ipv4 = addresses.FirstOrDefault(address => address.AddressFamily == AddressFamily.InterNetwork);
+
+        if (ipv4 == null) throw new SocketException((int)SocketError.AddressFamilyNotSupported);
+
+        return ipv4.ToString();
     }
 
     public static List<int> GetOtherClients() {

@@ -44,7 +44,10 @@ _timer = [_id] spawn {
 	private _queue = EOEX_var_AttributeQueues getOrDefault [_id, createHashMap];
 	if (count _queue == 0) exitWith {};
 
-	["UpdateObject", [_id, _queue], true] call EOEX_fnc_callExtensionAsync;
+	private _type = _entity call EOEX_fnc_getObjectType;
+	if (isNil "_type") exitWith { diag_log format ["ERROR: Object type not found for ID: %1", _id] };
+
+	["UpdateObject", [_id, _type, _queue], true] call EOEX_fnc_callExtensionAsync;
 
 	EOEX_var_AttributeQueues deleteAt _id;
 	EOEX_var_AttributeTimers deleteAt _id;

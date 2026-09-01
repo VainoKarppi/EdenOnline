@@ -16,10 +16,7 @@ class CfgFunctions
 {
     class EdenOnline {
         tag = "EOEX";
-        class Functions_Camera {
-            file = "Functions\camera";
-            class drawCameras { recompile = 1; };
-        };
+
         class Functions_Extension {
             file = "Functions\extension";
 
@@ -36,22 +33,28 @@ class CfgFunctions
             class handleExtensionMessage { recompile = 1; };
         };
 
-        class Functions_Objects {
-            file = "Functions\objects";
+        class Functions_Objects_Helpers {
+            file = "Functions\objects\helpers";
+
+            class getId { recompile = 1; };
+            class getObjectType { recompile = 1; };
+            class getTypeIndex { recompile = 1; };
+        };
+
+        class Functions_Objects_CRUD {
+            file = "Functions\objects\crud";
 
             class createObject { recompile = 1; };
             class deleteObject { recompile = 1; };
-            class updateObjectAttributes { recompile = 1; };
+            class sendObjectAttributes { recompile = 1; };
 
-            class getObjectType { recompile = 1; };
+            class receiveObjectCreate { recompile = 1; };
+            class receiveObjectUpdate { recompile = 1; };
+            class receiveObjectDelete { recompile = 1; };
+        };
 
-            class createSyncConnection { recompile = 1; };
-            class removeSyncConnection { recompile = 1; };
-
-            class onReceiveCreateSyncConnection { recompile = 1; };
-            class onReceiveRemoveSyncConnection { recompile = 1; };
-
-            class getId { recompile = 1; };
+        class Functions_Objects_Move {
+            file = "Functions\objects\move";
 
             class moveInterpolation { recompile = 1; };
 
@@ -63,26 +66,29 @@ class CfgFunctions
             class onEntityDragEnd { recompile = 1; };
         };
 
-        class Functions_Markers {
-            file = "Functions\markers";
+        class Functions_Objects_Sync {
+            file = "Functions\objects\sync";
 
-            class createMarker { recompile = 1; };
-            class deleteMarker { recompile = 1; };
-            class updateMarker { recompile = 1; };
+            class createSyncConnection { recompile = 1; };
+            class removeSyncConnection { recompile = 1; };
+
+            class receiveCreateSyncConnection { recompile = 1; };
+            class receiveRemoveSyncConnection { recompile = 1; };
         };
 
-        class Functions_Triggers {
-            file = "Functions\triggers";
+        class Functions_Objects_Markers {
+            file = "Functions\objects\markers";
 
-            class createTrigger { recompile = 1; };
-            class deleteTrigger { recompile = 1; };
-            class updateTrigger { recompile = 1; };
+            class sendCreateMarker { recompile = 1; };
+            class sendDeleteMarker { recompile = 1; };
+            class sendUpdateMarker { recompile = 1; };
         };
 
         class Functions_Mission {
             file = "Functions\mission";
 
-            class updateMissionAttributes { recompile = 1; };
+            class sendMissionAttributes { recompile = 1; };
+            class receiveMissionAtrribute { recompile = 1; };
         };
 
         class Functions_Server {
@@ -95,6 +101,8 @@ class CfgFunctions
 
         class Functions_UI {
             file = "Functions\ui";
+
+            class drawCameras { recompile = 1; };
 
             class showConnectDialog { recompile = 1; };
             class togglePlayButtons { recompile = 1; };

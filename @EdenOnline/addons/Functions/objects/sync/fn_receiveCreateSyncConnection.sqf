@@ -1,8 +1,5 @@
-// EOEX_fnc_onReceiveCreateSyncConnection
+// EOEX_fnc_receiveCreateSyncConnection
 params ["_fromID", "_toID", "_type"];
-
-
-diag_log format ["[EdenOnline] Received SyncConnection: %1 -> %2 (%3)", _fromID, _toID, _type];
 
 
 private _fromObject = objNull;
@@ -51,6 +48,3 @@ private _result = add3DENConnection [_type,[_fromObject],_toObject];
 if (!_result) exitWith {
     diag_log format ["[EdenOnline] Failed to add SyncConnection: %1 (%2) -> %3 (%4)", _fromID, _fromObject, _toID, _toObject];
 };
-
-
-diag_log format ["[EdenOnline] SyncConnection added locally: %1 (%2) -> %3 (%4)", _fromID, _fromObject, _toID, _toObject];

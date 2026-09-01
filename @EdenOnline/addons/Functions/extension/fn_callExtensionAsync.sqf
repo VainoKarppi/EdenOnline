@@ -24,12 +24,20 @@ private _request = _function + "|" + str(_requestId); // Add ASYNC key to reques
 // Call Extension
 
 // TODO Temp
-if (_function != "CameraUpdate" && _function != "SetMissionAttribute") then {
-	if (_requestId == -1) then {
-		diag_log formatText ["FIRE-AND-FORGET: (%1) WITH ARGS: %2", _function, _arguments];
-	} else {
-		diag_log formatText ["REQUEST ASYNC: (%1|%2) WITH ARGS: %3", _function, _requestId, _arguments];
-	};
+if (_function != "CameraUpdate" && _function != "SetInitialMissionAttributes") then {
+    if (_requestId == -1) then {
+		diag_log "";
+        diag_log "========================== SENT DATA (ASYNC) - FIRE-AND-FORGET ==========================";
+        diag_log _function;
+        diag_log _arguments;
+		diag_log "=========================================================================================";
+		diag_log "";
+    } else {
+		diag_log "";
+        diag_log "=================================== SENT DATA (ASYNC) ===================================";
+        diag_log _function;
+        diag_log _arguments;
+    };
 };
 
 private _result = EOEX_var_extensionName callExtension [_request, _arguments];
@@ -93,8 +101,12 @@ if !(_success) exitWith {
 
 
 
-if (_function != "SetMissionAttribute") then {
-	diag_log formatText ["SUCCESS: (%1|%2): WITH DATA: %3", _function, _requestId, _returnData];
+if (_function != "CameraUpdate" && _function != "SetInitialMissionAttributes") then {
+    diag_log "================================= RESPONSE DATA (ASYNC) =================================";
+    diag_log format ["_function: %1, _requestId: %2", _function, _requestId];
+    diag_log _returnData;
+    diag_log "=========================================================================================";
+	diag_log "";
 };
 
 [_success, _returnData]

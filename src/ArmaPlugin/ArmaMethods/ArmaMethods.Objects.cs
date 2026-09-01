@@ -15,13 +15,15 @@ public static partial class ArmaMethods
     /// <summary>
     /// Creates a new synchronized object and sends it to the server.
     /// </summary>
-    public static async Task<string> CreateObject(string objectID, Dictionary<string, object?> metadata)
+    public static async Task<string> CreateObject(string objectID, string type, Dictionary<string, object?> metadata)
     {
         if (!Client.IsTcpConnected())
             throw new Exception("Client is not connected. Cannot create object.");
 
 
-        ArmaObject obj = new(objectID, metadata);
+        ArmaObject obj = new(objectID, metadata) {
+            Type = type // Set the type of the object ("Object", "Trigger", "Waypoint", "Logic", "Marker", or "Comment")
+        };
         await Client.SendTcpMessageAsync(0, "CreateObject", obj);
 
         return obj.Id;
@@ -30,12 +32,14 @@ public static partial class ArmaMethods
     /// <summary>
     /// Updates an existing synchronized object and sends the changes to the server.
     /// </summary>
-    public static async Task UpdateObject(string objectID, Dictionary<string, object?> metadata)
+    public static async Task UpdateObject(string objectID, string type, Dictionary<string, object?> metadata)
     {
         if (!Client.IsTcpConnected())
             throw new Exception("Client is not connected. Cannot update object.");
 
-        ArmaObject obj = new(objectID, metadata);
+        ArmaObject obj = new(objectID, metadata) {
+            Type = type
+        };
         await Client.SendTcpMessageAsync(0, "UpdateObject", obj);
     }
 

@@ -45,10 +45,10 @@ public class ClientNetworkMethods {
     }
 
     public static void CreateObject(ArmaObject createdObj) {
-        Extension.SendToArma("ObjectCreated", [createdObj.Id, createdObj.Attributes]);
+        Extension.SendToArma("ObjectCreated", [createdObj.Id, createdObj.Type, createdObj.Attributes]);
     }
     public static void UpdateObject(ArmaObject updatedObj) {
-        Extension.SendToArma("ObjectUpdated", [updatedObj.Id, updatedObj.Attributes]);
+        Extension.SendToArma("ObjectUpdated", [updatedObj.Id, updatedObj.Type, updatedObj.Attributes]);
     }
     public static void RemoveObject(string objectID) {
         Extension.SendToArma("ObjectRemoved", [objectID]);

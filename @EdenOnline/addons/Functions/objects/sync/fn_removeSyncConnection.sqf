@@ -1,8 +1,6 @@
 // EOEX_fnc_removeSyncConnection
 params ["_class", "_from"];
 
-diag_log format ["[EdenOnline] fn_removeSyncConnection called: class=%1 from=%2", _class, _from];
-
 
 if !(missionNamespace getVariable ["EOEX_var_Connected", false]) exitWith {
     diag_log "[EdenOnline] RemoveSyncConnection: client is not connected.";
@@ -97,6 +95,3 @@ private _removedConnections = [];
 
 
 missionNamespace setVariable ["EOEX_var_SyncConnections", _connections];
-
-
-diag_log format ["[EdenOnline] RemoveSyncConnection complete. Removed %1 connection(s).", count _removedConnections];

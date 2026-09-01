@@ -39,14 +39,11 @@ if !(_return#0) exitWith {
 	[(format ["%1", _return#1]), 1, 5] call BIS_fnc_3DENNotification;
 };
 
-diag_log _return;
 private _id = ((_return select 1) select 0);
 
 //EOEX_var_OtherClients = createHashMapFromArray _otherClients;
 
 missionNamespace setVariable ["EOEX_var_clientID",_id];
-
-
 
 
 // Send mission attributes if enabled
@@ -85,14 +82,16 @@ if (missionNamespace getVariable ["EOEX_var_syncMissionAttributes", false]) then
 };
 
 
-private _allObjects = (all3DENEntities # 0);
-// Send current world edits to server
+private _allObjects = all3DENEntities;
+
+// Send current OBJECTS to server
 {
     private _attributes = (_x get3DENAttributes "");
     private _id = _x call EOEX_fnc_getId;
 
-    ["CreateObject", [_id, _attributes]] call EOEX_fnc_callExtensionAsync;
-} forEach _allObjects;
+    ["CreateObject", [_id, "Object", _attributes]] call EOEX_fnc_callExtensionAsync;
+} forEach _allObjects#0;
+
 
 uiSleep 0.1;
 

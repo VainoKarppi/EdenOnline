@@ -1,8 +1,5 @@
-// EOEX_fnc_onReceiveRemoveSyncConnection
+// EOEX_fnc_receiveRemoveSyncConnection
 params ["_fromID", "_toID", "_type"];
-
-
-diag_log format ["[EdenOnline] Received RemoveSyncConnection: %1 -> %2 (%3)", _fromID, _toID, _type];
 
 
 private _fromObject = objNull;
@@ -49,6 +46,3 @@ private _result = remove3DENConnection [_type, [_fromObject], _toObject];
 if (!_result) exitWith {
     diag_log format ["[EdenOnline] Failed to remove SyncConnection: %1 (%2) -> %3 (%4)", _fromID, _fromObject, _toID, _toObject];
 };
-
-
-diag_log format ["[EdenOnline] SyncConnection removed locally: %1 (%2) -> %3 (%4)", _fromID, _fromObject, _toID, _toObject];

@@ -13,8 +13,11 @@ if (_fireAndForget) then {_function = _function + "|-1"};
 
 
 // TODO Temp
-if (_function != "CameraUpdate" && _function != "SetMissionAttribute") then {
-	diag_log formatText ["REQUEST: %1 WITH ARGS: %2", _function, _arguments];
+if (_function != "CameraUpdate" && _function != "SetInitialMissionAttributes") then {
+	diag_log "";
+	diag_log "=================================== SENT DATA (SYNC) ====================================";
+	diag_log _function;
+	diag_log _arguments;
 };
 
 private _result = EOEX_var_extensionName callExtension [_function, _arguments];
@@ -31,6 +34,13 @@ if (isNil "_data") exitWith {};
 
 if (_return select 0 == "ERROR") exitWith { diag_log formatText ["ERROR: %1", _data select 0] };
 
-diag_log formatText ["SUCCESS WITH DATA: %1", _data select 0];
+
+if (_function != "CameraUpdate" && _function != "SetInitialMissionAttributes") then {
+    diag_log "================================= RESPONSE DATA (SYNC) ==================================";
+    diag_log _function;
+    diag_log _data select 0;
+    diag_log "=========================================================================================";
+	diag_log "";
+};
 
 _data select 0

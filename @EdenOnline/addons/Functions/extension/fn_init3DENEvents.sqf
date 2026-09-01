@@ -13,49 +13,6 @@ if (isNil "EOEX_var_AttributeQueues") then {
 
 // TODO add events for copy / cut / paste / undo / redo
 
-// Runs twice, once for GROUP, once for actual UNIT, when selecting from rightside menu
-// If unit is copied and pasted, this event will run ONLY once for GROUP (mssing second run for UNIT)
-/*
-removeAll3DENEventHandlers "OnEditableEntityAdded";
-removeAll3DENEventHandlers "OnEditableEntityRemoved";
-add3DENEventHandler ["OnEditableEntityAdded", {
-	params ["_object"];
-	
-	[_object] spawn {
-		params ["_object"];
-
-		uiSleep 0.01;
-		if !(_object isEqualType objNull) then {
-			{
-				diag_log str(_x); // UNIT
-			} forEach get3DENSelected "object";
-
-		};
-	};
-}];
-
-
-// WORKS AS EXPECTED (always twice)
-add3DENEventHandler ["OnEditableEntityRemoved", {
-	params ["_object"];
-
-	[_object] spawn {
-		params ["_object"];
-
-		uiSleep 0.01;
-		if !(_object isEqualType objNull) then {
-			{
-				diag_log str(_x); // UNIT
-			} forEach get3DENSelected "object";
-
-		};
-	};
-}];
-
-add3DENEventHandler ["OnPaste", {
-	diag_log str(_this);
-}];
-*/
 removeAll3DENEventHandlers "OnEditableEntityAdded";
 add3DENEventHandler ["OnEditableEntityAdded", {
 	params ["_entity"];
@@ -65,37 +22,51 @@ add3DENEventHandler ["OnEditableEntityAdded", {
 
 	// Object, Trigger, System
 	if (_entity isEqualType objNull) exitWith {
+        
+        // Already added as object
+        private _id = _entity getVariable "EOEX_var_objectID";
+        if !(isNil "_id") exitWith {};
+
+        private _type = "Object";
 		if (_entity isKindOf "EmptyDetector") then {
-			// TRIGGER
-			[_entity] spawn EOEX_fnc_createTrigger;
-		} else {
-			// OBJECT AND SYSTEM
-			private _id = _entity getVariable "EOEX_var_objectID";
-			if !(isNil "_id") exitWith {};
+			_type = "Trigger";
+		};
 
-			diag_log "NEW OBJECT CREATED";
+        if (_entity isKindOf "Logic") then {
+            _type = "Logic";
+        };
 
-			[_entity] spawn EOEX_fnc_createObject;
-		}
+        
+
+        diag_log "NEW OBJECT CREATED";
+
+        [_entity, _type] spawn EOEX_fnc_createObject;
 	};
 
 	// Group
 	if (_entity isEqualType grpNull) exitWith {
+        // TODO similiar to SyncConnection, but for groups
 		diag_log _entity;
 		diag_log "GROUP CREATED";
 	};
 
 	// Marker
 	if (_entity isEqualType "") exitWith {
-		diag_log _entity;
-		diag_log "MARKER CREATED";
-
+        // TODO Add request from client to server first, to validate that marker variable name is unique, then create marker on all clients
 		[_entity] spawn EOEX_fnc_createMarker
 	};
 
 	// Waypoint
 	if (_entity isEqualType []) exitWith {
-		diag_log _entity;
+        _waypoint = +_entity;
+        _entity params ["_entity","_index"];
+
+        _type = waypointType _waypoint;
+
+
+        // TODO
+		diag_log _waypoint;
+        diag_log _type;
 		diag_log "WAYPOINT CREATED";
 	};
 
@@ -109,6 +80,7 @@ add3DENEventHandler ["OnEditableEntityAdded", {
 
 }];
 
+removeAll3DENEventHandlers "OnEditableEntityRemoved";
 add3DENEventHandler ["OnEditableEntityRemoved", {
 	params ["_entity"];
 
@@ -123,14 +95,21 @@ add3DENEventHandler ["OnEditableEntityRemoved", {
 	if (_entity isEqualType objNull) exitWith {
 		[_entity] call EOEX_fnc_deleteObject;
 	};
+
+    // MARKER
+    if (_entity isEqualType "") exitWith {
+        [_entity] call EOEX_fnc_deleteMarker;
+    };
 }];
 
-
+removeAll3DENEventHandlers "OnEntityAttributeChanged";
 add3DENEventHandler ["OnEntityAttributeChanged", {
-	_this spawn EOEX_fnc_updateObjectAttributes;
+	_this spawn EOEX_fnc_sendObjectAttributes;
 }];
+
 
 // * CONNECTIONS
+removeAll3DENEventHandlers "OnConnectingEnd";
 add3DENEventHandler ["OnConnectingEnd", {
     params ["_class", "_from", "_to"];
 
@@ -148,7 +127,6 @@ add3DENEventHandler ["OnConnectingEnd", {
 
 // * MISSION SETTINGS
 remove3DENEventHandler ["OnMissionAttributeChanged", uiNamespace getVariable ["EOEX_var_OnMissionAttributeChangedId", -1]];
-
 if (missionNamespace getVariable ["EOEX_var_syncMissionAttributes", false]) then {
 	
 	private _id = add3DENEventHandler ["OnMissionAttributeChanged", {
