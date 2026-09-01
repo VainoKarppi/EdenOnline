@@ -40,7 +40,7 @@ add3DENEventHandler ["OnEditableEntityAdded", {
 
         diag_log "NEW OBJECT CREATED";
 
-        [_entity, _type] spawn EOEX_fnc_createObject;
+        [_entity, _type] spawn EOEX_fnc_sendCreateObject;
 	};
 
 	// Group
@@ -87,13 +87,13 @@ add3DENEventHandler ["OnEditableEntityRemoved", {
 	// FIX UNTIL THIS GETS FIXED BY BI (single object)
 	if (_entity isEqualType grpNull) exitWith {
 		{
-			[_x] call EOEX_fnc_deleteObject;
+			[_x] call EOEX_fnc_sendDeleteObject;
 		} forEach get3DENSelected "object";
 	};
 
 	// OBJECT
 	if (_entity isEqualType objNull) exitWith {
-		[_entity] call EOEX_fnc_deleteObject;
+		[_entity] call EOEX_fnc_sendDeleteObject;
 	};
 
     // MARKER

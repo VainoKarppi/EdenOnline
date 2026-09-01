@@ -44,8 +44,8 @@ class CfgFunctions
         class Functions_Objects_CRUD {
             file = "Functions\objects\crud";
 
-            class createObject { recompile = 1; };
-            class deleteObject { recompile = 1; };
+            class sendCreateObject { recompile = 1; };
+            class sendDeleteObject { recompile = 1; };
             class sendObjectAttributes { recompile = 1; };
 
             class receiveObjectCreate { recompile = 1; };

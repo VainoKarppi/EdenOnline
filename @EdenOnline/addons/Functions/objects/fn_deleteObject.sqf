@@ -1,4 +1,4 @@
-// EOEX_fnc_deleteObject
+// EOEX_fnc_sendDeleteObject
 
 
 

@@ -1,4 +1,4 @@
-// EOEX_fnc_createObject
+// EOEX_fnc_sendCreateObject
 
 // This file handles types Object, Trigger and Logic
 
