@@ -48,6 +48,9 @@ class CfgFunctions
             class getId { recompile = 1; };
             class getObjectType { recompile = 1; };
             class getTypeIndex { recompile = 1; };
+
+            class addSkipAttributeChange { recompile = 1; };
+            class checkSkipAttributeChange { recompile = 1; };
         };
 
         class Functions_Objects_CRUD {

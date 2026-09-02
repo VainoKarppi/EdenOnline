@@ -5,6 +5,12 @@ params ["_entityId", "_type", "_attributeMap"];
 
 // [objects, groups, triggers, systems/logic, waypoints, markers, layers, comments]
 
+// TODO : Add support for groups, waypoints, layers, comments
+
+// Add to skip list to avoid sending back the same update to the server
+{
+    [_entityId, _x] call EOEX_fnc_addSkipAttributeChange;
+} forEach _attributeMap;
 
 
 // Markers

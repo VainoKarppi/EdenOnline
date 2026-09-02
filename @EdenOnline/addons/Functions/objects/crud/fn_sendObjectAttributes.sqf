@@ -5,7 +5,23 @@ params ["_entity", "_property"];
 
 if !(missionNamespace getVariable ["EOEX_var_Connected",false]) exitWith {};
 
+// Ignore if the entity is a group
 if (_entity in allGroups) exitWith {};
+
+// Get the unique ID of the object or marker
+private _id = _entity call EOEX_fnc_getId;
+if (_id == "" || isNil "_id") exitWith {};
+
+// Get value of the attribute that was changed.
+private _value = (_entity get3DENAttribute _property) select 0;
+if (isNil "_value") exitWith {};
+
+// Check if the edit has to be skipped (e.g. because it was triggered by an incoming update from another client)
+// Added via: [id, [property, value]] call EOEX_fnc_addSkipAttributeChange
+private _skip = [_id, [_property, _value]] call EOEX_fnc_checkSkipAttributeChange;
+if (_skip) exitWith { diag_log format ["SKIP: %1, %2, %3", _id, _property, _value] };
+
+
 
 // TODO check if marker
 if (_entity isEqualType "") exitWith {
@@ -22,13 +38,10 @@ if (_entity getVariable ["EOEX_updateRequested", false]) exitWith {
 };
 _entity setVariable ["EOEX_updateRequested", nil];
 
-private _id = _entity call EOEX_fnc_getId;
-if (_id == "" || isNil "_id") exitWith {};
 
 
-private _value = (_entity get3DENAttribute _property) select 0;
 
-if (isNil "_value") exitWith {};
+
 
 private _queue = EOEX_var_AttributeQueues getOrDefault [_id, createHashMap, true];
 
