@@ -35,6 +35,7 @@ EOEX_var_extensionRequests = createHashMap;
 EOEX_var_Objects = createHashMap;
 EOEX_var_OtherClients = createHashMap;
 EOEX_var_SkipAttributeChange = createHashMap;
+EOEX_var_SkipAttributeChanges = createHashMap;
 
 EOEX_var_Markers = createHashMap;
 

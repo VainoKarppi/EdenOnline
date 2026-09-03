@@ -9,7 +9,7 @@ params ["_entityId", "_type", "_attributeMap"];
 
 // Add to skip list to avoid sending back the same update to the server
 {
-    [_entityId, _x] call EOEX_fnc_addSkipAttributeChange;
+    [_entityId, _x, -1] call EOEX_fnc_addSkipAttributeChange;
 } forEach _attributeMap;
 
 

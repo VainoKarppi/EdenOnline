@@ -139,7 +139,7 @@ public static partial class Server
         var tasks = new List<Task<object?>>();
         object?[] broadcastResponses = [];
         
-        var clientsToSend = Clients.Values.Where(c => c.Connected && (EdenOnline.Settings.MIRROR || c.Id != sender.Id));
+        var clientsToSend = Clients.Values.Where(c => c.Connected && c.Id != sender.Id);
 
         foreach (var client in clientsToSend)
         {

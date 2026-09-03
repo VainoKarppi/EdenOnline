@@ -10,7 +10,7 @@ if (_entity in allGroups) exitWith {};
 
 // Get the unique ID of the object or marker
 private _id = _entity call EOEX_fnc_getId;
-if (_id == "" || isNil "_id") exitWith {};
+if (isNil "_id" || {_id == ""}) exitWith {};
 
 // Get value of the attribute that was changed.
 private _value = (_entity get3DENAttribute _property) select 0;
@@ -52,8 +52,8 @@ private _timer = EOEX_var_AttributeTimers get _id;
 if (!isNil "_timer" && {!scriptDone _timer}) then { terminate _timer; };
 
 
-_timer = [_id] spawn {
-	params ["_id"];
+_timer = [_id, _entity] spawn {
+	params ["_id", "_entity"];
 	sleep 0.02; // Allow time for attribute change events to arrive across client frames before reading the final state.
 
 	private _queue = EOEX_var_AttributeQueues getOrDefault [_id, createHashMap];

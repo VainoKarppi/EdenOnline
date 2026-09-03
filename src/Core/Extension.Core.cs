@@ -214,6 +214,9 @@ public static partial class Extension {
         //string dllPath = Path.Combine(Path.GetDirectoryName(AssemblyDirectory) ?? "", $"{ExtensionName}_x64.dll");
         //string dllHash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(dllPath)));
 
+        // Initialize logger
+        InitializeLogging();
+
         // Calculate header lenght
         const int width = 79;
         string title = $" {ExtensionName} ";

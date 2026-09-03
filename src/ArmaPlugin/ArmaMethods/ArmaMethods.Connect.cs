@@ -21,7 +21,7 @@ public static partial class ArmaMethods
     /// </summary>
     public static async Task<int> Connect(string host, int port, string username, string worldname, string armaVersion, object[] modHashes, string password = "")
     {
-        if (Client.IsTcpConnected() && !Settings.ALLOW_DUAL_CONNECTIONS) throw new Exception("Client is already connected. Please disconnect before connecting again.");
+        if (Client.IsTcpConnected()) throw new Exception("Client is already connected. Please disconnect before connecting again.");
 
         string clientHash = HashUtils.GetHash(new object[] { Extension.Version });
         Log($"[CLIENT] Connect: {host}:{port}, world: {worldname}, user: {username}, hash: {clientHash}");

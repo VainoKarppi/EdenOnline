@@ -35,12 +35,6 @@ sleep 1;
 "XXXX" callExtension ["Connect|1",["84.250.208.125",2302,"Legodev","VR","2.22",[],""]];
 
 
-sleep 1;
-
-"XXXX" callExtension ["SetMissionAttribute|20",["Scenario","IntelBriefingName","123123"]];
-
-sleep 3;
-
 //"XXXX" callExtension ["Disconnect|19",[]];
 
 sleep 1;

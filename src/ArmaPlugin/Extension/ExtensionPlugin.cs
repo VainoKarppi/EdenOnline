@@ -54,37 +54,25 @@ public static partial class ExtensionPlugin
     /// this host references. Core initializes itself; ArmaPlugin, DynTypeSerializer
     /// and DynTypeNetwork each get their own log file here.
     /// </summary>
-    private static void ConfigureLogging()
-    {
-        Extension.InitializeLogging();
+    private static void ConfigureLogging() {
+        ArmaLog.Configure(Logging.LogFactory.CreateFileLoggerFactory(Extension.LogFolder, "ArmaPlugin.log"));
 
-        string logsDir = Path.Combine(
-            Path.GetDirectoryName(Extension.AssemblyDirectory) ?? AppContext.BaseDirectory,
-            $"{Extension.ExtensionName}_Logs");
+        DynTypeSerializer.Logging.SerializerLogging.Configure(Logging.LogFactory.CreateFileLoggerFactory(Extension.LogFolder, "DynTypeSerializer.log").CreateLogger("DynTypeSerializer"));
 
-        ArmaLog.Configure(
-            Logging.LogFactory.CreateFileLoggerFactory(logsDir, "ArmaPlugin.log"));
-
-        DynTypeSerializer.Logging.SerializerLogging.Configure(
-            Logging.LogFactory.CreateFileLoggerFactory(logsDir, "DynTypeSerializer.log").CreateLogger("DynTypeSerializer"));
-
-        DynTypeNetwork.Log.Configure(
-            Logging.LogFactory.CreateFileLoggerFactory(logsDir, "Network.log"));
+        DynTypeNetwork.Log.Configure(Logging.LogFactory.CreateFileLoggerFactory(Extension.LogFolder, "Network.log"));
     }
 
     /// <summary>
     /// Prints a formatted banner of all registered network methods for debugging.
     /// </summary>
-    public static void PrintAvailableMethods(string name, RpcMethodInfo[] methods)
-    {
+    public static void PrintAvailableMethods(string name, RpcMethodInfo[] methods) {
         const int bannerWidth = 84;
 
         string header = $" Registered {name} Network Methods ";
         Log();
         Log(header.PadLeft((bannerWidth + header.Length) / 2, '=').PadRight(bannerWidth, '='));
 
-        foreach (var method in methods.OrderBy(m => m.Name))
-        {
+        foreach (var method in methods.OrderBy(m => m.Name)) {
             Log(FormatMethodSignature(method));
         }
 
@@ -92,26 +80,20 @@ public static partial class ExtensionPlugin
         Log();
     }
 
-    private static string FormatMethodSignature(RpcMethodInfo method)
-    {
-        string parameters = string.Join(", ",
-            method.Parameters.Select(p => $"{FormatTypeName(p.Type)} {p.Name}"));
+    private static string FormatMethodSignature(RpcMethodInfo method) {
+        string parameters = string.Join(", ", method.Parameters.Select(p => $"{FormatTypeName(p.Type)} {p.Name}"));
 
         string returnType = method.ReturnType is null ? "void" : FormatTypeName(method.ReturnType);
 
         return $"{method.Name}({parameters}) : {returnType}";
     }
 
-    private static string FormatTypeName(Type type)
-    {
-        if (type.IsArray)
-            return $"{FormatTypeName(type.GetElementType()!)}[]";
+    private static string FormatTypeName(Type type) {
+        if (type.IsArray) return $"{FormatTypeName(type.GetElementType()!)}[]";
 
-        if (type.IsGenericType)
-        {
+        if (type.IsGenericType) {
             string genericName = type.Name.Split('`')[0];
-            string genericArgs = string.Join(", ",
-                type.GetGenericArguments().Select(FormatTypeName));
+            string genericArgs = string.Join(", ", type.GetGenericArguments().Select(FormatTypeName));
 
             return $"{genericName}<{genericArgs}>";
         }

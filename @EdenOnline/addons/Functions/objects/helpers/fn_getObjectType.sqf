@@ -16,6 +16,6 @@ if (_object isEqualType []) exitWith {"Waypoint"};
 
 // Layer or comment
 
-_allEntities = all3DENEntities;
+private _allEntities = all3DENEntities;
 if (_object in _allEntities # 5) exitWith {"Layer"};
 if (_object in _allEntities # 6) exitWith {"Comment"};

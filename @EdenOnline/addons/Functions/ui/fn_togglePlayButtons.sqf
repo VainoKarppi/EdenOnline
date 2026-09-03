@@ -43,9 +43,7 @@ if (!isNull _oldHandle) then {
 
 
 // If preview is enabled, we're done
-if (_enable) exitWith {
-    diag_log "[EdenOnline] Mission preview enabled.";
-};
+if (_enable) exitWith {};
 
 
 // Create tooltip for Play menu
