@@ -38,7 +38,7 @@ if (_return select 0 == "ERROR") exitWith { diag_log formatText ["ERROR: %1", _d
 if (_function != "CameraUpdate" && _function != "SetInitialMissionAttributes") then {
     diag_log "================================= RESPONSE DATA (SYNC) ==================================";
     diag_log _function;
-    diag_log _data select 0;
+    diag_log (_data select 0);
     diag_log "=========================================================================================";
 	diag_log "";
 };

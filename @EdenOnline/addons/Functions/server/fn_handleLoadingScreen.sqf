@@ -25,8 +25,6 @@ if (_enable) then {
 
         if (_loadingScreen && {diag_tickTime >= _currentTimeout}) then {
 
-            diag_log format ["EOEX: Loading screen force timeout after %1 seconds.", diag_tickTime - (_currentTimeout - _timeout)];
-
             endLoadingScreen;
 
             uiNamespace setVariable ["EOEX_var_loadingScreen", nil];

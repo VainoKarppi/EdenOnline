@@ -135,7 +135,7 @@ if (missionNamespace getVariable ["EOEX_var_syncMissionAttributes", false]) then
 		if (!isNil "_skipValue" && {_skipValue isEqualTo _value}) then {
 			EOEX_var_SkipAttributeChange deleteAt _key;
 		} else {
-			[_section, _property, _value] call EOEX_fnc_updateMissionAttributes;
+			[_section, _property, _value] call EOEX_fnc_sendMissionAttributes;
 		};
 	}];
 

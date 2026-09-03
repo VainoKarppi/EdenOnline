@@ -19,7 +19,7 @@ if (_id in EOEX_var_Markers) exitWith {
         _x getVariable ["EOEX_var_objectID", "-1"] == _id
     };
 
-    if (count _objects > 0) exitWith {
+    if (_objects isNotEqualTo []) exitWith {
         delete3DENEntities _objects;
     };
 } forEach [0, 2, 3];

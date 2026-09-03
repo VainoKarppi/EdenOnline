@@ -121,6 +121,8 @@ class CfgFunctions
 
             class showPlayersDialog { recompile = 1; };
             class updateClientList { recompile = 1; };
+
+            class handleLoadingScreen { recompile = 1; };
         };
     };
 };

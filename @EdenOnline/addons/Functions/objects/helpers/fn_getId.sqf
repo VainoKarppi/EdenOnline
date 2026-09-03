@@ -13,7 +13,7 @@ if (!isNil "_object" && {_object isEqualType "" && {!isNil "EOEX_var_Markers"}})
         _id = _x; 
         if (_y == _object) exitWith {_id};
         _id = "";
-    } foreach EOEX_var_Markers; 
+    } forEach EOEX_var_Markers; 
     if (_id != "") exitWith { breakWith _id };
 };
 
