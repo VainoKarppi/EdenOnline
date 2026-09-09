@@ -57,9 +57,9 @@ public static partial class ExtensionPlugin
     private static void ConfigureLogging() {
         ArmaLog.Configure(Logging.LogFactory.CreateFileLoggerFactory(Extension.LogFolder, "ArmaPlugin.log"));
 
-        DynTypeSerializer.Logging.SerializerLogging.Configure(Logging.LogFactory.CreateFileLoggerFactory(Extension.LogFolder, "DynTypeSerializer.log").CreateLogger("DynTypeSerializer"));
-
-        DynTypeNetwork.Log.Configure(Logging.LogFactory.CreateFileLoggerFactory(Extension.LogFolder, "Network.log"));
+        //DynTypeSerializer.Logging.SerializerLogging.Configure(Logging.LogFactory.CreateFileLoggerFactory(Extension.LogFolder, "DynTypeSerializer.log").CreateLogger("DynTypeSerializer"));
+        
+        //DynTypeNetwork.Log.Configure(Logging.LogFactory.CreateFileLoggerFactory(Extension.LogFolder, "Network.log"));
     }
 
     /// <summary>
