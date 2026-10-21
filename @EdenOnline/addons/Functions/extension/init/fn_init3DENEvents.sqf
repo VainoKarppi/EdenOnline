@@ -15,62 +15,70 @@ if (isNil "EOEX_var_AttributeQueues") then {
 
 removeAll3DENEventHandlers "OnEditableEntityAdded";
 add3DENEventHandler ["OnEditableEntityAdded", {
-	params ["_entity"];
-	
-	diag_log typeName _entity;
-	diag_log _entity;
 
-    private _type = _entity call EOEX_fnc_getObjectType;
-
-	// Object, Trigger, System
-	if (_type == "Object" || _type == "Trigger" || _type == "Logic") exitWith {
+    _x spawn {
+        params ["_entity"];
         
-        // Already added as object
-        private _id = _entity getVariable "EOEX_var_objectID";
-        if !(isNil "_id") exitWith {};
+        if !(missionNamespace getVariable ["EOEX_var_Connected",false]) exitWith {};
 
-        diag_log "NEW OBJECT CREATED";
+        sleep 0.01; // Give time for the ID to be set, if the object was created by a network message.
 
-        [_entity, _type] spawn EOEX_fnc_sendCreateObject;
-	};
+        // If Id is already added --> incoming network message --> exit
+        private _hasId = _entity call EOEX_fnc_hasId;
+        if (_hasId) exitWith {};
+        
 
-	// Group
-	if (_type == "Group") exitWith {
-        // TODO similiar to SyncConnection, but for groups
-		diag_log _entity;
-		diag_log "GROUP CREATED";
-	};
-
-	// Marker
-	if (_type == "Marker") exitWith {
-		[_entity] call EOEX_fnc_sendCreateMarker
-	};
-
-	// Waypoint
-	if (_type == "Waypoint") exitWith {
-        _waypoint = +_entity;
-        _entity params ["_entity","_index"];
-
-        _type = waypointType _waypoint;
-
-
-        // TODO
-		diag_log _waypoint;
-        diag_log _type;
-		diag_log "WAYPOINT CREATED";
-	};
-
-	// LAYER OR COMMENT
-	if (_type == "Layer") exitWith {
-		// TODO Comment runs: updateObjectAttributes for some reason?
-		diag_log _entity;
-		diag_log "LAYER OR COMMENT CREATED";
-	};
-
-    if (_type == "Comment") exitWith {
-        // TODO Comment runs: updateObjectAttributes for some reason?
+        diag_log typeName _entity;
         diag_log _entity;
-        diag_log "COMMENT CREATED";
+        
+        // Generate id, if not exist
+        private _id = _entity call EOEX_fnc_getId;
+
+        private _type = _entity call EOEX_fnc_getObjectType;
+
+        // Object, Trigger, System
+        if (_type == "Object" || _type == "Trigger" || _type == "Logic") exitWith {
+            [_id, _entity, _type] call EOEX_fnc_sendCreateObject;
+        };
+
+        // Group
+        if (_type == "Group") exitWith {
+            // TODO similiar to SyncConnection, but for groups
+            diag_log _entity;
+            diag_log "GROUP CREATED";
+        };
+
+        // Marker
+        if (_type == "Marker") exitWith {
+            [_id, _entity] call EOEX_fnc_sendCreateMarker
+        };
+
+        // Waypoint
+        if (_type == "Waypoint") exitWith {
+            _waypoint = +_entity;
+            _entity params ["_entity","_index"];
+
+            _type = waypointType _waypoint;
+
+
+            // TODO
+            diag_log _waypoint;
+            diag_log _type;
+            diag_log "WAYPOINT CREATED";
+        };
+
+        // LAYER OR COMMENT
+        if (_type == "Layer") exitWith {
+            // TODO Comment runs: updateObjectAttributes for some reason?
+            diag_log _entity;
+            diag_log "LAYER OR COMMENT CREATED";
+        };
+
+        if (_type == "Comment") exitWith {
+            // TODO Comment runs: updateObjectAttributes for some reason?
+            diag_log _entity;
+            diag_log "COMMENT CREATED";
+        };
     };
 }];
 
@@ -129,14 +137,11 @@ if (missionNamespace getVariable ["EOEX_var_syncMissionAttributes", false]) then
 		private _value = _section get3DENMissionAttribute _property;
 		private _key = [_section, _property];
 
-		private _skipValue = EOEX_var_SkipAttributeChange getOrDefault [_key, nil];
+        // Check if the change was caused by a network message --> skip
+        private _skip = ["MISSION", [_section, _property, _value]] call EOEX_fnc_checkSkipAttributeChange;
+        if (_skip) exitWith {};
 
-		// Prevent echo/feedback loop
-		if (!isNil "_skipValue" && {_skipValue isEqualTo _value}) then {
-			EOEX_var_SkipAttributeChange deleteAt _key;
-		} else {
-			[_section, _property, _value] call EOEX_fnc_sendMissionAttributes;
-		};
+		[_section, _property, _value] call EOEX_fnc_sendMissionAttributes;
 	}];
 
 	uiNamespace setVariable ["EOEX_var_OnMissionAttributeChangedId", _id];

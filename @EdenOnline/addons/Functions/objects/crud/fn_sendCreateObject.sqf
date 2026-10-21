@@ -1,18 +1,11 @@
 // EOEX_fnc_sendCreateObject
 
 // This file handles types Object, Trigger and Logic
+// ItemClass, might not exist, for all objects, but we force it in the attributes
 
-params ["_object","_type"];
+params ["_id", "_object","_type"];
 
 if !(missionNamespace getVariable ["EOEX_var_Connected",false]) exitWith {};
-
-// TODO add similiar system as EOEX_var_SkipAttributeChange
-uiSleep 0.02;
-
-private _id = _object getVariable "EOEX_var_objectID";
-if !(isNil "_id") exitWith {}; // Already created
-
-_id = _object call EOEX_fnc_getId;
 
 private _position = (_object get3DENAttribute "Position") select 0;
 

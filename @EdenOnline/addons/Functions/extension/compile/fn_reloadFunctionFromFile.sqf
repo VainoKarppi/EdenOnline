@@ -27,15 +27,13 @@ private _functionName = _fileName select [3, (count _fileName) - 7];
 // \z\TAG\addons\...
 private _pathParts = _filePath splitString "\\/";
 
-private _zIndex = _pathParts find "z";
-
-if (_zIndex == -1 || {_zIndex + 1 >= count _pathParts}) exitWith {
+if (count _pathParts < 2) exitWith {
     diag_log format ["EOEX RELOAD: Could not determine tag from path: %1", _filePath];
 
     false
 };
 
-private _tag = _pathParts select (_zIndex + 1); 
+private _tag = _pathParts select 1;
 
 private _variableName = format ["%1_fnc_%2", _tag, _functionName];
 

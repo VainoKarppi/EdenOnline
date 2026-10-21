@@ -46,6 +46,8 @@ class CfgFunctions
             file = "Functions\objects\helpers";
 
             class getId { recompile = 1; };
+            class hasId { recompile = 1; };
+
             class getObjectType { recompile = 1; };
             class getTypeIndex { recompile = 1; };
 

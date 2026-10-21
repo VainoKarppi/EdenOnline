@@ -32,11 +32,13 @@ EOEX_var_extensionVersion = _data;
 
 EOEX_var_extensionResponses = createHashMap;
 EOEX_var_extensionRequests = createHashMap;
-EOEX_var_Objects = createHashMap;
-EOEX_var_OtherClients = createHashMap;
-EOEX_var_SkipAttributeChange = createHashMap;
+
 EOEX_var_SkipAttributeChanges = createHashMap;
 
+
+EOEX_var_OtherClients = createHashMap;
+
+EOEX_var_Objects = createHashMap;
 EOEX_var_Markers = createHashMap;
 
 missionNamespace setVariable ["Eden_MoveActive", false];

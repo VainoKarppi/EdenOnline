@@ -1,5 +1,5 @@
 // EOEX_fnc_addSkipAttributeChange
-params ["_id", "_change", ["_removeAfter", 1]];
+params ["_id", "_change", ["_removeAfter", -1]];
 
 private _changes = EOEX_var_SkipAttributeChanges getOrDefault [_id, []];
 
@@ -15,18 +15,6 @@ if !(_change in _changes) then {
 
         sleep _removeAfter;
 
-        private _changes = EOEX_var_SkipAttributeChanges getOrDefault [_id, []];
-
-        private _index = _changes find _change;
-
-        if (_index >= 0) then {
-            _changes deleteAt _index;
-
-            if (_changes isEqualTo []) then {
-                EOEX_var_SkipAttributeChanges deleteAt _id;
-            } else {
-                EOEX_var_SkipAttributeChanges set [_id, _changes];
-            };
-        };
+        [_id, _change] call EOEX_fnc_checkAttributeChange;
     };
 };

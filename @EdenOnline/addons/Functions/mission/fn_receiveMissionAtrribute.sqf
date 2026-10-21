@@ -3,7 +3,7 @@
 
 params ["_section", "_property", "_value"];
 
-// Mark as skipped to avoid infinite loop from mission attribute change event
-EOEX_var_SkipAttributeChange set [[_section, _property], _value];
+// Mark this change to be skipped when the mission attribute is updated
+["MISSION", [_section, _property, _value]] call EOEX_fnc_addSkipAttributeChange;
 
 _section set3DENMissionAttribute [_property, _value];

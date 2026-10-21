@@ -5,17 +5,15 @@ params ["_id", "_type", "_attributeMap"];
 
 _attributeMap = createHashMapFromArray _attributeMap;
 
+
+// Before creating the object, store the ID in the map to prevent duplicate creation
+
+
+
 private _object = create3DENEntity [_type, _attributeMap get "ItemClass", _attributeMap get "Position"];
 
-// Set attributes
-{
-    private _success = _object set3DENAttribute [_x, _y];
-    if !(_success) then { diag_log format ["WARNING: INVALID ATTRIBUTES %1, %2, [%3, %4]", _id, _type, _x, _y ]; };
-} forEach _attributeMap;
-
-
-
 // TODO Fix other object types (Waypoint, Comment)
+// Set object ID, so that we can prevent feedback loop
 if (_type == "Object" || _type == "Trigger" || _type == "Logic") exitWith {
     _object setVariable ["EOEX_var_objectID", _id];
 };
@@ -23,3 +21,17 @@ if (_type == "Object" || _type == "Trigger" || _type == "Logic") exitWith {
 if (_type == "Marker") exitWith {
     EOEX_var_Markers set [_id, _object];
 };
+
+
+
+// Set attributes
+{
+    // Add skip attribute to prevent feedback loop
+    [_id, [_x,_y]] call EOEX_fnc_addSkipAttributeChange;
+
+    private _success = _object set3DENAttribute [_x, _y];
+    if !(_success) then { diag_log format ["WARNING: INVALID ATTRIBUTES %1, %2, [%3, %4]", _id, _type, _x, _y ]; };
+} forEach _attributeMap;
+
+
+

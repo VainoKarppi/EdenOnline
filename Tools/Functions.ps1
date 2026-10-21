@@ -475,7 +475,7 @@ function Watch-ExtensionLog {
                 return
             }
 
-            $newLog = Get-ChildItem -Path $logFolder -Filter "*.log" |
+            $newLog = Get-ChildItem -Path $logFolder -Filter "ArmaPlugin.log" |
                       Sort-Object LastWriteTime -Descending |
                       Select-Object -First 1
 
