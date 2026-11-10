@@ -38,6 +38,8 @@
 6. If you haven't installed it already, download [Arma 3 Tools from Steam](https://store.steampowered.com/app/233800/Arma_3_Tools/) and run it at least once.
 7. After installation, close and restart VS Code so it can detect the installed SDK and build tools, or run **Developer: Reload Window** from the Command Palette.
 8. Use **Play Arma 3** in the SQF Reloader menu at the bottom of VS Code to start Arma.
+9. To host an EdenOnline game that players outside your local network can join, configure your router to forward port `2302` for both **TCP** and **UDP**. This is the default port.
+10. In Eden, select **Tools** → **EdenOnline** to open the EdenOnline GUI, then choose whether to host or connect.
 
 ## Editing the extension
 
