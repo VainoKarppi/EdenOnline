@@ -9,7 +9,13 @@
 
 2. Install the **Hemtt** extension for Visual Studio Code, if it is not already installed.
 3. Download the latest Arma3SqfReloader VSIX from [Releases](https://github.com/VainoKarppi/Arma3SqfReloader/releases). In VS Code, open the Extensions view, select **...**, choose **Install from VSIX...**, and select the downloaded file.
-4. Install the .NET SDK version specified in [`global.json`](global.json). This project currently requires .NET SDK `10.0.100` (or a compatible later feature band).
+4. Check the `TargetFramework` in [`EdenOnline.csproj`](EdenOnline.csproj). It is currently `net10.0`, so install the .NET 10 SDK from the [official .NET downloads page](https://dotnet.microsoft.com/en-us/download/dotnet/10.0). To see which SDKs are installed, run:
+
+   ```powershell
+   dotnet --list-sdks
+   ```
+
+   Ensure the output includes a .NET 10 SDK.
 5. On Windows, install Visual Studio 2022 Build Tools with the **Desktop development with C++** workload. This workload is required to build the NativeAOT extension. You can install it from a terminal with:
 
    ```powershell
