@@ -5,7 +5,9 @@
 
 params [["_type",1],["_reason",""]];
 
-diag_log "Disconnecting from 3DEN Online...";
+if (missionNamespace getVariable ["EOEX_var_Connected",false]) then {
+	diag_log "Disconnecting from 3DEN Online...";
+};
 
 // Call Disconnect. Dont disconnect for real, when using DEBUg. This allows us to rejoin as a "second" person to server.
 if (missionNamespace getVariable ["EOEX_var_Connected",false] && !(missionNamespace getVariable ["EOEX_var_DEBUG",false])) then {

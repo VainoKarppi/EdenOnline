@@ -29,80 +29,8 @@ Add-SQFFunctionTags -ModFolder $modFolder
 
 if (Build-Project -projectPath $projectPath -destinationPath $modFolder) {
     if (Pack-Addons -modFolder $modFolder) {
-        function Write-LogLine {
-            param (
-                [string]$Type,
-                [string]$Message
-            )
-
-            $prefix = "[$Type] "
-
-            # Log-level colors take priority
-            if ($Message -match "ERROR:\s*") {
-                $color = "Red"
-            } elseif ($Message -match "DEBUG:\s*") {
-                $color = "Gray"
-            } elseif ($Message -match "INFO:\s*") {
-                $color = "Cyan"
-            } elseif ($Type -eq "EXT") {
-                $color = "DarkGray"
-            } elseif ($Type -eq "RPT") {
-                $color = "Green"
-            } else {
-                $color = "White"
-            }
-
-            Write-Host $prefix -NoNewline -ForegroundColor $color
-            Write-Host $Message -ForegroundColor $color
-        }
-
-
         if (Start-Arma) {
-            $armaPath = Get-ArmaPath
-
-            # Start extension log watcher
-            $extensionJob = Start-Job -ScriptBlock {
-                . "$using:functionsScript"
-                Watch-ExtensionLog
-            }
-
-            # Start RPT log watcher
-            $rptJob = Start-Job -ScriptBlock {
-                . "$using:functionsScript"
-                Watch-RPTLog
-            }
-
-            # Monitor both watchers while Arma is running
-            while (Get-Process -Name "arma3_x64" -ErrorAction SilentlyContinue) {
-
-                # Extension log
-                Receive-Job $extensionJob -ErrorAction SilentlyContinue |
-                    ForEach-Object {
-                        Write-LogLine -Type "EXT" -Message $_
-                    }
-                
-                Start-Sleep -Milliseconds 50
-
-                # RPT log
-                Receive-Job $rptJob -ErrorAction SilentlyContinue |
-                    ForEach-Object {
-                        Write-LogLine -Type "RPT" -Message $_
-                    }
-
-                Start-Sleep -Milliseconds 50
-            }
-
-            # Arma 3 has exited
-            Write-Host ""
-            Write-Host "Arma 3 has exited. Stopping log watchers..." -ForegroundColor Yellow
-
-            Stop-Job $extensionJob -ErrorAction SilentlyContinue
-            Stop-Job $rptJob -ErrorAction SilentlyContinue
-
-            Remove-Job $extensionJob -Force -ErrorAction SilentlyContinue
-            Remove-Job $rptJob -Force -ErrorAction SilentlyContinue
-
-            Write-Host "Log watching stopped." -ForegroundColor Yellow
+            & (Join-Path $PSScriptRoot "StartMonitoring.ps1")
         }
     }
 }

@@ -98,6 +98,15 @@
 
         // Button actions
         _connectBtn ctrlAddEventHandler ["ButtonClick", {
+            if (isNil "EOEX_fnc_initExtension") exitWith {
+                [(format ["%1", "EdenOnline EOEX_fnc_initExtension function not found!"]), 1, 5] call BIS_fnc_3DENNotification;
+            };
+
+            private _initialized = call EOEX_fnc_initExtension;
+            if !(_initialized) exitWith {
+                [(format ["%1", "EdenOnline extension failed to initialize. Please check the RPT log for details."]), 1, 5] call BIS_fnc_3DENNotification;
+            };
+            
             private _hostCtrl = uiNamespace getVariable "EOEX_ConnectDialog_HostEdit";
             private _portCtrl = uiNamespace getVariable "EOEX_ConnectDialog_PortEdit";
             private _passCtrl = uiNamespace getVariable "EOEX_ConnectDialog_PassEdit";
@@ -117,7 +126,17 @@
             _display closeDisplay 0;
         }]; 
     
-        _hostBtn ctrlAddEventHandler ["ButtonClick", { 
+        _hostBtn ctrlAddEventHandler ["ButtonClick", {
+            // Check if EdenOnline extension is initialized. If not initialize. If it fails, exit with error message.
+            if (isNil "EOEX_fnc_initExtension") exitWith {
+                [(format ["%1", "EdenOnline EOEX_fnc_initExtension function not found!"]), 1, 5] call BIS_fnc_3DENNotification;
+            };
+
+            private _initialized = call EOEX_fnc_initExtension;
+            if !(_initialized) exitWith {
+                [(format ["%1", "EdenOnline extension failed to initialize. Please check the RPT log for details."]), 1, 5] call BIS_fnc_3DENNotification;
+            };
+
             private _portCtrl = uiNamespace getVariable "EOEX_ConnectDialog_PortEdit";
             private _passCtrl = uiNamespace getVariable "EOEX_ConnectDialog_PassEdit";
             private _port = parseNumber (ctrlText _portCtrl);

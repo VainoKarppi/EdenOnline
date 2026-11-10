@@ -1,7 +1,5 @@
 // EOEX_fnc_initExtension
-if !(isNil "EOEX_var_extensionRequests") exitWith { true }; // Extension already initialized
-
-[] call EOEX_fnc_reloadFunctions;
+if !(isNil "EOEX_var_extensionResponses") exitWith { true }; // Extension already initialized
 
 diag_log "Initializing EdenOnline C# Extension";
 
@@ -15,7 +13,7 @@ uiNamespace setVariable ["EOEX_var_cameraDrawUpdate", 0.2];
 
 
 private _result = EOEX_var_extensionName callExtension "version";
-if (_result == "") exitWith { false }; // Extension not found. Already logged to .RPT
+if (_result == "") exitWith { diag_log "EdenOnline Initialization failed: Extension not found."; false }; // Extension not found. Already logged to .RPT
 
 private _return = [];
 if (_result isEqualType []) then { // Params used

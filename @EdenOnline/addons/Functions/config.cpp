@@ -20,9 +20,9 @@ class CfgFunctions
         class Functions_Extension {
             file = "Functions\extension";
 
-            class handleExtensionMessage { recompile = 1; };
-            class callExtension { recompile = 1; };
-            class callExtensionAsync { recompile = 1; };
+            class handleExtensionMessage {};
+            class callExtension {};
+            class callExtensionAsync {};
         };
 
         class Functions_Extension_Init {
@@ -30,101 +30,93 @@ class CfgFunctions
 
             // Must not be recompiled.
             class initExtension {};
-            class initExtensionEvents { recompile = 1; };
-            class init3DENEvents { recompile = 1; };
+            class initExtensionEvents {};
+            class init3DENEvents {};
         };
-
-        class Functions_Extension_Compile {
-            file = "Functions\extension\compile";
-
-            class reloadFunctions {};
-            class reloadFunctionFromFile {};
-        };
-
 
         class Functions_Objects_Helpers {
             file = "Functions\objects\helpers";
 
-            class getId { recompile = 1; };
-            class hasId { recompile = 1; };
+            class getId {};
+            class hasId {};
 
-            class getObjectType { recompile = 1; };
-            class getTypeIndex { recompile = 1; };
+            class getObjectType {};
+            class getTypeIndex {};
 
-            class addSkipAttributeChange { recompile = 1; };
-            class checkSkipAttributeChange { recompile = 1; };
+            class addSkipAttributeChange {};
+            class checkSkipAttributeChange {};
         };
 
         class Functions_Objects_CRUD {
             file = "Functions\objects\crud";
 
-            class sendCreateObject { recompile = 1; };
-            class sendDeleteObject { recompile = 1; };
-            class sendObjectAttributes { recompile = 1; };
+            class sendCreateObject {};
+            class sendDeleteObject {};
+            class sendObjectAttributes {};
 
-            class receiveObjectCreate { recompile = 1; };
-            class receiveObjectUpdate { recompile = 1; };
-            class receiveObjectDelete { recompile = 1; };
+            class receiveObjectCreate {};
+            class receiveObjectUpdate {};
+            class receiveObjectDelete {};
         };
 
         class Functions_Objects_Move {
             file = "Functions\objects\move";
 
-            class moveInterpolation { recompile = 1; };
+            class moveInterpolation {};
 
-            class receiveDragStart { recompile = 1; };
-            class receiveDragUpdate { recompile = 1; };
-            class receiveDragEnd { recompile = 1; };
+            class receiveDragStart {};
+            class receiveDragUpdate {};
+            class receiveDragEnd {};
 
-            class onEntityDragStart { recompile = 1; };
-            class onEntityDragEnd { recompile = 1; };
+            class onEntityDragStart {};
+            class onEntityDragEnd {};
         };
 
         class Functions_Objects_Sync {
             file = "Functions\objects\sync";
 
-            class createSyncConnection { recompile = 1; };
-            class removeSyncConnection { recompile = 1; };
+            class createSyncConnection {};
+            class removeSyncConnection {};
 
-            class receiveCreateSyncConnection { recompile = 1; };
-            class receiveRemoveSyncConnection { recompile = 1; };
+            class receiveCreateSyncConnection {};
+            class receiveRemoveSyncConnection {};
         };
 
         class Functions_Objects_Markers {
             file = "Functions\objects\markers";
 
-            class sendCreateMarker { recompile = 1; };
-            class sendDeleteMarker { recompile = 1; };
-            class sendUpdateMarker { recompile = 1; };
+            class sendCreateMarker {};
+            class sendDeleteMarker {};
+            class sendUpdateMarker {};
         };
 
         class Functions_Mission {
             file = "Functions\mission";
 
-            class sendMissionAttributes { recompile = 1; };
-            class receiveMissionAtrribute { recompile = 1; };
+            class sendMissionAttributes {};
+            class receiveMissionAtrribute {};
         };
 
         class Functions_Server {
             file = "Functions\server";
 
-            class startServer { recompile = 1; };
-            class connect { recompile = 1; };
-            class disconnect { recompile = 1; };
+            class startServer {};
+            class connect {};
+            class disconnect {};
         };
 
         class Functions_UI {
             file = "Functions\ui";
 
-            class drawCameras { recompile = 1; };
+            class drawCameras {};
 
-            class showConnectDialog { recompile = 1; };
-            class togglePlayButtons { recompile = 1; };
+            class showConnectDialog {};
+            class togglePlayButtons {};
 
-            class showPlayersDialog { recompile = 1; };
-            class updateClientList { recompile = 1; };
+            class showPlayersDialog {};
+            class updateClientList {};
 
-            class handleLoadingScreen { recompile = 1; };
+            class handleLoadingScreen {};
         };
     };
 };

@@ -5,7 +5,6 @@ params [["_port",2302,[0]], ["_password","",[""]]];
 
 // TODO SEND INITIAL OBJECTS TO SERVER WHEN STARTING SERVER
 
-
 if (missionNamespace getVariable ["EOEX_var_Connected",false]) exitWith {
 	["YOU ARE ALREADY CONNECTED", 1, 5] call BIS_fnc_3DENNotification;
 };
@@ -163,7 +162,7 @@ while {EOEX_var_expectedObjectSyncCount == -1 || (count (all3DENEntities # 0)) <
         progressLoadingScreen _progress;
     };
 
-    uiSleep 0.01;
+    if (canSuspend) then { uiSleep 0.01; };
 };
 
 

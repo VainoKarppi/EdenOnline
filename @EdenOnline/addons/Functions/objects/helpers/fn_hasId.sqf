@@ -1,3 +1,4 @@
+// EOEX_fnc_hasId
 
 
 params ["_object"];

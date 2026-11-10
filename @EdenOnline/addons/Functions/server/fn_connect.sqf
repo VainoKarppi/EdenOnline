@@ -8,7 +8,6 @@ if (missionNamespace getVariable ["EOEX_var_Connected",false]) exitWith {
 	["YOU ARE ALREADY CONNECTED", 1, 5] call BIS_fnc_3DENNotification;
 };
 
-
 private _continue = true;
 if ((all3DENEntities) isNotEqualTo [[],[],[],[],[],[],[],[-999]]) then {
     uiNamespace setVariable ["EOEX_var_ButtonConfirmed", nil];

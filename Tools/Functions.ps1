@@ -199,9 +199,10 @@ function Build-Project {
     # Write or overwrite linker.xml file in the project folder
     Set-Content -Path $linkerXmlPath -Value $linkerXmlContent -Encoding UTF8
     
+    $currentHash = Compute-ProjectHash
+
     # Check if the destination path is provided and the update hash file
     if (-not $destinationPath) {
-        $currentHash = Compute-ProjectHash
         if (Test-Path -Path $hashFilePath) {
             $previousHash = Get-Content -Path $hashFilePath
             if ($previousHash -eq $currentHash.Hash) {

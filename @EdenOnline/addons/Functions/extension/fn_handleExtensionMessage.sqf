@@ -10,9 +10,6 @@ if (_function == "") exitWith {};
 if (_function == "ApiServerCommand") exitWith {
 	// _data:[""recompile"",""MYTAG_fnc_test""]"
 	_data params ["_type","_subFunction"];
-	if (_type == "recompile") then {
-		[_subFunction] call EOEX_fnc_reloadFunctionFromFile;
-	};
 };
 
 // Extension is requesting for data from arma
