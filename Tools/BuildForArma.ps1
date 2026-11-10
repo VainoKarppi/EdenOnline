@@ -53,7 +53,10 @@ function Get-SourceHash {
 $currentHash = Get-SourceHash -SourcePath $srcFolder
 $previousHash = $null
 if (Test-Path -LiteralPath $hashFilePath -PathType Leaf) {
-    $previousHash = (Get-Content -LiteralPath $hashFilePath -Raw).Trim()
+    $hashContent = Get-Content -LiteralPath $hashFilePath -Raw
+    if ($null -ne $hashContent) {
+        $previousHash = $hashContent.Trim()
+    }
 }
 
 Write-Host "Project Path: $projectPath" -ForegroundColor Blue
