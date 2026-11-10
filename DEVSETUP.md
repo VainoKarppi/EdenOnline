@@ -50,11 +50,26 @@ public static string MyTest(int myArmaValue)
 }
 ```
 
-Build the extension and restart Arma after changing the extension DLL. Profiling-branch hot reload is not currently supported, so Arma must be relaunched to load DLL updates.
+Profiling-branch hot reload is not currently supported. After changing the extension, close Arma, then start it again with **Play Arma 3** from the SQF Reloader menu. This automatically recompiles the DLL before launching Arma.
 
 To call the new method, run this in the Arma debug console or the VS Code Arma debug console:
 
 ```sqf
 _data = ["MyTest", [1]] call EOEX_fnc_callExtension;
+_data == "Response with data: 1"
+```
+
+For an asynchronous method, return `Task<string>` and use the async call function from Arma:
+
+```csharp
+public static async Task<string> MyTestAsync(int myArmaValue)
+{
+    await Task.Delay(500);
+    return $"Response with data: {myArmaValue}";
+}
+```
+
+```sqf
+_data = ["MyTestAsync", [1]] call EOEX_fnc_callExtensionAsync;
 _data == "Response with data: 1"
 ```
