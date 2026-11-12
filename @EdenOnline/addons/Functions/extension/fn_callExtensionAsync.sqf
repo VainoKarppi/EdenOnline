@@ -6,7 +6,9 @@
 
 params [["_function","",[""]],["_arguments",[],[[]]],["_fireAndForget",false,[false]],["_timeout",1,[0]]];
 
-if (!canSuspend) exitWith {_this call EOEX_fnc_callExtension};
+// Unscheduled callers (e.g. display event handlers) cannot wait for a response, but they can still send
+// fire-and-forget requests synchronously.
+if (!canSuspend && !_fireAndForget) exitWith {_this call EOEX_fnc_callExtension};
 
 if (isNil "EOEX_var_extensionRequests") then {
 	private _initSuccess = call EOEX_fnc_initExtension;

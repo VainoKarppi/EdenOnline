@@ -11,7 +11,10 @@ if (missionNamespace getVariable ["EOEX_var_Connected",false]) then {
 
 // Call Disconnect. Dont disconnect for real, when using DEBUg. This allows us to rejoin as a "second" person to server.
 if (missionNamespace getVariable ["EOEX_var_Connected",false] && !(missionNamespace getVariable ["EOEX_var_DEBUG",false])) then {
-	["Disconnect", []] spawn EOEX_fnc_callExtensionAsync; // Disconnect can only be called using async key!
+	// Fire-and-forget, sent from the calling context. Disconnect is often triggered from an unscheduled
+	// context (e.g. Display3DEN onUnload when leaving the editor back to the main menu) where a spawned
+	// thread is never executed, because the editor (and its SQF scheduler) is torn down immediately.
+	["Disconnect", [], true] call EOEX_fnc_callExtensionAsync; // Disconnect can only be called using async key!
 };
 
 // Re-enable Play buttons

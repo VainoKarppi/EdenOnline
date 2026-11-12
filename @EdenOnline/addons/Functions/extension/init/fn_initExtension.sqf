@@ -55,4 +55,4 @@ call EOEX_fnc_initExtensionEvents;
 [] call EOEX_fnc_moveInterpolation;
 
 
-false
+true
