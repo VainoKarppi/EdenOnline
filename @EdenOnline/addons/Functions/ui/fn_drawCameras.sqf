@@ -14,7 +14,7 @@ uiNamespace setVariable ["EOEX_var_lastCameraTick", diag_tickTime];
 
 _code = {
     if (isNull (findDisplay 313)) exitWith {};
-    if (is3DENPreview) then {continue};
+    if (is3DENPreview) then { continue };
 
     // =====================================================================
     // Send own camera position to other clients
@@ -308,7 +308,7 @@ _code = {
             ];
         };
 
-        } forEach _cameras;
+    } forEach _cameras;
 
     // Save interpolation states
     uiNamespace setVariable ["EOEX_var_cameraInterp", _interpStates];

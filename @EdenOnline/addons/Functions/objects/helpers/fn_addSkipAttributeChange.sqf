@@ -15,6 +15,6 @@ if !(_change in _changes) then {
 
         sleep _removeAfter;
 
-        [_id, _change] call EOEX_fnc_checkAttributeChange;
+        [_id, _change] call EOEX_fnc_checkSkipAttributeChange;
     };
 };

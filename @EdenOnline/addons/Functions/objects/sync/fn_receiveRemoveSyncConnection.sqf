@@ -39,10 +39,16 @@ if (_type != "Sync") exitWith {
 
 
 // Remove the Eden connection
-private _result = remove3DENConnection [_type, [_fromObject], _toObject];
+remove3DENConnection [_type, [_fromObject], _toObject];
 
+// Verify removal
+private _exists = false;
 
-// Check result
-if (!_result) exitWith {
+{
+    if ((_x select 0) != _type) then { continue };
+    if ((_x select 1) == _toObject) exitWith { _exists = true };
+} forEach get3DENConnections _fromObject;
+
+if (_exists) exitWith {
     diag_log format ["[EdenOnline] Failed to remove SyncConnection: %1 (%2) -> %3 (%4)", _fromID, _fromObject, _toID, _toObject];
 };

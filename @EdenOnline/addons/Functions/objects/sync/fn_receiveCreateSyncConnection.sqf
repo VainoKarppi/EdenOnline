@@ -41,10 +41,16 @@ if (_type != "Sync") exitWith {
 
 
 // Create the Eden connection.
-private _result = add3DENConnection [_type,[_fromObject],_toObject];
+add3DENConnection [_type,[_fromObject],_toObject];
 
 
 // Check whether Eden accepted the connection.
-if (!_result) exitWith {
+_success = false;
+{
+    if ((_x select 0) != _type) then { continue };
+    if (_x select 1 == _toObject) exitWith { _success = true };
+} forEach get3DENConnections _fromObject;
+
+if !(_success) exitWith {
     diag_log format ["[EdenOnline] Failed to add SyncConnection: %1 (%2) -> %3 (%4)", _fromID, _fromObject, _toID, _toObject];
 };
