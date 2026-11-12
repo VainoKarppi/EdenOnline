@@ -16,7 +16,9 @@ if (isNil "EOEX_var_AttributeQueues") then {
 removeAll3DENEventHandlers "OnEditableEntityAdded";
 add3DENEventHandler ["OnEditableEntityAdded", {
 
-    _x spawn {
+    // _this = [entity] - entity is an Object, Group, Trigger, Logic, Marker, Layer or Comment.
+    // Do not use _x here: it is only defined inside forEach, so it is nil in an event handler.
+    _this spawn {
         params ["_entity"];
         
         if !(missionNamespace getVariable ["EOEX_var_Connected",false]) exitWith {};
