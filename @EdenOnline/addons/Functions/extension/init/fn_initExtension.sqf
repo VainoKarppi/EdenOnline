@@ -11,6 +11,7 @@ EOEX_var_syncMissionAttributes = true;
 EOEX_var_DEBUG = false;
 EOEX_var_blackListLogging = ["CameraUpdate", "SetInitialMissionAttributes", "UpdateObjectDrag"];
 uiNamespace setVariable ["EOEX_var_cameraDrawUpdate", 0.2];
+uiNamespace setVariable ["EOEX_var_cameraSendHeartbeat", 5]; // Max seconds between CameraUpdate sends even when the camera is idle
 
 
 private _result = EOEX_var_extensionName callExtension "version";

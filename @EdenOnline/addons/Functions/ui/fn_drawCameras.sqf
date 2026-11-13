@@ -8,6 +8,12 @@ if (isNil "EOEX_var_networkCameras") then {
 diag_log "Starting EOEX_fnc_drawCameras";
 uiNamespace setVariable ["EOEX_var_lastCameraTick", diag_tickTime];
 
+// Last camera state that was actually sent to the server. Used to skip
+// CameraUpdate requests while the camera is not moving.
+uiNamespace setVariable ["EOEX_var_lastSentCameraPos", []];
+uiNamespace setVariable ["EOEX_var_lastSentCameraDir", []];
+uiNamespace setVariable ["EOEX_var_lastSentCameraTime", -1e6];
+
 
 
 // ["EOEX_var_GUIDISPLAY", "onEachFrame"] call BIS_fnc_removeStackedEventHandler;
@@ -25,13 +31,27 @@ _code = {
     private _updateInterval = uiNamespace getVariable ["EOEX_var_cameraDrawUpdate", 0.2];
 
     if (diag_tickTime - _lastUpdate > _updateInterval) then {
-        uiNamespace setVariable ["EOEX_var_lastCameraTick", diag_tickTime];
-
         if (missionNamespace getVariable ["EOEX_var_Connected", false]) then {
             private _startPos = getPosATL get3DENCamera;
             private _forwardVec = vectorDir get3DENCamera;
 
-            ["CameraUpdate", [_startPos, _forwardVec], true] spawn EOEX_fnc_callExtensionAsync;
+            private _lastSentPos = uiNamespace getVariable ["EOEX_var_lastSentCameraPos", []];
+            private _lastSentDir = uiNamespace getVariable ["EOEX_var_lastSentCameraDir", []];
+            private _lastSentTime = uiNamespace getVariable ["EOEX_var_lastSentCameraTime", -1e6];
+            private _heartbeat = uiNamespace getVariable ["EOEX_var_cameraSendHeartbeat", 5];
+
+            // Only send when the camera actually moved, or as a periodic heartbeat
+            private _moved = count _lastSentPos != 3 || {(vectorMagnitude (_startPos vectorDiff _lastSentPos)) > 0.001};
+            private _turned = count _lastSentDir != 3 || {(vectorMagnitude (_forwardVec vectorDiff _lastSentDir)) > 0.0001};
+
+            if (_moved || {_turned} || {diag_tickTime - _lastSentTime > _heartbeat}) then {
+                uiNamespace setVariable ["EOEX_var_lastCameraTick", diag_tickTime];
+                uiNamespace setVariable ["EOEX_var_lastSentCameraPos", _startPos];
+                uiNamespace setVariable ["EOEX_var_lastSentCameraDir", _forwardVec];
+                uiNamespace setVariable ["EOEX_var_lastSentCameraTime", diag_tickTime];
+
+                ["CameraUpdate", [_startPos, _forwardVec], true] spawn EOEX_fnc_callExtensionAsync;
+            };
         };
     };
 
