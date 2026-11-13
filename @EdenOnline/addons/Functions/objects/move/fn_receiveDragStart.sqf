@@ -37,5 +37,3 @@ private _targets = [];
 } forEach _objects;
 
 missionNamespace setVariable ["Eden_RemoteMoveTargets", _targets ];
-
-diag_log format ["MOVE_START: %1 %2", _moveId, _objectIds];

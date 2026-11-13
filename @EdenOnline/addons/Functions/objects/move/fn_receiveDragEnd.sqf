@@ -28,8 +28,6 @@ if (_moveId isNotEqualTo _activeMoveId) exitWith {};
     };
 } forEach _finalPositions;
 
-diag_log format ["MOVE_END: %1 %2", _moveId, _finalPositions];
-
 missionNamespace setVariable ["Eden_RemoteMoveActive", false];
 missionNamespace setVariable ["Eden_RemoteMoveId", -1];
 missionNamespace setVariable ["Eden_RemoteMoveObjects", []];

@@ -19,7 +19,7 @@ if (isNil "_value") exitWith {};
 // Check if the edit has to be skipped (e.g. because it was triggered by an incoming update from another client)
 // Added via: [id, [property, value]] call EOEX_fnc_addSkipAttributeChange
 private _skip = [_id, [_property, _value]] call EOEX_fnc_checkSkipAttributeChange;
-if (_skip) exitWith { diag_log format ["SKIP: %1, %2, %3", _id, _property, _value] };
+if (_skip) exitWith {};
 
 
 
