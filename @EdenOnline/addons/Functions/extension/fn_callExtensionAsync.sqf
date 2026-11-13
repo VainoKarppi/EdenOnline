@@ -26,7 +26,7 @@ private _request = _function + "|" + str(_requestId); // Add ASYNC key to reques
 // Call Extension
 
 // TODO Temp
-if (_function != "CameraUpdate" && _function != "SetInitialMissionAttributes") then {
+if (_function != "CameraUpdate" && _function != "SetInitialMissionAttributes" && _function != "UpdateObjectDrag") then {
     if (_requestId == -1) then {
 		diag_log "";
         diag_log "========================== SENT DATA (ASYNC) - FIRE-AND-FORGET ==========================";
