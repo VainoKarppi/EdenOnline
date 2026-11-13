@@ -85,7 +85,7 @@ public static partial class Client
     private static async Task WaitForAuthenticationAsync()
     {
         if (Authentication.Enabled && !Authentication.ClientAuthenticated == null) {
-            Log.Debug("[CLIENT] Sending server message saying we are ready to recieve authentication check request...");
+            Log.Client.Debug("[CLIENT] Sending server message saying we are ready to recieve authentication check request...");
 
             // Send server a message saying that we are ready to receive the
             await SendDataInternalAsync(Server.SERVER_ID, MessageType.AuthenticationReady);
@@ -112,7 +112,7 @@ public static partial class Client
                 while (!_cts.Token.IsCancellationRequested)
                 {
                     // Read ONE full message from stream using the proper helper
-                    NetworkMessage? msg = MessageBuilder.ReadTcpMessage(stream);
+                    NetworkMessage? msg = MessageBuilder.ReadTcpMessage(stream, NetworkSide.Client);
 
                     if (msg == null) {
                         // Connection lost or stream closed
@@ -140,13 +140,13 @@ public static partial class Client
 
                     if (msg.MessageType == MessageType.AuthenticationRequest) {
                         if (!Authentication.HasClientAuthentication) {
-                            Log.Info("[CLIENT] Server requested authentication, but no client authentication method has been registered.");
+                            Log.Client.Info("[CLIENT] Server requested authentication, but no client authentication method has been registered.");
 
                             throw new InvalidOperationException("Server requested authentication, but no client authentication method has been registered.");
                         }
                         object[]? authenticationData = await Authentication.GetClientAuthenticationAsync();
 
-                        Log.Debug($"[CLIENT] Authentication data: {string.Join(", ", authenticationData ?? [])}");
+                        Log.Client.Debug($"[CLIENT] Authentication data: {string.Join(", ", authenticationData ?? [])}");
 
                         NetworkMessage response = new()
                         {
@@ -156,7 +156,7 @@ public static partial class Client
                             MessageType = MessageType.AuthenticationResponse
                         };
 
-                        byte[] packet = MessageBuilder.CreatePacket(response, authenticationData);
+                        byte[] packet = MessageBuilder.CreatePacket(response, authenticationData, NetworkSide.Client);
 
                         await stream.WriteAsync(packet, token);
 
@@ -211,7 +211,7 @@ public static partial class Client
                         // Invoke event 
                         _ = Task.Run(() => OnTcpMessageReceived?.Invoke(msg));
 
-                        await MessageBuilder.HandleCustomMessage(stream, msg, token);
+                        await MessageBuilder.HandleCustomMessage(stream, msg, NetworkSide.Client, token);
                         continue;
                     }
 
@@ -221,7 +221,7 @@ public static partial class Client
             catch (OperationCanceledException)
             {
                 // normal shutdown
-                Log.Info("[CLIENT] TCP receive loop cancelled.");
+                Log.Client.Info("[CLIENT] TCP receive loop cancelled.");
             }
             catch (Exception ex) when (ex is ObjectDisposedException || ex is IOException)
             {
@@ -229,17 +229,17 @@ public static partial class Client
                 if (_cts.Token.IsCancellationRequested)
                 {
                     // Client disconnected on purpose
-                    Log.Info("[CLIENT] Disconnected by client request (intentional disconnect).");
+                    Log.Client.Info("[CLIENT] Disconnected by client request (intentional disconnect).");
                 } else {
                     // Connection was forcibly closed
-                    Log.Info($"[CLIENT] Connection lost: {ex.Message}");
+                    Log.Client.Info($"[CLIENT] Connection lost: {ex.Message}");
                     await HandleServerShutdown(DisconnectReason.ConnectionLost);
                 }
 
             }
             catch (Exception ex)
             {
-                Log.Info($"[CLIENT] Receive loop exception: {ex}");
+                Log.Client.Info($"[CLIENT] Receive loop exception: {ex}");
                 await HandleServerShutdown(DisconnectReason.ConnectionError);
             }
         });

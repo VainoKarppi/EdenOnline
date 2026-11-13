@@ -69,7 +69,7 @@ public static partial class Server {
 
         if (msg.MessageType == MessageType.Custom && msg.SenderId == SERVER_ID && !isForwarded) _ = Task.Run(() => OnTcpMessageSent?.Invoke(msg));
 
-        var packet = MessageBuilder.CreatePacket(msg, payload);
+        var packet = MessageBuilder.CreatePacket(msg, payload, NetworkSide.Server);
         await client.GetStream().WriteAsync(packet);
         
         

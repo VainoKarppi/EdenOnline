@@ -22,7 +22,7 @@ public static partial class Server
         _tcpListener = new TcpListener(IPAddress.Any, port);
         _tcpListener.Start();
         _ = AcceptTcpClientsAsync();
-        Log.Info("[SERVER] TCP Server started");
+        Log.Server.Info("[SERVER] TCP Server started");
     }
 
     private static async Task AcceptTcpClientsAsync()
@@ -45,13 +45,13 @@ public static partial class Server
                     }
                     catch (Exception ex)
                     {
-                        Log.Info($"[SERVER] Client {client.Id} thread exception: {ex}");
+                        Log.Server.Info($"[SERVER] Client {client.Id} thread exception: {ex}");
                     }
                 }, null);
             } catch {}
         }
 
-        Log.Info("[SERVER TCP] Receive loop stopped.");
+        Log.Server.Info("[SERVER TCP] Receive loop stopped.");
     }
 
     private static async Task HandleTcpClientAsync(Connection client, CancellationToken token)
@@ -62,7 +62,7 @@ public static partial class Server
         {
             while (!token.IsCancellationRequested && client.Connected)
             {
-                NetworkMessage? msg = MessageBuilder.ReadTcpMessage(client.GetStream(), client.Id);
+                NetworkMessage? msg = MessageBuilder.ReadTcpMessage(client.GetStream(), NetworkSide.Server, client.Id);
                 if (msg is null) break;
 
                 switch (msg.MessageType) {
@@ -93,7 +93,7 @@ public static partial class Server
                         // Handle custom message that is sent to the server itself
                         if (msg.TargetsServer) {
                             _ = Task.Run(() => OnTcpMessageReceived?.Invoke(msg));
-                            await MessageBuilder.HandleCustomMessage(client.GetStream(), msg, token);
+                            await MessageBuilder.HandleCustomMessage(client.GetStream(), msg, NetworkSide.Server, token);
                         }
 
                         // Forward to all clients when the target list is a broadcast or exclusion rule
@@ -105,12 +105,12 @@ public static partial class Server
                         continue;
 
                     default:
-                        Log.Info($"[SERVER] Unknown message type from client {client.Id}: {msg.MessageType}");
+                        Log.Server.Info($"[SERVER] Unknown message type from client {client.Id}: {msg.MessageType}");
                         continue;
                 }
             }
         } catch (Exception ex) {
-            Log.Info($"[SERVER] Client {client.Id} disconnected unexpectedly. Reason: {ex.Message}");
+            Log.Server.Info($"[SERVER] Client {client.Id} disconnected unexpectedly. Reason: {ex.Message}");
         }
 
         await ClientDisconnected(client, clientDisconnectSuccess);
@@ -128,7 +128,7 @@ public static partial class Server
             TargetId = [targetId],
             MessageType = type
         };
-        var packet = MessageBuilder.CreatePacket(message, data);
+        var packet = MessageBuilder.CreatePacket(message, data, NetworkSide.Server);
 
         await client.GetStream().WriteAsync(packet);
     }
@@ -154,7 +154,7 @@ public static partial class Server
                         Payload = message.Payload
                     };
 
-                    var data = MessageBuilder.CreateTcpMessage(requestMessage, isServerBroadcast: true);
+                    var data = MessageBuilder.CreateTcpMessage(requestMessage, NetworkSide.Server, isServerBroadcast: true);
                     await client.GetStream().WriteAsync(data);
                 });
             
@@ -163,7 +163,7 @@ public static partial class Server
             
             // If MessageId > 0, we expect a response from each client, which we will aggregate and send back to the sender once all responses are received or timeout occurs.
 
-            Log.Info($"[NETWORK] Broadcasting message {message.MessageId} from {message.SenderId} to client {client.Id} and waiting for response");
+            Log.Server.Info($"[NETWORK] Broadcasting message {message.MessageId} from {message.SenderId} to client {client.Id} and waiting for response");
 
             tasks.Add(Task.Run(async () =>
             {
@@ -179,12 +179,12 @@ public static partial class Server
                     Payload = message.Payload
                 };
 
-                var data = MessageBuilder.CreateTcpMessage(requestMessage);
+                var data = MessageBuilder.CreateTcpMessage(requestMessage, NetworkSide.Server);
                 await client.GetStream().WriteAsync(data);
 
                 NetworkMessage? returnMessage = await WaitWithTimeout(requestId);
 
-                Log.Info($"[NETWORK] Received response for broadcast message {message.MessageId} from client {client.Id}");
+                Log.Server.Info($"[NETWORK] Received response for broadcast message {message.MessageId} from client {client.Id}");
                 if (returnMessage == null || returnMessage.Payload == null) return null;
 
                 return MessageBuilder.UnpackPayload<object>(returnMessage.Payload);
@@ -220,7 +220,7 @@ public static partial class Server
             MessageType = MessageType.ResponseBroadcast
         };
 
-        var broadcastResponseData = MessageBuilder.CreatePacket(broadcastResponse, broadcastResponses);
+        var broadcastResponseData = MessageBuilder.CreatePacket(broadcastResponse, broadcastResponses, NetworkSide.Server);
 
         await sender.GetStream().WriteAsync(broadcastResponseData);
     }
@@ -232,7 +232,7 @@ public static partial class Server
     /// </summary>
     private static async Task ForwardTcpMessageToTarget(Connection sender, NetworkMessage message)
     {
-        Log.Info($"[NETWORK] Forwarding message {message.MessageId} from {message.SenderId} to {message.TargetId}");
+        Log.Server.Info($"[NETWORK] Forwarding message {message.MessageId} from {message.SenderId} to {message.TargetId}");
 
         Connection? target = null;
         int targetId = message.TargetId.FirstOrDefault(t => t > 0);
@@ -260,7 +260,7 @@ public static partial class Server
             MessageId = message.MessageId,
             MessageType = MessageType.Handshake
         };
-        var packet = MessageBuilder.CreatePacket(response, result);
+        var packet = MessageBuilder.CreatePacket(response, result, NetworkSide.Server);
 
         await sender.GetStream().WriteAsync(packet);
     }
@@ -280,11 +280,11 @@ public static partial class Server
             MessageType = MessageType.AuthenticationRequest
         };
 
-        var requestPacket = MessageBuilder.CreatePacket(requestMessage);
+        var requestPacket = MessageBuilder.CreatePacket(requestMessage, NetworkSide.Server);
 
         await client.GetStream().WriteAsync(requestPacket);
 
-        Log.Debug($"[SERVER] Authentication request sent to client {client.Id}. Waiting for response...");
+        Log.Server.Debug($"[SERVER] Authentication request sent to client {client.Id}. Waiting for response...");
     }
 
     private static async Task HandleAuthenticationResponseAsync(Connection client, NetworkMessage msg)
@@ -293,7 +293,7 @@ public static partial class Server
 
         (bool success, string? error) = await Authentication.ServerValidateAsync(authenticationParameters);
 
-        Log.Debug($"[SERVER] Authentication result for client {client.Id}: " + $"{(success ? "SUCCESS" : "FAILURE")} " + $"ERROR: {error ?? "None"}");
+        Log.Server.Debug($"[SERVER] Authentication result for client {client.Id}: " + $"{(success ? "SUCCESS" : "FAILURE")} " + $"ERROR: {error ?? "None"}");
 
         client.Authenticated = success;
 
@@ -306,7 +306,7 @@ public static partial class Server
             MessageType = MessageType.AuthenticationResponse
         };
 
-        var responsePacket = MessageBuilder.CreatePacket(responseMessage, new object[] { success, error ?? "" });
+        var responsePacket = MessageBuilder.CreatePacket(responseMessage, new object[] { success, error ?? "" }, NetworkSide.Server);
 
         await client.GetStream().WriteAsync(responsePacket);
 

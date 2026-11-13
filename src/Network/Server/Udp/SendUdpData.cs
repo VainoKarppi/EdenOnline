@@ -49,11 +49,11 @@ public static partial class Server
 
                 OnUdpMessageSent?.Invoke(msg);
 
-                var packet = MessageBuilder.CreateUdpMessage(msg);
+                var packet = MessageBuilder.CreateUdpMessage(msg, NetworkSide.Server);
 
                 await _udpListener!.SendAsync(packet, packet.Length, client.UdpEndpoint);
             } catch (Exception ex) {
-                Log.Info($"[SERVER UDP] Failed to send to client {client.Id}: {ex.Message}");
+                Log.Server.Info($"[SERVER UDP] Failed to send to client {client.Id}: {ex.Message}");
             }
         }
 

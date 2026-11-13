@@ -84,7 +84,7 @@ public static partial class Client {
             MessageType = type
         };
 
-        byte[] packet = MessageBuilder.CreatePacket(msg);
+        byte[] packet = MessageBuilder.CreatePacket(msg, NetworkSide.Client);
         await _tcpStream.WriteAsync(packet);
     }
     private static async Task<TResult?> RequestDataInternalAsync<TPayload, TResult>(int targetId, MessageType type, TPayload payload, ushort requestId, bool waitForResponse) {
@@ -106,7 +106,7 @@ public static partial class Client {
         if (waitForResponse)
             Requests.Add(requestId);
 
-        byte[] packet = MessageBuilder.CreatePacket(msg, payload);
+        byte[] packet = MessageBuilder.CreatePacket(msg, payload, NetworkSide.Client);
         await _tcpStream.WriteAsync(packet);
 
         if (!waitForResponse)

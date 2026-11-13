@@ -81,6 +81,48 @@ var (syncCode, syncOutput) = ExecuteExtensionMethod(nameof(FireAndForgetProbeMet
 Assert(syncCode == 1, $"Async-only methods must fail without an async key, got {syncCode}.");
 Assert(syncOutput.Contains("can only be called using async key"), $"Unexpected error: {syncOutput}");
 
+// DynTypeNetwork logs are split per side, so a listen server (client and server in one
+// process) can tell them apart and can silence either side independently.
+string networkLogDir = Path.Combine(Path.GetTempPath(), "EdenOnline_SmokeTests_NetworkLogs");
+string clientLogPath = Path.Combine(networkLogDir, "DynTypeNetwork_Client.log");
+string serverLogPath = Path.Combine(networkLogDir, "DynTypeNetwork_Server.log");
+
+// The file logger holds its writer open for the process lifetime, so start from a clean folder.
+try { Directory.Delete(networkLogDir, recursive: true); } catch { }
+
+DynTypeNetwork.Log.ConfigureClient(EdenOnline.Logging.LogFactory.CreateFileLoggerFactory(networkLogDir, "DynTypeNetwork_Client.log"));
+DynTypeNetwork.Log.ConfigureServer(EdenOnline.Logging.LogFactory.CreateFileLoggerFactory(networkLogDir, "DynTypeNetwork_Server.log"));
+
+string ReadLog(string path)
+{
+    using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+    using var reader = new StreamReader(stream);
+    return reader.ReadToEnd();
+}
+
+try
+{
+    DynTypeNetwork.Log.Client.Info("client-side entry");
+    DynTypeNetwork.Log.Server.Info("server-side entry");
+
+    string clientLog = ReadLog(clientLogPath);
+    string serverLog = ReadLog(serverLogPath);
+
+    Assert(clientLog.Contains("client-side entry") && !clientLog.Contains("server-side entry"), "Client log should only contain client-side entries.");
+    Assert(serverLog.Contains("server-side entry") && !serverLog.Contains("client-side entry"), "Server log should only contain server-side entries.");
+
+    DynTypeNetwork.Log.ClientEnabled = false;
+    DynTypeNetwork.Log.Client.Info("client entry while disabled");
+    DynTypeNetwork.Log.Server.Info("server entry while client disabled");
+
+    Assert(!ReadLog(clientLogPath).Contains("client entry while disabled"), "Disabling client logging should stop client log writes.");
+    Assert(ReadLog(serverLogPath).Contains("server entry while client disabled"), "Server logging should keep working while client logging is disabled.");
+}
+finally
+{
+    DynTypeNetwork.Log.ClientEnabled = true;
+}
+
 Console.WriteLine("Smoke tests passed.");
 
 public static class FireAndForgetProbeMethods

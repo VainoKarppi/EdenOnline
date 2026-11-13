@@ -50,13 +50,22 @@ public static partial class ExtensionPlugin
     /// Composition root: wires up the file-backed loggers for every subsystem
     /// this host references. Core initializes itself; ArmaPlugin, DynTypeSerializer
     /// and DynTypeNetwork each get their own log file here.
+    ///
+    /// DynTypeNetwork runs a client and a server half (a listen server runs both
+    /// in this process), so it gets one log file per side. Either side can be
+    /// silenced with <c>DynTypeNetwork.Log.ClientEnabled</c> /
+    /// <c>DynTypeNetwork.Log.ServerEnabled</c> when only one log is wanted.
     /// </summary>
     private static void ConfigureLogging() {
         ArmaLog.Configure(Logging.LogFactory.CreateFileLoggerFactory(Extension.LogFolder, "ArmaPlugin.log"));
 
+        DynTypeNetwork.Log.ConfigureClient(Logging.LogFactory.CreateFileLoggerFactory(Extension.LogFolder, "DynTypeNetwork_Client.log"));
+        DynTypeNetwork.Log.ConfigureServer(Logging.LogFactory.CreateFileLoggerFactory(Extension.LogFolder, "DynTypeNetwork_Server.log"));
+
+        // To keep only the server log while debugging server-side network code:
+        // DynTypeNetwork.Log.ClientEnabled = false;
+
         //DynTypeSerializer.Logging.SerializerLogging.Configure(Logging.LogFactory.CreateFileLoggerFactory(Extension.LogFolder, "DynTypeSerializer.log").CreateLogger("DynTypeSerializer"));
-        
-        //DynTypeNetwork.Log.Configure(Logging.LogFactory.CreateFileLoggerFactory(Extension.LogFolder, "Network.log"));
     }
 
     /// <summary>

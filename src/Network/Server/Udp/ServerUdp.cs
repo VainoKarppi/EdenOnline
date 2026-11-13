@@ -13,14 +13,61 @@ public static partial class Server
 {
     private static UdpClient? _udpListener;
 
-    public static bool IsUdpServerRunning() =>
-        _udpListener != null && _udpListener.Client.IsBound;
+    public static bool IsUdpServerRunning()
+    {
+        var listener = _udpListener;
+        if (listener == null) return false;
+
+        try
+        {
+            var socket = listener.Client;
+            return socket != null && socket.IsBound;
+        }
+        catch (ObjectDisposedException) { return false; }
+        catch (SocketException) { return false; }
+    }
 
     private static void StartUdp(int port)
     {
         _udpListener = new UdpClient(port);
         StartUdpServerReceiveLoop(port);
-        Log.Info("[SERVER] UDP Server started");
+        Log.Server.Info("[SERVER] UDP Server started");
+    }
+
+    /// <summary>
+    /// Returns a usable listener, rebuilding one that was closed or never bound. A disposed
+    /// socket cannot be inspected without throwing, so without this the receive loop would
+    /// spin on a dead socket forever and the server would silently stop receiving UDP.
+    /// </summary>
+    private static UdpClient? EnsureUdpListener(int port)
+    {
+        var listener = _udpListener;
+
+        if (listener != null)
+        {
+            try
+            {
+                var socket = listener.Client;
+                if (socket != null && socket.IsBound) return listener;
+            }
+            catch (ObjectDisposedException) { }
+            catch (SocketException) { }
+        }
+
+        try { listener?.Dispose(); } catch { }
+
+        try
+        {
+            _udpListener = new UdpClient(port);
+            Log.Server.Warning("[SERVER UDP] UDP listener recreated.");
+            return _udpListener;
+        }
+        catch (Exception ex)
+        {
+            Log.Server.Error($"[SERVER UDP] Failed to recreate UDP listener: {ex.Message}");
+            _udpListener = null;
+            return null;
+        }
     }
 
     private static void StartUdpServerReceiveLoop(int port)
@@ -31,27 +78,48 @@ public static partial class Server
             {
                 try
                 {
-                    if (_udpListener == null || !_udpListener.Client.IsBound)
+                    var listener = EnsureUdpListener(port);
+                    if (listener == null)
                     {
-                        try { _udpListener?.Dispose(); } catch { }
-                        _udpListener = new UdpClient(port);
+                        await Task.Delay(1000, _cts.Token);
+                        continue;
                     }
 
-                    var result = await _udpListener.ReceiveAsync(_cts.Token);
+                    var result = await listener.ReceiveAsync(_cts.Token);
 
                     int? senderId = Clients.Values.FirstOrDefault(c => c.UdpEndpoint != null && c.UdpEndpoint.Equals(result.RemoteEndPoint))?.Id;
-                    NetworkMessage msg = MessageBuilder.ReadUdpMessage(result.Buffer, includeData: true, senderId: senderId);
+                    NetworkMessage msg = MessageBuilder.ReadUdpMessage(result.Buffer, NetworkSide.Server, includeData: true, senderId: senderId);
 
                     if (!Clients.TryGetValue(msg.SenderId, out var senderClient)) continue;
 
-                    if (msg.MessageType == MessageType.UdpRegister)
+                    // A client's source port changes when its NAT mapping expires or its socket is
+                    // recreated (network change, sleep/resume). Keep the stored endpoint current,
+                    // otherwise replies and relays keep going to an address that no longer reaches it.
+                    if (senderClient.UdpEndpoint == null || !senderClient.UdpEndpoint.Equals(result.RemoteEndPoint))
                     {
-                        if (senderClient.UdpEndpoint == null || !senderClient.UdpEndpoint.Equals(result.RemoteEndPoint))
+                        // Only accept the change if the packet really decrypts with this client's
+                        // key, so one client cannot redirect another client's traffic by spoofing SenderId.
+                        bool verified;
+                        try
                         {
-                            senderClient.UdpEndpoint = result.RemoteEndPoint;
+                            verified = MessageBuilder.ReadUdpMessage(result.Buffer, NetworkSide.Server, includeData: false, senderId: msg.SenderId) != null;
                         }
-                        continue;
+                        catch (Exception)
+                        {
+                            verified = false;
+                        }
+
+                        if (!verified)
+                        {
+                            Log.Server.Warning($"[SERVER UDP] Ignoring endpoint change for client {msg.SenderId} (sender could not be verified).");
+                            continue;
+                        }
+
+                        Log.Server.Info($"[SERVER UDP] Client {senderClient.Id} UDP endpoint updated: {senderClient.UdpEndpoint?.ToString() ?? "none"} -> {result.RemoteEndPoint}");
+                        senderClient.UdpEndpoint = result.RemoteEndPoint;
                     }
+
+                    if (msg.MessageType == MessageType.UdpRegister) continue;
 
                     if (msg.MessageType != MessageType.Custom) continue;
 
@@ -70,7 +138,7 @@ public static partial class Server
                             }
                             catch (Exception ex)
                             {
-                                Log.Info($"[SERVER UDP] Method execution failed: {ex}");
+                                Log.Server.Info($"[SERVER UDP] Method execution failed: {ex}");
                             }
                         }, _cts.Token);
                     }
@@ -81,7 +149,7 @@ public static partial class Server
                         {
                             if (!Clients.TryGetValue(targetId, out var targetClient) || targetClient.UdpEndpoint == null)
                             {
-                                Log.Info($"[SERVER UDP] Cannot forward, target {targetId} not available.");
+                                Log.Server.Info($"[SERVER UDP] Cannot forward, target {targetId} not available.");
                                 continue;
                             }
 
@@ -94,8 +162,8 @@ public static partial class Server
                                 Payload = msg.Payload
                             };
 
-                            var forwardedPacket = MessageBuilder.CreateUdpMessage(forwardedMsg);
-                            await _udpListener.SendAsync(forwardedPacket.AsMemory(), targetClient.UdpEndpoint, _cts.Token);
+                            var forwardedPacket = MessageBuilder.CreateUdpMessage(forwardedMsg, NetworkSide.Server);
+                            await listener.SendAsync(forwardedPacket.AsMemory(), targetClient.UdpEndpoint, _cts.Token);
                         }
                         continue;
                     }
@@ -109,19 +177,22 @@ public static partial class Server
                 }
                 catch (Exception ex)
                 {
-                    Log.Info($"[SERVER UDP] Receive loop error: {ex.Message}");
+                    Log.Server.Info($"[SERVER UDP] Receive loop error: {ex.Message}");
+
+                    // Back off so a persistent socket error cannot turn into a hot loop that
+                    // starves the rest of the process (including Arma's callback delivery).
+                    try { await Task.Delay(50, _cts.Token); }
+                    catch (OperationCanceledException) { break; }
                 }
             }
 
-            Log.Info("[SERVER UDP] Receive loop stopped.");
+            Log.Server.Info("[SERVER UDP] Receive loop stopped.");
         }, _cts.Token);
     }
 
     private static async Task BroadcastUdp(Connection sender, NetworkMessage message)
     {
-        _cts ??= new CancellationTokenSource();
-
-        foreach (var client in Clients.Values)
+        foreach (var client in Clients.Values.ToArray())
         {
             if (!client.Connected || client.Id == sender.Id || client.UdpEndpoint == null) continue;
 
@@ -134,9 +205,23 @@ public static partial class Server
                 MessageType = MessageType.Custom,
                 Payload = message.Payload
             };
-            var packet = MessageBuilder.CreateUdpMessage(udpMsg, isServerBroadcast: true);
+            var packet = MessageBuilder.CreateUdpMessage(udpMsg, NetworkSide.Server, isServerBroadcast: true);
 
-            await _udpListener!.SendAsync(packet.AsMemory(), client.UdpEndpoint, _cts.Token);
+            try
+            {
+                var listener = _udpListener;
+                if (listener == null) return;
+
+                await listener.SendAsync(packet.AsMemory(), client.UdpEndpoint, _cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                Log.Server.Info($"[SERVER UDP] Failed to broadcast to client {client.Id}: {ex.Message}");
+            }
         }
     }
 }
