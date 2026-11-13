@@ -70,6 +70,7 @@ public static partial class ArmaMethods
 
     private static void RegisterClientAuthentication(string worldname, string armaVersion, object[] modHashes, string password)
     {
+        Debug("[CLIENT] Registering client authentication...");
         Authentication.SetClientAuthentication(() =>
         {
             Debug("[CLIENT] Sending authentication data to server...");

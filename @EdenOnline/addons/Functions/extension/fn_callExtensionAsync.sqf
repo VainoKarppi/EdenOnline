@@ -69,6 +69,7 @@ _return params ["_returnMessage","_returnData"];
 if (_returnMessage == "ERROR") exitWith {
 	EOEX_var_extensionRequests deleteAt _requestId;
 	diag_log formatText ["ERROR: (%1|%2): %3", _function, _requestId, _returnData];
+	diag_log "=========================================================================================";
 	[false, _returnData];
 };
 
@@ -76,7 +77,7 @@ _return = nil;
 
 private _success = false;
 private _startTime = diag_tickTime;
-_returnData = format ["ERROR: (%1|%2): Request timed out!", _function, _requestId];
+_returnData = [format ["ERROR: (%1|%2): Request timed out!", _function, _requestId]];
 
 private _loop = 1;
 while {(diag_tickTime - _startTime) < _timeout} do {
@@ -98,6 +99,7 @@ if !(EOEX_var_DEBUG) then {
 
 if !(_success) exitWith {
 	diag_log formatText ["ERROR: (%1|%2): %3", _function, _requestId, _returnData];
+	diag_log "=========================================================================================";
 	[_success, _returnData]
 };
 

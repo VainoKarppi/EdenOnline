@@ -17,14 +17,12 @@ namespace DynTypeNetwork;
 
 
 
-public static partial class Client
-{
+public static partial class Client {
     private readonly static List<int> Clients = [];
     public static int ClientID;
     private static CancellationTokenSource _cts = new();
 
-    public static async Task<int> ConnectAsync(string host, int port, bool startUdp = false, string? customHash = null)
-    {
+    public static async Task<int> ConnectAsync(string host, int port, bool startUdp = false, string? customHash = null) {
         host = await ResolveIPv4Async(host);
         
         int userId = await ConnectTcp(host, port, customHash);
@@ -33,8 +31,7 @@ public static partial class Client
         return userId;
     }
 
-    private static async Task<string> ResolveIPv4Async(string host)
-    {
+    private static async Task<string> ResolveIPv4Async(string host) {
         if (IPAddress.TryParse(host, out var ip) && ip.AddressFamily == AddressFamily.InterNetwork) {
             return host;
         }
@@ -54,10 +51,8 @@ public static partial class Client
         return Clients;
     }
 
-    private static async Task InvokeEventAsync(Func<Task?>? eventHandler, int timeoutMs = 100)
-    {
-        if (eventHandler == null)
-            return;
+    private static async Task InvokeEventAsync(Func<Task?>? eventHandler, int timeoutMs = 100) {
+        if (eventHandler == null) return;
 
         var timer = TimeSpan.FromMilliseconds(timeoutMs);
 
@@ -69,8 +64,7 @@ public static partial class Client
             .Cast<Task>()
             .ToArray();
 
-        if (tasks.Length == 0)
-            return;
+        if (tasks.Length == 0) return;
 
         await Task.WhenAny(
             Task.WhenAll(tasks),
@@ -78,8 +72,7 @@ public static partial class Client
         );
     }
     
-    private static async Task HandleServerShutdown(DisconnectReason reason)
-    {
+    private static async Task HandleServerShutdown(DisconnectReason reason) {
         // Invoke the shutdown event asynchronously and wait up to 100 ms for it to complete.
         // The event handler may continue running in the background if it exceeds the timeout.
         await InvokeEventAsync(() => OnServerShutdown?.Invoke(reason), 100);
@@ -88,10 +81,8 @@ public static partial class Client
         await DisconnectAsync();
     }
 
-    internal static async Task ResetConnectionStatusAsync()
-    {
-        try
-        {
+    internal static async Task ResetConnectionStatusAsync() {
+        try {
             _cts?.Cancel();
 
             ClientID = 0;
@@ -106,13 +97,13 @@ public static partial class Client
             _udpClient?.Dispose();
             _udpClient = null;
             _udpEndpoint = null;
+
+            Authentication.ClearClientAuthentication();
         } catch {}
     }
 
-    public static async Task DisconnectAsync(DisconnectReason reason = DisconnectReason.ClientDisconnect)
-    {
-        try
-        {
+    public static async Task DisconnectAsync(DisconnectReason reason = DisconnectReason.ClientDisconnect) {
+        try {
             if (IsTcpConnected()) await SendMessageAsync(Server.SERVER_ID, MessageType.ClientDisconnected, null);
 
             await ResetConnectionStatusAsync();

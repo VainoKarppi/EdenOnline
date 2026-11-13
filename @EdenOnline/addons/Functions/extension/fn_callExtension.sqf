@@ -13,7 +13,7 @@ if (_fireAndForget) then {_function = _function + "|-1"};
 
 
 // TODO Temp
-if (_function != "CameraUpdate" && _function != "SetInitialMissionAttributes") then {
+if !(_function in EOEX_var_blackListLogging) then {
 	diag_log "";
 	diag_log "=================================== SENT DATA (SYNC) ====================================";
 	diag_log _function;
@@ -35,7 +35,7 @@ if (isNil "_data") exitWith {};
 if (_return select 0 == "ERROR") exitWith { diag_log formatText ["ERROR: %1", _data select 0] };
 
 
-if (_function != "CameraUpdate" && _function != "SetInitialMissionAttributes") then {
+if !(_function in EOEX_var_blackListLogging) then {
     diag_log "================================= RESPONSE DATA (SYNC) ==================================";
     diag_log _function;
     diag_log (_data select 0);

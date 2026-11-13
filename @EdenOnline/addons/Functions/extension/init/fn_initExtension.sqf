@@ -9,6 +9,7 @@ EOEX_var_eventsReady = false;
 EOEX_var_syncMissionAttributes = true;
 
 EOEX_var_DEBUG = false;
+EOEX_var_blackListLogging = ["CameraUpdate", "SetInitialMissionAttributes", "UpdateObjectDrag"];
 uiNamespace setVariable ["EOEX_var_cameraDrawUpdate", 0.2];
 
 

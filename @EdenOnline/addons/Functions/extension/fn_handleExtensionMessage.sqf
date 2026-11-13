@@ -49,7 +49,7 @@ if (_method == "ASYNC_RESPONSE") then {
 	
 	if (_requestID == -1) exitWith { diag_log "ERROR: Async Key not included in response!" };
 
-	if !(_requestID in EOEX_var_extensionRequests) exitWith { diag_log format ["ERROR: ID %1 not found!", _requestID] };
+	if !(_requestID in EOEX_var_extensionRequests) exitWith {}; // Timeout. Already logged to .RPT
 	
 	EOEX_var_extensionResponses set [_requestID,[_data,_returnCode]];
 	

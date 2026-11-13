@@ -76,6 +76,11 @@ public static class Authentication
         _clientAuthenticationFunc = authenticationFunc;
     }
 
+    public static void ClearClientAuthentication()
+    {
+        _clientAuthenticationFunc = null;
+    }
+
     internal static async Task<object[]?> GetClientAuthenticationAsync()
     {
         if (_clientAuthenticationFunc == null) return null;

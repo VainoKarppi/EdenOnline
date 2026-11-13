@@ -57,8 +57,6 @@ uiSleep 0.5;
 
 private _return = ["Connect",[_host, _port, profileNameSteam, worldName, _gameVersion, _modHashes, _password], false, 5] call EOEX_fnc_callExtensionAsync;
 
-diag_log _return;
-
 if !(_return#0) exitWith {
     endLoadingScreen;
 	[(format ["%1", _return#1#0]), 1, 5] call BIS_fnc_3DENNotification;
