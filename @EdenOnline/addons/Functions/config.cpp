@@ -1,16 +1,14 @@
 class CfgPatches
 {
-	class Scripts
-	{
-		units[] = {};
-		weapons[] = {};
-		requiredAddons[] = { "A3_Functions_F", "3DEN"};
-		requiredVersion = 2.22;
-		author[]= {"Razer"};
-	};
+    class Scripts
+    {
+        units[] = {};
+        weapons[] = {};
+        requiredAddons[] = {"A3_Functions_F", "3DEN"};
+        requiredVersion = 2.22;
+        author[] = {"Razer"};
+    };
 };
-
-
 
 class CfgFunctions
 {
@@ -121,10 +119,6 @@ class CfgFunctions
     };
 };
 
-
-
-
-
 class Cfg3DEN
 {
     class EventHandlers
@@ -146,97 +140,29 @@ class Cfg3DEN
 };
 
 class ctrlMenuStrip;
-class display3DEN
+class Display3DEN
 {
-	onUnload="[1] call EOEX_fnc_disconnect;[""onUnload"",_this,""Display3DEN"",'3DENDisplays'] call (uinamespace getvariable 'BIS_fnc_initDisplay');";
+    onUnload = "[1] call EOEX_fnc_disconnect;\
+    [""onUnload"", _this, ""Display3DEN"", '3DENDisplays'] call (uinamespace getvariable 'BIS_fnc_initDisplay');";
 
-	class Controls
-	{
-		class MenuStrip : ctrlMenuStrip
-		{
-			class Items
-			{
-				class Tools
-				{
-					items[] += {"EOEX_EdenOnline"};
-				};
+    class Controls
+    {
+        class MenuStrip : ctrlMenuStrip
+        {
+            class Items
+            {
+                class Tools
+                {
+                    items[] += {"EOEX_EdenOnline"};
+                };
 
-				class EOEX_EdenOnline
-				{
-					text = "Eden Online";
-					picture = "\a3\3DEN\Data\Controls\ctrlMenu\link_ca.paa"; // TODO
-					action = "[] spawn EOEX_fnc_showConnectDialog;";
-				};
-			};
-		};
-	};
-};
-
-class RscText;
-class RscEdit;
-class RscButton;
-class CfgDialogs {
-
-    class EOEX_ConnectDialog {
-        idd = 5000;
-        movingEnable = 0;
-        enableSimulation = 1;
-
-        class controlsBackground {
-            class Background: RscText {
-                x = 0.35; y = 0.35;
-                w = 0.3;  h = 0.25;
-                colorBackground[] = {0,0,0,0.7};
-            };
-
-            class Title: RscText {
-                text = "Start Server";
-                x = 0.35; y = 0.32;
-                w = 0.3; h = 0.03;
-                colorBackground[] = {0,0,0,0};
-            };
-
-            class PortLabel: RscText {
-                text = "Port:";
-                x = 0.37; y = 0.40;
-                w = 0.1; h = 0.03;
-                colorBackground[] = {0,0,0,0};
-            };
-
-            class PasswordLabel: RscText {
-                text = "Password:";
-                x = 0.37; y = 0.45;
-                w = 0.1; h = 0.03;
-                colorBackground[] = {0,0,0,0};
-            };
-        };
-
-        class controls {
-            class PortEdit: RscEdit {
-                idc = 5001;
-                x = 0.47; y = 0.40;
-                w = 0.15; h = 0.03;
-                text = "2302";
-            };
-
-            class PasswordEdit: RscEdit {
-                idc = 5002;
-                x = 0.47; y = 0.45;
-                w = 0.15; h = 0.03;
-            };
-
-            class ConnectButton: RscButton {
-                text = "Connect";
-                x = 0.37; y = 0.52;
-                w = 0.12; h = 0.04;
-                action = "[] call EOEX_fnc_onConnect;";
-            };
-
-            class CancelButton: RscButton {
-                text = "Cancel";
-                x = 0.50; y = 0.52;
-                w = 0.12; h = 0.04;
-                action = "closeDialog 0;";
+                class EOEX_EdenOnline
+                {
+                    text = "Eden Online";
+                    picture = "\a3\3DEN\Data\Displays\Display3DEN\StatusBar\server_ca.paa";
+                    action = "call EOEX_fnc_showConnectDialog;";
+                    opensNewWindow = 1;
+                };
             };
         };
     };
