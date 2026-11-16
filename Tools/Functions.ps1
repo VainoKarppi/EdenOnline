@@ -392,7 +392,10 @@ function Run-CallExtension {
 }
 
 function Pack-Addons {
-    param ($modFolder)
+    param (
+        $modFolder,
+        [string]$ToolsDirectory
+    )
 
     # Path to Addon Builder (change this if using PBOProject)
     $addonBuilderPath = (Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Bohemia Interactive\AddonBuilder" -ErrorAction Stop).path
@@ -423,7 +426,13 @@ function Pack-Addons {
 
         Write-Host "Packing addon: $sourceAddonFolder" -ForegroundColor Yellow
 
-        & "$addonBuilderPath\AddonBuilder.exe" "$sourceAddonFolder" "$addonFolder" -packonly
+        $addonBuilderArgs = @("$sourceAddonFolder", "$addonFolder", "-packonly")
+
+        if ($ToolsDirectory) {
+            $addonBuilderArgs += "-toolsDirectory=$ToolsDirectory"
+        }
+
+        & "$addonBuilderPath\AddonBuilder.exe" @addonBuilderArgs
 
         # Verify if the PBO file was created
         # Check process exit code
