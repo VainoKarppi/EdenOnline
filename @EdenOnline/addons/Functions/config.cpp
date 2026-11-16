@@ -32,6 +32,20 @@ class CfgFunctions
             class init3DENEvents {};
         };
 
+        class Functions_3DEN_Events {
+            file = "z\eoex\addons\functions\3denEvents";
+
+            class init {};
+            class onTerrainNew {};
+            class onBeforeMissionPreview {};
+            class onMissionPreviewEnd {};
+            class onMissionLoad {};
+            class onMissionNew {};
+            class onMissionPreview {};
+            class onMissionSave {};
+            class onMissionAutoSave {};
+        };
+
         class Functions_Objects_Helpers {
             file = "z\eoex\addons\functions\objects\helpers";
 
@@ -127,14 +141,15 @@ class Cfg3DEN
         {
             // TODO Set these
             // TODO Run disconnect when exiting from 3DEN
-            init = "call EOEX_fnc_initExtension";
-            onTerrainNew = "[1] call EOEX_fnc_disconnect; call EOEX_fnc_initExtension";
-            OnMissionPreviewEnd = "call EOEX_fnc_initExtension";
-            onMissionLoad = "diag_log str([3])";
-            onMissionNew = "call EOEX_fnc_initExtension";
-            onMissionPreview = "diag_log str([5])";
-            onMissionSave = "diag_log str([6])";
-            onMissionAutoSave = "diag_log str([7])";
+            init = "call EOEX_fnc_init";
+            onBeforeMissionPreview = "call EOEX_fnc_onBeforeMissionPreview";
+            onMissionAutoSave = "call EOEX_fnc_onMissionAutoSave";
+            onMissionLoad = "call EOEX_fnc_onMissionLoad";
+            onMissionNew = "call EOEX_fnc_onMissionNew";
+            onMissionPreview = "call EOEX_fnc_onMissionPreview";
+            OnMissionPreviewEnd = "call EOEX_fnc_onMissionPreviewEnd";
+            onMissionSave = "call EOEX_fnc_onMissionSave";
+            onTerrainNew = "call EOEX_fnc_onTerrainNew";
         };
     };
 };
