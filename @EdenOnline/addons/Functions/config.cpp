@@ -10,6 +10,14 @@ class CfgPatches
     };
 };
 
+class CfgCommands
+{
+    allowedHTMLLoadURIs[] +=
+    {
+        "https://github.com/VainoKarppi/EdenOnline/*"
+    };
+};
+
 class CfgFunctions
 {
     class EdenOnline {
@@ -151,9 +159,9 @@ class Display3DEN
         {
             class Items
             {
-                class Tools
+                items[] +=
                 {
-                    items[] += {"EOEX_EdenOnline"};
+                    "EOEX_EdenOnline"
                 };
 
                 class EOEX_EdenOnline
@@ -161,6 +169,34 @@ class Display3DEN
                     text = "Eden Online";
                     picture = "\a3\3DEN\Data\Displays\Display3DEN\StatusBar\server_ca.paa";
                     action = "call EOEX_fnc_showConnectDialog;";
+                    opensNewWindow = 1;
+                    items[] +=
+                    {
+                        "EOEX_EdenOnline_ConnectionDialog",
+                        "Separator",
+                        "EOEX_EdenOnline_ReportIssue",
+                        "EOEX_EdenOnline_GitHub"
+                    };
+                };
+                class EOEX_EdenOnline_ConnectionDialog
+                {
+                    text = "Open Connection UI";
+                    picture = "\a3\3DEN\Data\Displays\Display3DEN\StatusBar\server_ca.paa";
+                    action = "call EOEX_fnc_showConnectDialog;";
+                    opensNewWindow = 1;
+                };
+                class EOEX_EdenOnline_ReportIssue
+                {
+                    text = "Report an Issue";
+                    picture = "\a3\3DEN\Data\Controls\ctrlMenu\link_ca.paa";
+                    weblink = "https://github.com/VainoKarppi/EdenOnline/issues/new";
+                    opensNewWindow = 1;
+                };
+                class EOEX_EdenOnline_GitHub
+                {
+                    text = "GitHub";
+                    picture = "\a3\3DEN\Data\Controls\ctrlMenu\link_ca.paa";
+                    weblink = "https://github.com/VainoKarppi/EdenOnline";
                     opensNewWindow = 1;
                 };
             };
