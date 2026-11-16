@@ -1,67 +1,54 @@
 // EOEX_fnc_disconnect
 
-// 0 == server shutdown
-// 1 == user shutdown
+#define SERVER_SHUTDOWN 0
+#define USER_SHUTDOWN 1
 
-params [["_type",1],["_reason",""]];
+params [["_type", USER_SHUTDOWN], ["_reason", ""]];
 
-if (missionNamespace getVariable ["EOEX_var_Connected",false]) then {
-	diag_log "Disconnecting from 3DEN Online...";
+if (missionNamespace getVariable ["EOEX_var_Connected", false]) then {
+    diag_log "Disconnecting from 3DEN Online...";
 };
 
 // Call Disconnect. Dont disconnect for real, when using DEBUg. This allows us to rejoin as a "second" person to server.
-if (missionNamespace getVariable ["EOEX_var_Connected",false] && !(missionNamespace getVariable ["EOEX_var_DEBUG",false])) then {
-	// Fire-and-forget, sent from the calling context. Disconnect is often triggered from an unscheduled
-	// context (e.g. Display3DEN onUnload when leaving the editor back to the main menu) where a spawned
-	// thread is never executed, because the editor (and its SQF scheduler) is torn down immediately.
-	["Disconnect", [], true] call EOEX_fnc_callExtensionAsync; // Disconnect can only be called using async key!
+if (missionNamespace getVariable ["EOEX_var_Connected", false] && !(missionNamespace getVariable ["EOEX_var_DEBUG", false])) then {
+    // Fire-and-forget, sent from the calling context. Disconnect is often triggered from an unscheduled
+    // context (e.g. Display3DEN onUnload when leaving the editor back to the main menu) where a spawned
+    // thread is never executed, because the editor (and its SQF scheduler) is torn down immediately.
+    ["Disconnect", [], true] call EOEX_fnc_callExtensionAsync; // Disconnect can only be called using async key!
 };
 
 // Re-enable Play buttons
 [true] call EOEX_fnc_togglePlayButtons;
 
 // variables
-missionNamespace setVariable ["EOEX_var_clientID",nil];
+missionNamespace setVariable ["EOEX_var_clientID", nil];
 missionNamespace setVariable ["EOEX_var_IsHost", false];
 missionNamespace setVariable ["EOEX_var_extensionResponse", []];
 missionNamespace setVariable ["EOEX_var_extensionIDs", []];
 
 // Remove player list
-ctrlDelete (uiNamespace getVariable ["EOEX_var_PlayerListDialog",controlNull]);
-uiNamespace setVariable ["EOEX_var_PlayerListDialog",nil];
-
+ctrlDelete (uiNamespace getVariable ["EOEX_var_PlayerListDialog", controlNull]);
+uiNamespace setVariable ["EOEX_var_PlayerListDialog", nil];
 
 // Remove camera object draws
 ["EOEX_var_CameraDrawEvent", "onEachFrame"] call BIS_fnc_removeStackedEventHandler;
 ((findDisplay 313) displayCtrl 51) ctrlRemoveEventHandler ["Draw", missionNamespace getVariable ["EOEX_var_MAPCTRL", -1]];
 
-if (missionNamespace getVariable ["EOEX_var_Connected",false]) then {
-	// If there is no reason, it was successful
-	if (_reason == "") then {
-		if (_type == 0) then {
-			["Server was shutdown!",0,5] call BIS_fnc_3DENNotification;
-		} else {
-			["You disconnected!",0,5] call BIS_fnc_3DENNotification;
-		};
-	} else {
-		if (_type == 0) then {
-			[format ["Server was shutdown! Reason: %1", _reason], 1, 5] call BIS_fnc_3DENNotification;
-		} else {
-			[format ["You disconnected! Reason: %1", _reason], 1, 5] call BIS_fnc_3DENNotification;
-		};
-	};
+if (missionNamespace getVariable ["EOEX_var_Connected", false]) then {
+    // If there is no reason, it was successful
+    if (_reason == "") then {
+        if (_type == SERVER_SHUTDOWN) then {
+            ["Server was shutdown!", 0, 5] call BIS_fnc_3DENNotification;
+        } else {
+            ["You disconnected!", 0, 5] call BIS_fnc_3DENNotification;
+        };
+    } else {
+        if (_type == SERVER_SHUTDOWN) then {
+            [format ["Server was shutdown! Reason: %1", _reason], 1, 5] call BIS_fnc_3DENNotification;
+        } else {
+            [format ["You disconnected! Reason: %1", _reason], 1, 5] call BIS_fnc_3DENNotification;
+        };
+    };
 };
 
-missionNamespace setVariable ["EOEX_var_Connected",false];
-
-/*
-test = false;
-[] spawn {
-	while {test} do {
-		_list = (uinamespace getvariable ["bis_fnc_3DENControlsHint_place",[""]]);
-		if !(_list isEqualTo [""]) then {
-			systemChat str(_list);
-		}
-	};
-};
-*/
+missionNamespace setVariable ["EOEX_var_Connected", false];
