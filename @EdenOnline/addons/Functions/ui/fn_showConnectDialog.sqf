@@ -1,199 +1,229 @@
+#include "\a3\3den\ui\resincl.inc"
+#include "\a3\3den\ui\macros.inc"
+
 // EOEX_fnc_showConnectDialog
-0 spawn { 
-    disableSerialization; 
- 
-    // Create empty display 
-    _display = (if (is3DEN) then {findDisplay 313} else {[] call BIS_fnc_displayMission}) createDisplay "RscDisplayEmpty"; 
-    
-    if !(missionNamespace getVariable ["EOEX_var_Connected", false]) then {
-        // Background
-        _bg = _display ctrlCreate ["RscText", -1];
-        _bg ctrlSetPosition [0.3, 0.25, 0.42, 0.48];
-        _bg ctrlSetBackgroundColor [0,0,0,0.8];
-        _bg ctrlCommit 0;
+disableSerialization;
 
-        // Title
-        _title = _display ctrlCreate ["RscText", -1];
-        _title ctrlSetPosition [0.3, 0.27, 0.4, 0.04];
-        _title ctrlSetText "Server Settings";
-        _title ctrlSetBackgroundColor [0,0,0,0];
-        _title ctrlSetFont "PuristaMedium";
-        _title ctrlCommit 0;
+// Create empty display
+private _display = (if (is3DEN) then {findDisplay IDD_DISPLAY3DEN} else {[] call BIS_fnc_displayMission}) createDisplay "RscDisplayEmpty";
 
-        // Host label
-        _ipLabel = _display ctrlCreate ["RscText", -1];
-        _ipLabel ctrlSetPosition [0.32, 0.34, 0.12, 0.04];
-        _ipLabel ctrlSetText "Host:";
-        _ipLabel ctrlSetBackgroundColor [0,0,0,0];
-        _ipLabel ctrlSetFont "PuristaMedium";
-        _ipLabel ctrlCommit 0;
+uiNamespace setVariable ["EOEX_ConnectDialog_Display", _display];
 
-        // Host edit
-        private _lastIp = profileNamespace getVariable ["EOEX_fnc_lastConnect","127.0.0.1"];
-        _hostEdit = _display ctrlCreate ["RscEdit", 645];
-        _hostEdit ctrlSetPosition [0.45, 0.34, 0.2, 0.05];
-        _hostEdit ctrlSetBackgroundColor [0,0,0,1];
-        _hostEdit ctrlSetText _lastIp;
-        _hostEdit ctrlSetFont "PuristaMedium";
-        _hostEdit ctrlCommit 0;
+// Title
+private _title = _display ctrlCreate ["ctrlStaticTitle", -1];
+_title ctrlSetPosition
+[
+    CENTER_X - 0.5 * 80 * GRID_W,
+    CENTER_Y - 60 * GRID_H,
+    80 * GRID_W,
+    5 * GRID_H
+];
 
-        // Port label
-        _portLabel = _display ctrlCreate ["RscText", -1];
-        _portLabel ctrlSetPosition [0.32, 0.40, 0.12, 0.04];
-        _portLabel ctrlSetText "Port:";
-        _portLabel ctrlSetBackgroundColor [0,0,0,0];
-        _portLabel ctrlSetFont "PuristaMedium";
-        _portLabel ctrlCommit 0;
+_title ctrlSetText "Server Settings";
 
-        // Port edit
-        private _lastPort = profileNamespace getVariable ["EOEX_fnc_lastPort","2302"];
-        _portEdit = _display ctrlCreate ["RscEdit", 646];
-        _portEdit ctrlSetPosition [0.45, 0.40, 0.2, 0.05];
-        _portEdit ctrlSetBackgroundColor [0,0,0,1];
-        _portEdit ctrlSetText _lastPort;
-        _portEdit ctrlSetFont "PuristaMedium";
-        _portEdit ctrlCommit 0;
+// Background
+private _bg = _display ctrlCreate ["ctrlStaticBackground", -1];
+_bg ctrlSetPosition
+[
+    CENTER_X - 0.5 * 80 * GRID_W,
+    CENTER_Y - 55 * GRID_H,
+    80 * GRID_W,
+    26 * GRID_H
+];
 
-        // Password label
-        _passLabel = _display ctrlCreate ["RscText", -1];
-        _passLabel ctrlSetPosition [0.32, 0.46, 0.12, 0.04];
-        _passLabel ctrlSetText "Password:";
-        _passLabel ctrlSetBackgroundColor [0,0,0,0];
-        _passLabel ctrlSetFont "PuristaMedium";
-        _passLabel ctrlCommit 0;
+// Footer
+private _footer = _display ctrlCreate ["ctrlStaticFooter", -1];
+_footer ctrlSetPosition
+[
+    CENTER_X - 0.5 * 80 * GRID_W,
+    CENTER_Y - 36 * GRID_H,
+    80 * GRID_W,
+    7 * GRID_H
+];
 
-        // Password edit
-        _passEdit = _display ctrlCreate ["RscEdit", 647];
-        _passEdit ctrlSetPosition [0.45, 0.46, 0.2, 0.05];
-        _passEdit ctrlSetBackgroundColor [0,0,0,1];
-        _passEdit ctrlSetText "";
-        _passEdit ctrlSetFont "PuristaMedium";
-        _passEdit ctrlCommit 0;
+// Host label
+private _ipLabel = _display ctrlCreate ["ctrlStatic", -1];
+_ipLabel ctrlSetPosition
+[
+    CENTER_X - 0.5 * 80 * GRID_W,
+    CENTER_Y - 55 * GRID_H,
+    35 * GRID_W,
+    7 * GRID_H
+];
+_ipLabel ctrlSetText "Host:";
 
-        // Connect button
-        _connectBtn = _display ctrlCreate ["RscButton", 648];
-        _connectBtn ctrlSetPosition [0.32, 0.54, 0.18, 0.06];
-        _connectBtn ctrlSetText "Connect";
-        _connectBtn ctrlSetFont "PuristaMedium";
-        _connectBtn ctrlCommit 0;
+// Host edit
+private _lastIp = profileNamespace getVariable ["EOEX_fnc_lastConnect", "127.0.0.1"];
+_hostEdit = _display ctrlCreate ["ctrlEdit", -1];
+_hostEdit ctrlSetPosition
+[
+    CENTER_X + 0.5 * 80 * GRID_W - (36 + 1) * GRID_W,
+    CENTER_Y - (55 - 1) * GRID_H,
+    36 * GRID_W,
+    5 * GRID_H
+];
+_hostEdit ctrlSetText _lastIp;
 
-        // Host button
-        _hostBtn = _display ctrlCreate ["RscButton", 649];
-        _hostBtn ctrlSetPosition [0.52, 0.54, 0.18, 0.06];
-        _hostBtn ctrlSetText "Host Server";
-        _hostBtn ctrlSetFont "PuristaMedium";
-        _hostBtn ctrlCommit 0;
+// Port label
+private _portLabel = _display ctrlCreate ["ctrlStatic", -1];
+_portLabel ctrlSetPosition
+[
+    CENTER_X - 0.5 * 80 * GRID_W,
+    CENTER_Y - (55 - 6) * GRID_H,
+    35 * GRID_W,
+    7 * GRID_H
+];
+_portLabel ctrlSetText "Port:";
 
-        // Cancel button
-        _cancelBtn = _display ctrlCreate ["RscButton", 650];
-        _cancelBtn ctrlSetPosition [0.42, 0.62, 0.18, 0.06];
-        _cancelBtn ctrlSetText "Cancel";
-        _cancelBtn ctrlSetFont "PuristaMedium";
-        _cancelBtn ctrlCommit 0;
+// Port edit
+private _lastPort = profileNamespace getVariable ["EOEX_fnc_lastPort", "2302"];
+_portEdit = _display ctrlCreate ["ctrlEdit", -1];
+_portEdit ctrlSetPosition
+[
+    CENTER_X + 0.5 * 80 * GRID_W - (36 + 1) * GRID_W,
+    CENTER_Y - (55 - 1 - 6) * GRID_H,
+    36 * GRID_W,
+    5 * GRID_H
+];
+_portEdit ctrlSetText _lastPort;
 
+// Password label
+private _passLabel = _display ctrlCreate ["ctrlStatic", -1];
+_passLabel ctrlSetPosition
+[
+    CENTER_X - 0.5 * 80 * GRID_W,
+    CENTER_Y - (55 - 6 - 6) * GRID_H,
+    35 * GRID_W,
+    7 * GRID_H
+];
+_passLabel ctrlSetText "Password:";
 
-        uiNamespace setVariable ["EOEX_ConnectDialog_HostEdit", _hostEdit];
-        uiNamespace setVariable ["EOEX_ConnectDialog_PortEdit", _portEdit];
-        uiNamespace setVariable ["EOEX_ConnectDialog_PassEdit", _passEdit];
+// Password edit
+private _passEdit = _display ctrlCreate ["ctrlEdit", -1];
+_passEdit ctrlSetPosition
+[
+    CENTER_X + 0.5 * 80 * GRID_W - (36 + 1) * GRID_W,
+    CENTER_Y - (55 - 1 - 6 - 6) * GRID_H,
+    36 * GRID_W,
+    5 * GRID_H
+];
 
-        // Button actions
-        _connectBtn ctrlAddEventHandler ["ButtonClick", {
-            if (isNil "EOEX_fnc_initExtension") exitWith {
-                [(format ["%1", "EdenOnline EOEX_fnc_initExtension function not found!"]), 1, 5] call BIS_fnc_3DENNotification;
-            };
+// Connect button
+private _connectBtn = _display ctrlCreate ["ctrlButton", -1];
+_connectBtn ctrlSetPosition
+[
+    CENTER_X - 0.5 * 25 * GRID_W,
+    CENTER_Y - 35 * GRID_H,
+    25 * GRID_W,
+    5 * GRID_H
+];
+_connectBtn ctrlSetText "Connect";
 
-            private _initialized = call EOEX_fnc_initExtension;
-            if !(_initialized) exitWith {
-                [(format ["%1", "EdenOnline extension failed to initialize. Please check the RPT log for details."]), 1, 5] call BIS_fnc_3DENNotification;
-            };
-            
-            private _hostCtrl = uiNamespace getVariable "EOEX_ConnectDialog_HostEdit";
-            private _portCtrl = uiNamespace getVariable "EOEX_ConnectDialog_PortEdit";
-            private _passCtrl = uiNamespace getVariable "EOEX_ConnectDialog_PassEdit";
-            
-            private _host = ctrlText _hostCtrl;
-            private _port = parseNumber (ctrlText _portCtrl);
-            private _password = ctrlText _passCtrl;
+// Host button
+private _hostBtn = _display ctrlCreate ["ctrlButton", -1];
+_hostBtn ctrlSetPosition
+[
+    CENTER_X - 0.5 * 80 * GRID_W + 1 * GRID_W,
+    CENTER_Y - 35 * GRID_H,
+    25 * GRID_W,
+    5 * GRID_H
+];
+_hostBtn ctrlSetText "Host Server";
 
-            [_host, _port, _password] spawn EOEX_fnc_connect;
+// Cancel button
+private _cancelBtn = _display ctrlCreate ["ctrlButtonCancel", 1];
+_cancelBtn ctrlSetPosition
+[
+    CENTER_X + 0.5 * 80 * GRID_W - (26 * GRID_W),
+    CENTER_Y - 35 * GRID_H,
+    25 * GRID_W,
+    5 * GRID_H
+];
+_cancelBtn ctrlSetText "Cancel";
 
-            profileNamespace setVariable ["EOEX_fnc_lastConnect", _host];
-            profileNamespace setVariable ["EOEX_fnc_lastPort", str(_port)];
-            saveProfileNamespace;
-    
-            _display = (if (is3DEN) then {findDisplay 313} else {[] call BIS_fnc_displayMission}) createDisplay "RscDisplayEmpty";
-    
-            _display closeDisplay 0;
-        }]; 
-    
-        _hostBtn ctrlAddEventHandler ["ButtonClick", {
-            // Check if EdenOnline extension is initialized. If not initialize. If it fails, exit with error message.
-            if (isNil "EOEX_fnc_initExtension") exitWith {
-                [(format ["%1", "EdenOnline EOEX_fnc_initExtension function not found!"]), 1, 5] call BIS_fnc_3DENNotification;
-            };
+uiNamespace setVariable ["EOEX_ConnectDialog_HostEdit", _hostEdit];
+uiNamespace setVariable ["EOEX_ConnectDialog_PortEdit", _portEdit];
+uiNamespace setVariable ["EOEX_ConnectDialog_PassEdit", _passEdit];
 
-            private _initialized = call EOEX_fnc_initExtension;
-            if !(_initialized) exitWith {
-                [(format ["%1", "EdenOnline extension failed to initialize. Please check the RPT log for details."]), 1, 5] call BIS_fnc_3DENNotification;
-            };
+// Button actions
+_connectBtn ctrlAddEventHandler ["ButtonClick", {
+    if (isNil "EOEX_fnc_initExtension") exitWith {
+        [(format ["%1", "EdenOnline EOEX_fnc_initExtension function not found!"]), 1, 5] call BIS_fnc_3DENNotification;
+    };
 
-            private _portCtrl = uiNamespace getVariable "EOEX_ConnectDialog_PortEdit";
-            private _passCtrl = uiNamespace getVariable "EOEX_ConnectDialog_PassEdit";
-            private _port = parseNumber (ctrlText _portCtrl);
-            private _password = ctrlText _passCtrl;
+    private _initialized = call EOEX_fnc_initExtension;
+    if !(_initialized) exitWith {
+        [(format ["%1", "EdenOnline extension failed to initialize. Please check the RPT log for details."]), 1, 5] call BIS_fnc_3DENNotification;
+    };
 
-            [_port, _password] spawn EOEX_fnc_startServer;
+    private _hostCtrl = uiNamespace getVariable "EOEX_ConnectDialog_HostEdit";
+    private _portCtrl = uiNamespace getVariable "EOEX_ConnectDialog_PortEdit";
+    private _passCtrl = uiNamespace getVariable "EOEX_ConnectDialog_PassEdit";
 
-            _display = (if (is3DEN) then {findDisplay 313} else {[] call BIS_fnc_displayMission}) createDisplay "RscDisplayEmpty";
-    
-            _display closeDisplay 0;
-        }]; 
-    
-        _cancelBtn ctrlAddEventHandler ["ButtonClick", {
-            _display = (if (is3DEN) then {findDisplay 313} else {[] call BIS_fnc_displayMission}) createDisplay "RscDisplayEmpty";
-    
-            _display closeDisplay 0;
-        }];
-    } else {
-        // Background
-        _bg = _display ctrlCreate ["RscText", -1];
-        _bg ctrlSetPosition [0.3, 0.25, 0.42, 0.48];
-        _bg ctrlSetBackgroundColor [0,0,0,0.8];
-        _bg ctrlCommit 0;
+    private _host = ctrlText _hostCtrl;
+    private _port = parseNumber (ctrlText _portCtrl);
+    private _password = ctrlText _passCtrl;
 
+    [_host, _port, _password] spawn EOEX_fnc_connect;
 
-        // Host button
-        _disconnectBtn = _display ctrlCreate ["RscButton", 649];
-        _disconnectBtn ctrlSetPosition [0.52, 0.54, 0.18, 0.06];
-        _disconnectBtn ctrlSetText "Disconnect";
-        _disconnectBtn ctrlSetFont "PuristaMedium";
-        _disconnectBtn ctrlCommit 0;
+    profileNamespace setVariable ["EOEX_fnc_lastConnect", _host];
+    profileNamespace setVariable ["EOEX_fnc_lastPort", str(_port)];
+    saveProfileNamespace;
 
-        // Cancel button
-        _cancelBtn = _display ctrlCreate ["RscButton", 650];
-        _cancelBtn ctrlSetPosition [0.42, 0.62, 0.18, 0.06];
-        _cancelBtn ctrlSetText "Cancel";
-        _cancelBtn ctrlSetFont "PuristaMedium";
-        _cancelBtn ctrlCommit 0;
+    (uiNamespace getVariable ["EOEX_ConnectDialog_Display", displayNull]) closeDisplay 0;
+}];
 
-        _disconnectBtn ctrlAddEventHandler ["ButtonClick", {
-            
-            private _isHost = missionNamespace getVariable ["EOEX_var_IsHost", false];
-            if (_isHost) then {
-                [0] spawn EOEX_fnc_disconnect;
-            } else {
-                [1] spawn EOEX_fnc_disconnect;
-            };
+_hostBtn ctrlAddEventHandler ["ButtonClick", {
+    // Check if EdenOnline extension is initialized. If not initialize. If it fails, exit with error message.
+    if (isNil "EOEX_fnc_initExtension") exitWith {
+        [(format ["%1", "EdenOnline EOEX_fnc_initExtension function not found!"]), 1, 5] call BIS_fnc_3DENNotification;
+    };
 
-            _display = (if (is3DEN) then {findDisplay 313} else {[] call BIS_fnc_displayMission}) createDisplay "RscDisplayEmpty";
+    private _initialized = call EOEX_fnc_initExtension;
+    if !(_initialized) exitWith {
+        [(format ["%1", "EdenOnline extension failed to initialize. Please check the RPT log for details."]), 1, 5] call BIS_fnc_3DENNotification;
+    };
 
-            _display closeDisplay 0;
-        }]; 
+    private _portCtrl = uiNamespace getVariable "EOEX_ConnectDialog_PortEdit";
+    private _passCtrl = uiNamespace getVariable "EOEX_ConnectDialog_PassEdit";
+    private _port = parseNumber (ctrlText _portCtrl);
+    private _password = ctrlText _passCtrl;
 
-        _cancelBtn ctrlAddEventHandler ["ButtonClick", {
-            _display = (if (is3DEN) then {findDisplay 313} else {[] call BIS_fnc_displayMission}) createDisplay "RscDisplayEmpty";
-    
-            _display closeDisplay 0;
-        }];
-    }
+    [_port, _password] spawn EOEX_fnc_startServer;
+
+    (uiNamespace getVariable ["EOEX_ConnectDialog_Display", displayNull]) closeDisplay 0;
+}];
+
+if (missionNamespace getVariable ["EOEX_var_Connected", false]) then {
+
+    allControls _display apply {
+        if (ctrlType _x == ctrlType _passEdit) then
+        {
+            _x ctrlEnable false;
+        };
+    };
+    _connectBtn ctrlShow false;
+    _hostBtn ctrlShow false;
+
+    _disconnectBtn = _display ctrlCreate ["ctrlButton", -1];
+    _disconnectBtn ctrlSetPosition
+    [
+        CENTER_X - 0.5 * 25 * GRID_W,
+        CENTER_Y - 35 * GRID_H,
+        25 * GRID_W,
+        5 * GRID_H
+    ];
+    _disconnectBtn ctrlSetText "Disconnect";
+
+    _disconnectBtn ctrlAddEventHandler ["ButtonClick", {
+        private _isHost = missionNamespace getVariable ["EOEX_var_IsHost", false];
+        if (_isHost) then {
+            [0] spawn EOEX_fnc_disconnect;
+        } else {
+            [1] spawn EOEX_fnc_disconnect;
+        };
+        (uiNamespace getVariable ["EOEX_ConnectDialog_Display", displayNull]) closeDisplay 0;
+    }];
 };
+
+allControls _display apply {_x ctrlCommit 0};
