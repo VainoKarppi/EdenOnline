@@ -199,9 +199,10 @@ function Build-Project {
     # Write or overwrite linker.xml file in the project folder
     Set-Content -Path $linkerXmlPath -Value $linkerXmlContent -Encoding UTF8
     
+    $currentHash = Compute-ProjectHash
+
     # Check if the destination path is provided and the update hash file
     if (-not $destinationPath) {
-        $currentHash = Compute-ProjectHash
         if (Test-Path -Path $hashFilePath) {
             $previousHash = Get-Content -Path $hashFilePath
             if ($previousHash -eq $currentHash.Hash) {
@@ -268,6 +269,27 @@ function Build-Project {
         return $true
     } else {
         Write-Host "Build failed." -ForegroundColor Red
+        
+        # Check if this is a platform linker error (NativeAOT prerequisite issue)
+        $buildOutput = $stdOut + $stdErr
+        if ($buildOutput -match "Platform linker not found") {
+            Write-Host ""
+            Write-Host "========================================================" -ForegroundColor Yellow -BackgroundColor DarkRed
+            Write-Host "  MISSING C++ BUILD TOOLS - ACTION REQUIRED!" -ForegroundColor Yellow -BackgroundColor DarkRed
+            Write-Host "========================================================" -ForegroundColor Yellow -BackgroundColor DarkRed
+            Write-Host ""
+            Write-Host "The NativeAOT compiler requires the C++ Desktop Development workload." -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "Please run the following command in your terminal:" -ForegroundColor Cyan
+            Write-Host ""
+            Write-Host "winget install --id Microsoft.VisualStudio.2022.BuildTools --override ""--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended""" -ForegroundColor White -BackgroundColor DarkBlue
+            Write-Host ""
+            Write-Host "After the installation completes, CLOSE and RESTART your terminal." -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "========================================================" -ForegroundColor Yellow -BackgroundColor DarkRed
+            Write-Host ""
+        }
+        
         return $false
     }
 }
@@ -370,7 +392,10 @@ function Run-CallExtension {
 }
 
 function Pack-Addons {
-    param ($modFolder)
+    param (
+        $modFolder,
+        [string]$ToolsDirectory
+    )
 
     # Path to Addon Builder (change this if using PBOProject)
     $addonBuilderPath = (Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Bohemia Interactive\AddonBuilder" -ErrorAction Stop).path
@@ -401,7 +426,13 @@ function Pack-Addons {
 
         Write-Host "Packing addon: $sourceAddonFolder" -ForegroundColor Yellow
 
-        & "$addonBuilderPath\AddonBuilder.exe" "$sourceAddonFolder" "$addonFolder" -packonly
+        $addonBuilderArgs = @("$sourceAddonFolder", "$addonFolder", "-packonly")
+
+        if ($ToolsDirectory) {
+            $addonBuilderArgs += "-toolsDirectory=$ToolsDirectory"
+        }
+
+        & "$addonBuilderPath\AddonBuilder.exe" @addonBuilderArgs
 
         # Verify if the PBO file was created
         # Check process exit code
@@ -454,7 +485,7 @@ function Watch-ExtensionLog {
                 return
             }
 
-            $newLog = Get-ChildItem -Path $logFolder -Filter "*.log" |
+            $newLog = Get-ChildItem -Path $logFolder -Filter "ArmaPlugin.log" |
                       Sort-Object LastWriteTime -Descending |
                       Select-Object -First 1
 
@@ -571,7 +602,7 @@ function Start-Arma {
 
         # Start Arma 3 with the mod in windowed mode
         $armaExe = "$armaPath\arma3_x64.exe"
-        $launchArgs = "-window -mod=$modFolder -noBattleEye -nosplash -skipIntro -noPause -enableHT -hugePages"
+        $launchArgs = "-window -mod=$modFolder -noBattleEye -nosplash -skipIntro -noPause -enableHT -hugePages -filePatching"
 
         Write-Host "Launching Arma 3..." -ForegroundColor Green
         Start-Process -FilePath $armaExe -ArgumentList $launchArgs -NoNewWindow
@@ -581,4 +612,96 @@ function Start-Arma {
         Write-Host "Arma 3 path not found or invalid!: ($armaPath)" -ForegroundColor Red
         return $false
     }
+}
+
+
+
+function Add-SQFFunctionTags {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$ModFolder
+    )
+
+    if (-not (Test-Path -LiteralPath $ModFolder -PathType Container)) {
+        throw "Mod folder does not exist: $ModFolder"
+    }
+
+    $addedCount = 0
+
+    $configFiles = Get-ChildItem -LiteralPath $ModFolder -Recurse -File -Filter "config.cpp"
+
+    if ($configFiles.Count -eq 0) {
+        throw "No config.cpp found in: $ModFolder"
+    }
+
+    foreach ($configFile in $configFiles) {
+
+        $configContent = Get-Content -LiteralPath $configFile.FullName -Raw
+
+        $tagMatch = [regex]::Match(
+            $configContent,
+            '(?m)^\s*tag\s*=\s*"([^"]+)"\s*;'
+        )
+
+        if (-not $tagMatch.Success) {
+            continue
+        }
+
+        $tag = $tagMatch.Groups[1].Value
+        $addonFolder = $configFile.Directory.FullName
+
+        $sqfFiles = Get-ChildItem `
+            -LiteralPath $addonFolder `
+            -Recurse `
+            -File `
+            -Filter "*.sqf"
+
+        foreach ($file in $sqfFiles) {
+
+            $lines = [System.IO.File]::ReadAllLines($file.FullName)
+
+            # Remove old automatically generated EOEX_fnc_* tags
+            $lines = @(
+                $lines | Where-Object {
+                    $_.Trim() -notmatch '^//\s+[A-Za-z0-9_]+_fnc_fn_[A-Za-z0-9_]+$'
+                }
+            )
+
+            $functionName = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
+
+            # Remove "fn_" from the filename
+            if ($functionName.StartsWith("fn_")) {
+                $functionName = $functionName.Substring(3)
+            }
+
+            $expectedTag = "// $($tag)_fnc_$functionName"
+
+            # Check whether the correct tag already exists
+            $tagExists = $lines | Where-Object {
+                $_.Trim() -eq $expectedTag
+            }
+
+            if ($tagExists) {
+                [System.IO.File]::WriteAllLines(
+                    $file.FullName,
+                    $lines,
+                    [System.Text.UTF8Encoding]::new($false)
+                )
+                continue
+            }
+
+            # Add tag at the beginning
+            $newLines = @($expectedTag) + $lines
+
+            [System.IO.File]::WriteAllLines(
+                $file.FullName,
+                $newLines,
+                [System.Text.UTF8Encoding]::new($false)
+            )
+
+            $addedCount++
+        }
+    }
+
+    Write-Host "Added $addedCount SQF function tags." -ForegroundColor Green
 }

@@ -43,7 +43,7 @@ public static partial class Server
                 MessageType = MessageType.Custom
             };
 
-            var packet = MessageBuilder.CreatePacket(msg, payload);
+            var packet = MessageBuilder.CreatePacket(msg, payload, NetworkSide.Server);
             await client.GetStream().WriteAsync(packet);
         }
 

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
-using static EdenOnline.Logger;
+using static EdenOnline.ArmaLog;
 using EdenOnline;
 
 using System.Text.Json;
@@ -45,13 +45,33 @@ public class ClientNetworkMethods {
     }
 
     public static void CreateObject(ArmaObject createdObj) {
-        Extension.SendToArma("ObjectCreated", [createdObj.Id, createdObj.Attributes]);
+        Extension.SendToArma("ObjectCreated", [createdObj.Id, createdObj.Type, createdObj.Attributes]);
     }
     public static void UpdateObject(ArmaObject updatedObj) {
-        Extension.SendToArma("ObjectUpdated", [updatedObj.Id, updatedObj.Attributes]);
+        Extension.SendToArma("ObjectUpdated", [updatedObj.Id, updatedObj.Type, updatedObj.Attributes]);
     }
     public static void RemoveObject(string objectID) {
         Extension.SendToArma("ObjectRemoved", [objectID]);
+    }
+
+    public static void StartObjectDrag(string moveId, object[] objectIds) {
+        Extension.SendToArma("StartObjectDrag", [moveId, objectIds]);
+    }
+
+    public static void UpdateObjectDrag(string moveId, object[] delta) {
+        Extension.SendToArma("UpdateObjectDrag", [moveId, delta]);
+    }
+
+    public static void EndObjectDrag(string moveId, object[] finalPositions) {
+        Extension.SendToArma("EndObjectDrag", [moveId, finalPositions]);
+    }
+
+    public static void CreateSyncConnection(ArmaSyncConnection connection) {
+        Extension.SendToArma("CreateSyncConnection", [connection.FromID, connection.ToID, connection.Type]);
+    }
+
+    public static void RemoveSyncConnection(ArmaSyncConnection connection) {
+        Extension.SendToArma("RemoveSyncConnection", [connection.FromID, connection.ToID, connection.Type]);
     }
 
     public static void LoadingScreen(bool enable, int progress = 1) {
@@ -60,8 +80,8 @@ public class ClientNetworkMethods {
         Extension.SendToArma("LoadingScreen", [enable, progress / 100.0]);
     }
 
-    public static void SetMissionAttribute(string section, string property, object? value) {
-        Log($"[CLIENT] Received SetMissionAttribute for section: {section}, property: {property}, value: {value}");
-        Extension.SendToArma("MissionAttributeUpdated", [section, property, value]);
+    public static void SetMissionAttribute(MissionAttribute missionAttribute) {
+        Log($"[CLIENT] Received SetMissionAttribute: [{missionAttribute.Section}, {missionAttribute.Property}, {missionAttribute.Value}]");
+        Extension.SendToArma("SetMissionAttribute", [missionAttribute.Section!, missionAttribute.Property!, missionAttribute.Value!]);
     }
 }

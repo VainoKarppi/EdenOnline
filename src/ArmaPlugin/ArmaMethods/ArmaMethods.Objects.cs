@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using DynTypeNetwork;
-using static EdenOnline.Logger;
+using static EdenOnline.ArmaLog;
 
 namespace EdenOnline;
 
@@ -15,13 +15,15 @@ public static partial class ArmaMethods
     /// <summary>
     /// Creates a new synchronized object and sends it to the server.
     /// </summary>
-    public static async Task<string> CreateObject(string objectID, Dictionary<string, object?> metadata)
+    public static async Task<string> CreateObject(string objectID, string type, Dictionary<string, object?> metadata)
     {
         if (!Client.IsTcpConnected())
             throw new Exception("Client is not connected. Cannot create object.");
 
 
-        ArmaObject obj = new(objectID, metadata);
+        ArmaObject obj = new(objectID, metadata) {
+            Type = type // Set the type of the object ("Object", "Trigger", "Waypoint", "Logic", "Marker", or "Comment")
+        };
         await Client.SendTcpMessageAsync(0, "CreateObject", obj);
 
         return obj.Id;
@@ -30,12 +32,14 @@ public static partial class ArmaMethods
     /// <summary>
     /// Updates an existing synchronized object and sends the changes to the server.
     /// </summary>
-    public static async Task UpdateObject(string objectID, Dictionary<string, object?> metadata)
+    public static async Task UpdateObject(string objectID, string type, Dictionary<string, object?> metadata)
     {
         if (!Client.IsTcpConnected())
             throw new Exception("Client is not connected. Cannot update object.");
 
-        ArmaObject obj = new(objectID, metadata);
+        ArmaObject obj = new(objectID, metadata) {
+            Type = type
+        };
         await Client.SendTcpMessageAsync(0, "UpdateObject", obj);
     }
 
@@ -50,27 +54,52 @@ public static partial class ArmaMethods
     }
 
     /// <summary>
-    /// Sends the current camera position and direction to other clients via UDP.
+    /// Creates a synchronization connection between two Eden objects.
     /// </summary>
-    public static async Task CameraUpdate(object[] position, object[] direction)
+    public static async Task CreateSyncConnection(string fromID, string toID, string type)
     {
-        try
-        {
-            if (!Client.IsUdpConnected()) throw new Exception("Client is not connected. Cannot send camera position.");
+        if (!Client.IsTcpConnected()) throw new Exception("Client is not connected. Cannot create connection.");
 
-            ArmaCamera camera = new()
-            {
-                Id = Client.ClientID,
-                Position = position,
-                Direction = direction
-            };
+        if (string.IsNullOrWhiteSpace(fromID)) throw new ArgumentException("Source object ID cannot be empty.", nameof(fromID));
+        if (string.IsNullOrWhiteSpace(toID)) throw new ArgumentException("Target object ID cannot be empty.", nameof(toID));
+        if (string.IsNullOrWhiteSpace(type)) throw new ArgumentException("Connection type cannot be empty.", nameof(type));
 
-            await Client.SendUdpMessageAsync(-1, "UpdateCamera", camera);
-        }
-        catch (Exception ex)
-        {
-            Log(ex);
-            throw;
-        }
+        Log($"[CLIENT] CreateSyncConnection. From: {fromID}, To: {toID}, Type: {type}");
+
+        ArmaSyncConnection syncoConnection = new() {
+            FromID = fromID,
+            ToID = toID,
+            Type = type
+        };
+
+        Log($"[CLIENT] Sending CreateSyncConnection: {fromID} -> {toID} ({type})");
+
+        await Client.SendTcpMessageAsync(0, "CreateSyncConnection", syncoConnection);
+
+        Log($"[CLIENT] CreateSyncConnection sent: {fromID} -> {toID} ({type})");
+    }
+
+    /// <summary>
+    /// Removes an existing synchronization connection.
+    /// </summary>
+    public static async Task RemoveSyncConnection(string fromID, string toID, string type)
+    {
+        if (!Client.IsTcpConnected()) throw new Exception("Client is not connected. Cannot remove connection.");
+
+        if (string.IsNullOrWhiteSpace(fromID)) throw new ArgumentException("Source object ID cannot be empty.", nameof(fromID));
+        if (string.IsNullOrWhiteSpace(toID)) throw new ArgumentException("Target object ID cannot be empty.", nameof(toID));
+        if (string.IsNullOrWhiteSpace(type)) throw new ArgumentException("Connection type cannot be empty.", nameof(type));
+
+        ArmaSyncConnection connection = new() {
+            FromID = fromID,
+            ToID = toID,
+            Type = type
+        };
+
+        Log($"[CLIENT] Sending RemoveSyncConnection: {fromID} -> {toID} ({type})");
+
+        await Client.SendTcpMessageAsync(0, "RemoveSyncConnection", connection);
+
+        Log($"[CLIENT] RemoveSyncConnection sent: {fromID} -> {toID} ({type})");
     }
 }

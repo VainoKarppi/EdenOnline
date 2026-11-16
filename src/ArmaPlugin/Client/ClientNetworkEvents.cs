@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
-using static EdenOnline.Logger;
+using static EdenOnline.ArmaLog;
 using EdenOnline;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -53,6 +53,39 @@ public class ClientNetworkEvents {
             Extension.SendToArma("UpdateClientList", [otherUsersArray]);
         } catch (Exception ex) {
             Log($"[CLIENT] Failed to send UpdateClientList to Arma after other client disconnected: {ex}");
+        }
+    }
+
+
+
+
+    // ============================================================
+    // CONNECTION SYNCHRONIZATION
+    // ============================================================
+
+    /// <summary>
+    /// Called when another client creates a synchronization connection.
+    /// Forwards the connection to the local Arma 3 client.
+    /// </summary>
+    public static void CreateSyncConnection(ArmaSyncConnection connection) {
+        try {
+            Log($"[CLIENT] Received CreateSyncConnection: " + $"{connection.FromID} -> {connection.ToID} ({connection.Type})");
+            Extension.SendToArma("CreateSyncConnection", [connection.FromID, connection.ToID, connection.Type]);
+        } catch (Exception ex){
+            Log($"[CLIENT] Failed to process CreateSyncConnection: {ex}");
+        }
+    }
+
+    /// <summary>
+    /// Called when another client removes a synchronization connection.
+    /// Forwards the removal to the local Arma 3 client.
+    /// </summary>
+    public static void RemoveSyncConnection(ArmaSyncConnection connection){
+        try{
+            Log($"[CLIENT] Received RemoveSyncConnection: " +$"{connection.FromID} -> {connection.ToID} ({connection.Type})");
+            Extension.SendToArma("RemoveSyncConnection", [connection.FromID, connection.ToID, connection.Type]);
+        } catch (Exception ex) {
+            Log($"[CLIENT] Failed to process RemoveSyncConnection: {ex}");
         }
     }
 }

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using static DynTypeNetwork.Settings.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace DynTypeNetwork;
 
@@ -113,13 +113,13 @@ public static class MethodBuilder {
     }
 
     internal static T? CallServerMethod<T>(string methodName, NetworkMessage message, params object[] args) =>
-        CallWithNetworkMessage<T>(_serverDelegates, methodName, message, args);
+        CallWithNetworkMessage<T>(_serverDelegates, NetworkSide.Server, methodName, message, args);
 
     internal static T? CallClientMethod<T>(string methodName, NetworkMessage message, params object[] args) =>
-        CallWithNetworkMessage<T>(_clientDelegates, methodName, message, args);
+        CallWithNetworkMessage<T>(_clientDelegates, NetworkSide.Client, methodName, message, args);
 
     // Helper for both server and client
-    private static T? CallWithNetworkMessage<T>(Dictionary<string, Delegate> delegates, string methodName, NetworkMessage message, object[] args)
+    private static T? CallWithNetworkMessage<T>(Dictionary<string, Delegate> delegates, NetworkSide side, string methodName, NetworkMessage message, object[] args)
     {
         if (!delegates.TryGetValue(methodName, out var del))
             throw new InvalidOperationException($"{methodName} not registered.");
@@ -146,7 +146,7 @@ public static class MethodBuilder {
             && parameters.Length == 1
             && parameters[0].ParameterType == typeof(object[]);
 
-        if (LogItem(LogLevel.Debug)) Console.WriteLine($"Invoking:{methodName} with args: [{string.Join(", ", finalArgs.Select(a => a?.ToString() ?? "null"))}] ({finalArgs.Length})");
+        Log.For(side).Debug($"Invoking:{methodName} with args: [{string.Join(", ", finalArgs.Select(a => a?.ToString() ?? "null"))}] ({finalArgs.Length})");
         
         if (isReflectionWrapper)
             return (T?)del.DynamicInvoke([finalArgs]);
