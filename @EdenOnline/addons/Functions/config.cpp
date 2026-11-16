@@ -16,7 +16,7 @@ class CfgFunctions
         tag = "EOEX";
 
         class Functions_Extension {
-            file = "Functions\extension";
+            file = "z\eoex\addons\functions\extension";
 
             class handleExtensionMessage {};
             class callExtension {};
@@ -24,7 +24,7 @@ class CfgFunctions
         };
 
         class Functions_Extension_Init {
-            file = "Functions\extension\init";
+            file = "z\eoex\addons\functions\extension\init";
 
             // Must not be recompiled.
             class initExtension {};
@@ -33,7 +33,7 @@ class CfgFunctions
         };
 
         class Functions_Objects_Helpers {
-            file = "Functions\objects\helpers";
+            file = "z\eoex\addons\functions\objects\helpers";
 
             class getId {};
             class hasId {};
@@ -46,7 +46,7 @@ class CfgFunctions
         };
 
         class Functions_Objects_CRUD {
-            file = "Functions\objects\crud";
+            file = "z\eoex\addons\functions\objects\crud";
 
             class sendCreateObject {};
             class sendDeleteObject {};
@@ -58,7 +58,7 @@ class CfgFunctions
         };
 
         class Functions_Objects_Move {
-            file = "Functions\objects\move";
+            file = "z\eoex\addons\functions\objects\move";
 
             class moveInterpolation {};
 
@@ -71,7 +71,7 @@ class CfgFunctions
         };
 
         class Functions_Objects_Sync {
-            file = "Functions\objects\sync";
+            file = "z\eoex\addons\functions\objects\sync";
 
             class createSyncConnection {};
             class removeSyncConnection {};
@@ -81,7 +81,7 @@ class CfgFunctions
         };
 
         class Functions_Objects_Markers {
-            file = "Functions\objects\markers";
+            file = "z\eoex\addons\functions\objects\markers";
 
             class sendCreateMarker {};
             class sendDeleteMarker {};
@@ -89,14 +89,14 @@ class CfgFunctions
         };
 
         class Functions_Mission {
-            file = "Functions\mission";
+            file = "z\eoex\addons\functions\mission";
 
             class sendMissionAttributes {};
             class receiveMissionAtrribute {};
         };
 
         class Functions_Server {
-            file = "Functions\server";
+            file = "z\eoex\addons\functions\server";
 
             class startServer {};
             class connect {};
@@ -104,7 +104,7 @@ class CfgFunctions
         };
 
         class Functions_UI {
-            file = "Functions\ui";
+            file = "z\eoex\addons\functions\ui";
 
             class drawCameras {};
 
