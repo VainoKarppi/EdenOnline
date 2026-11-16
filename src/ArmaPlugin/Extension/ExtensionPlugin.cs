@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Reflection;
-using static EdenOnline.Logger;
+using static EdenOnline.ArmaLog;
 using static DynTypeNetwork.MethodBuilder;
 
 namespace EdenOnline;
@@ -21,9 +22,11 @@ public static partial class ExtensionPlugin
     /// </summary>
     public static void Main()
     {
+        ConfigureLogging();
+
         Log("Called EdenOnline Main method");
-        CurrentLogLevel = LogLevel.Info;
-        DynTypeNetwork.Settings.Logging.CurrentLogLevel = DynTypeNetwork.Settings.Logging.LogLevel.Info;
+
+        DynTypeNetwork.Settings.EnableVersionCheck = false;
 
         // Register all extension methods callable from Arma
         MethodSystem.RegisterMethods(typeof(ArmaMethods));
@@ -44,18 +47,38 @@ public static partial class ExtensionPlugin
     }
 
     /// <summary>
+    /// Composition root: wires up the file-backed loggers for every subsystem
+    /// this host references. Core initializes itself; ArmaPlugin, DynTypeSerializer
+    /// and DynTypeNetwork each get their own log file here.
+    ///
+    /// DynTypeNetwork runs a client and a server half (a listen server runs both
+    /// in this process), so it gets one log file per side. Either side can be
+    /// silenced with <c>DynTypeNetwork.Log.ClientEnabled</c> /
+    /// <c>DynTypeNetwork.Log.ServerEnabled</c> when only one log is wanted.
+    /// </summary>
+    private static void ConfigureLogging() {
+        ArmaLog.Configure(Logging.LogFactory.CreateFileLoggerFactory(Extension.LogFolder, "ArmaPlugin.log"));
+
+        DynTypeNetwork.Log.ConfigureClient(Logging.LogFactory.CreateFileLoggerFactory(Extension.LogFolder, "DynTypeNetwork_Client.log"));
+        DynTypeNetwork.Log.ConfigureServer(Logging.LogFactory.CreateFileLoggerFactory(Extension.LogFolder, "DynTypeNetwork_Server.log"));
+
+        // To keep only the server log while debugging server-side network code:
+        // DynTypeNetwork.Log.ClientEnabled = false;
+
+        //DynTypeSerializer.Logging.SerializerLogging.Configure(Logging.LogFactory.CreateFileLoggerFactory(Extension.LogFolder, "DynTypeSerializer.log").CreateLogger("DynTypeSerializer"));
+    }
+
+    /// <summary>
     /// Prints a formatted banner of all registered network methods for debugging.
     /// </summary>
-    public static void PrintAvailableMethods(string name, RpcMethodInfo[] methods)
-    {
+    public static void PrintAvailableMethods(string name, RpcMethodInfo[] methods) {
         const int bannerWidth = 84;
 
         string header = $" Registered {name} Network Methods ";
         Log();
         Log(header.PadLeft((bannerWidth + header.Length) / 2, '=').PadRight(bannerWidth, '='));
 
-        foreach (var method in methods.OrderBy(m => m.Name))
-        {
+        foreach (var method in methods.OrderBy(m => m.Name)) {
             Log(FormatMethodSignature(method));
         }
 
@@ -63,26 +86,20 @@ public static partial class ExtensionPlugin
         Log();
     }
 
-    private static string FormatMethodSignature(RpcMethodInfo method)
-    {
-        string parameters = string.Join(", ",
-            method.Parameters.Select(p => $"{FormatTypeName(p.Type)} {p.Name}"));
+    private static string FormatMethodSignature(RpcMethodInfo method) {
+        string parameters = string.Join(", ", method.Parameters.Select(p => $"{FormatTypeName(p.Type)} {p.Name}"));
 
         string returnType = method.ReturnType is null ? "void" : FormatTypeName(method.ReturnType);
 
         return $"{method.Name}({parameters}) : {returnType}";
     }
 
-    private static string FormatTypeName(Type type)
-    {
-        if (type.IsArray)
-            return $"{FormatTypeName(type.GetElementType()!)}[]";
+    private static string FormatTypeName(Type type) {
+        if (type.IsArray) return $"{FormatTypeName(type.GetElementType()!)}[]";
 
-        if (type.IsGenericType)
-        {
+        if (type.IsGenericType) {
             string genericName = type.Name.Split('`')[0];
-            string genericArgs = string.Join(", ",
-                type.GetGenericArguments().Select(FormatTypeName));
+            string genericArgs = string.Join(", ", type.GetGenericArguments().Select(FormatTypeName));
 
             return $"{genericName}<{genericArgs}>";
         }

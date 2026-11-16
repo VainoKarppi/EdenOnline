@@ -1,0 +1,60 @@
+// EOEX_fnc_initExtension
+if !(isNil "EOEX_var_extensionResponses") exitWith { true }; // Extension already initialized
+
+diag_log "Initializing EdenOnline C# Extension";
+
+// Init variables
+EOEX_var_extensionName = "EdenOnline";
+EOEX_var_eventsReady = false;
+EOEX_var_syncMissionAttributes = true;
+
+EOEX_var_DEBUG = false;
+EOEX_var_blackListLogging = ["CameraUpdate", "SetInitialMissionAttributes", "UpdateObjectDrag"];
+uiNamespace setVariable ["EOEX_var_cameraDrawUpdate", 0.2];
+uiNamespace setVariable ["EOEX_var_cameraSendHeartbeat", 5]; // Max seconds between CameraUpdate sends even when the camera is idle
+
+
+private _result = EOEX_var_extensionName callExtension "version";
+if (_result == "") exitWith { diag_log "EdenOnline Initialization failed: Extension not found."; false }; // Extension not found. Already logged to .RPT
+
+private _return = [];
+if (_result isEqualType []) then { // Params used
+	_return = (parseSimpleArray _result) select 0;
+} else {
+	_return = parseSimpleArray _result;
+};
+
+private _data = (_return select 1) select 0;
+
+if (_return select 0 == "ERROR") exitWith { diag_log format ["ERROR: %1", _data]; false };
+
+EOEX_var_extensionVersion = _data;
+
+EOEX_var_extensionResponses = createHashMap;
+EOEX_var_extensionRequests = createHashMap;
+
+EOEX_var_SkipAttributeChanges = createHashMap;
+
+
+EOEX_var_OtherClients = createHashMap;
+
+EOEX_var_Objects = createHashMap;
+EOEX_var_Markers = createHashMap;
+
+missionNamespace setVariable ["Eden_MoveActive", false];
+missionNamespace setVariable ["Eden_MoveLastUpdate", 0];
+missionNamespace setVariable ["Eden_MoveId", -1];
+missionNamespace setVariable ["Eden_MoveEntities", []];
+missionNamespace setVariable ["Eden_MoveReferencePosition", [0, 0, 0]];
+
+EOEX_var_IsHost = false;
+
+diag_log formatText ["VERSION: %1",_data];
+
+call EOEX_fnc_initExtensionEvents;
+
+// Register the EachFrame interpolation handler
+[] call EOEX_fnc_moveInterpolation;
+
+
+true

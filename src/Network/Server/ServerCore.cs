@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using DynTypeSerializer;
-using static DynTypeNetwork.Settings.Logging;
+using Microsoft.Extensions.Logging;
 
 
 namespace DynTypeNetwork;
@@ -80,7 +80,7 @@ public static partial class Server
     // ── Stop server ───────────────────────────
     public static async Task StopAsync()
     {
-        if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Server shutdown requested");
+        Log.Server.Info($"[SERVER] Server shutdown requested");
         OnServerShutdown?.Invoke(DisconnectReason.ServerShutdown);
 
         // Send disconnect message to clients, before clearing list and closing connections
@@ -135,13 +135,13 @@ public static partial class Server
             HandshakeMessage? payload = MessageBuilder.UnpackPayload<HandshakeMessage>(message.Payload);
 
             if (payload == null) {
-                if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Invalid handshake from client {client.Id}");
+                Log.Server.Info($"[SERVER] Invalid handshake from client {client.Id}");
                 client.Close();
                 return;
             }
 
             if (string.IsNullOrEmpty(payload.ClientPublicKey)) {
-                if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Missing client public key for handshake from {client.Id}");
+                Log.Server.Info($"[SERVER] Missing client public key for handshake from {client.Id}");
                 client.Close();
                 return;
             }
@@ -157,12 +157,12 @@ public static partial class Server
             string clientCustomHash = parts[1];
             string clientMethodsHash = parts[2];
 
-            if (!string.IsNullOrEmpty(CustomHash)) {
+            if (!string.IsNullOrEmpty(CustomHash) && Settings.EnableVersionCheck) {
                 if (string.IsNullOrEmpty(clientCustomHash)) throw new Exception($"Client custom hash is empty, but server requires custom hash"); 
                 if (!CustomHash.Equals(clientCustomHash, StringComparison.OrdinalIgnoreCase)) throw new Exception($"Client custom hash mismatch");
             }
     
-            if (buildId != clientBuild) throw new Exception($"Client build ID mismatch. Server: {buildId}, Client: {clientBuild}");
+            if (Settings.EnableVersionCheck && buildId != clientBuild) throw new Exception($"Client build ID mismatch. Server: {buildId}, Client: {clientBuild}");
 
             // Register client methods from handshake, if not already registered (eg. from previous client handshakes)
             // TODO maybe actually already register the clientMethods on server start? Or atleast add as option
@@ -201,7 +201,7 @@ public static partial class Server
             };
 
             
-            var handshakeResult = MessageBuilder.CreatePacket(response, handshakeResponse);
+            var handshakeResult = MessageBuilder.CreatePacket(response, handshakeResponse, NetworkSide.Server);
 
             await client.GetStream().WriteAsync(handshakeResult);     
         } catch (Exception ex) {
@@ -212,7 +212,7 @@ public static partial class Server
                 Message = ex.Message
             };
 
-            var handshakeResult = MessageBuilder.CreatePacket(response, handshakeResponse);
+            var handshakeResult = MessageBuilder.CreatePacket(response, handshakeResponse, NetworkSide.Server);
 
             await client.GetStream().WriteAsync(handshakeResult);
 
@@ -224,7 +224,7 @@ public static partial class Server
                 OnClientDisconnected?.Invoke(client.Id, false, DisconnectReason.ConnectionError);
             }
 
-            if (LogItem(LogLevel.Info)) Console.WriteLine($"[SERVER] Handshake failed for client {client.Id}: {ex.Message}");
+            Log.Server.Info($"[SERVER] Handshake failed for client {client.Id}: {ex.Message}");
 
             // TODO get real HandshakeFailureReason
             await InvokeEventAsync(() => OnHandshakeFailed?.Invoke(HandshakeFailureReason.Unknown, ex.Message));

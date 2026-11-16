@@ -23,7 +23,12 @@ public static partial class Client
 
     public static async Task SendUdpMessageAsync(int[] targetIds, string methodName, params object?[] args)
     {
-        if (_udpClient == null || _udpEndpoint == null) throw new InvalidOperationException("UDP client not connected.");
+        if (_udpEndpoint == null) throw new InvalidOperationException("UDP client not connected.");
+
+        // A socket that died underneath us (network change, sleep/resume) is rebuilt here as
+        // well, so callers see one more failed send instead of a permanently dead UDP channel.
+        if (!IsSocketUsable(_udpClient) && TryRecreateUdpSocket(_udpClient) == null)
+            throw new InvalidOperationException("UDP client not connected.");
         if (targetIds == null || targetIds.Length == 0)
             throw new ArgumentException("At least one target ID is required.", nameof(targetIds));
 
@@ -64,12 +69,12 @@ public static partial class Client
             Payload = DynTypeSerializer.Serializer.Serialize(payload)
         };
 
-        var packet = MessageBuilder.CreateUdpMessage(msg);
+        var packet = MessageBuilder.CreateUdpMessage(msg, NetworkSide.Client);
 
         if (OnUdpMessageSent != null) {
             _ = Task.Run(() => OnUdpMessageSent.Invoke(msg));
         }
 
-        await _udpClient.SendAsync(packet, packet.Length, _udpEndpoint);
+        await SendUdpPacketAsync(packet);
     }
 }

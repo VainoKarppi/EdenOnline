@@ -58,6 +58,7 @@ namespace EdenOnline;
 public class ArmaObject
 {
     public string Id { get; set; } = "";
+    public string Type { get; set; } = "Object"; // can be "Object", "Trigger", "Waypoint", "Logic", "Marker" or "Comment"
     public Dictionary<string, object?> Attributes { get; set; } = [];
     public double Timestamp { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 

@@ -132,6 +132,22 @@
             }
         },
         {
+            "label": "Build DLL for Arma",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "${workspaceFolder}\\Tools\\BuildForArma.ps1"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
             "label": "Prepare Test Extension",
             "type": "shell",
             "command": "powershell",
