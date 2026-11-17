@@ -148,6 +148,7 @@ class Cfg3DEN
 };
 
 class ctrlMenuStrip;
+
 class Display3DEN
 {
     onUnload = "[1] call EOEX_fnc_disconnect;\
@@ -202,4 +203,11 @@ class Display3DEN
             };
         };
     };
+};
+
+class EOEX_DisplayEmpty
+{
+    idd = -1;
+    class ControlsBackground {};
+    class Controls {};
 };
