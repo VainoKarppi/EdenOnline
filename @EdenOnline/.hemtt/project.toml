@@ -25,7 +25,7 @@ parameters = [
 
 mission = "EdenOnline.VR"
 
-[hemtt.launch.Tools]
+[hemtt.launch.tools]
 extends = "default"
 
 workshop = [
