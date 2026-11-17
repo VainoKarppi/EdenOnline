@@ -11,7 +11,11 @@ private _objects = [];
 private _objectsById = createHashMap;
 
 {
-    _objectsById set [_x call EOEX_fnc_getId, _x];
+    private _id = [_x, true] call EOEX_fnc_getId;
+
+    if (!isNil "_id") then {
+        _objectsById set [_id, _x];
+    };
 } forEach (all3DENEntities select 0);
 
 {

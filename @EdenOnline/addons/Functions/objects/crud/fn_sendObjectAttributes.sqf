@@ -8,7 +8,6 @@ if !(missionNamespace getVariable ["EOEX_var_Connected",false]) exitWith {};
 
 if (_entity isEqualType grpNull) exitWith {};
 
-diag_log _this;
 private _type = [_entity, typeName _entity] call EOEX_fnc_getObjectType;
 
 if (_type == "Marker" && _property != "ItemClass") then {
@@ -30,7 +29,7 @@ if (isNil "_value") exitWith {};
 // Check if the edit has to be skipped (e.g. because it was triggered by an incoming update from another client)
 // Added via: [id, [property, value]] call EOEX_fnc_addSkipAttributeChange
 private _skip = [_id, [_property, _value]] call EOEX_fnc_checkSkipAttributeChange;
-if (_skip) exitWith { diag_log format ["SKIPPING (%1) INCOMING CHANGE: %2, (%3)", _id, _property, _value] };
+if (_skip) exitWith {};
 
 
 private _queue = EOEX_var_AttributeQueues getOrDefault [_id, createHashMap, true];
@@ -49,7 +48,7 @@ _timer = [_id, _entity] spawn {
 	private _queue = EOEX_var_AttributeQueues getOrDefault [_id, createHashMap];
 	if (count _queue == 0) exitWith {};
 
-	private _type = _entity call EOEX_fnc_getObjectType;
+	private _type = [_entity, typeName _entity] call EOEX_fnc_getObjectType;
 	if (isNil "_type") exitWith { diag_log format ["ERROR: Object type not found for ID: %1", _id] };
 
 	["UpdateObject", [_id, _type, _queue], true] call EOEX_fnc_callExtensionAsync;

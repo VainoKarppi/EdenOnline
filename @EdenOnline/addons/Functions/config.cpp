@@ -52,7 +52,12 @@ class CfgFunctions
             class addSkipAttributeChange {};
             class checkSkipAttributeChange {};
 
+            class recreateEntity {};
+
             class testReceive {};
+            class testSend {};
+            class syncSendTest {};
+            class syncReceiveTest {};
         };
 
         class Functions_Objects_CRUD {

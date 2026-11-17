@@ -13,7 +13,7 @@ if (isNil "_layerId") then {_layerId = ""};
 
 // This is to prevent feedback loop where received object is sent back to server.
 private _skip = [_entityId, ["Layer", _layerId]] call EOEX_fnc_checkSkipAttributeChange;
-if (_skip) exitWith { diag_log format ["SKIPPING (%1) INCOMING CHANGE: %2, (%3)", _entityId, _newLayer, _layerId] };
+if (_skip) exitWith {};
 
 diag_log format ["_entity: %1, _entityId: %2, _newLayer: %3, _layerId: %4", _entity, _entityId, _newLayer, _layerId];
 

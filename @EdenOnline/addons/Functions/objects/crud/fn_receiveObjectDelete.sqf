@@ -12,27 +12,18 @@
 */
 params ["_id", "_type"];
 
-if (_type == "Object" || _type == "Trigger" || _type == "Logic") exitWith {
-    private _deleted = EOEX_var_Objects deleteAt _id;
-    delete3DENEntities [_deleted];
+private _deleted = switch (_type) do {
+    case "Object";
+    case "Trigger";
+    case "Logic": { EOEX_var_Objects deleteAt _id };
+    case "Marker": { EOEX_var_Markers deleteAt _id };
+    case "Comment": { EOEX_var_Comments deleteAt _id };
+    case "Waypoint": { EOEX_var_Waypoints deleteAt _id };
+    case "Layer": { EOEX_var_Layers deleteAt _id };
+    default { nil };
 };
 
-if (_type == "Marker") exitWith {
-    private _deleted = EOEX_var_Markers deleteAt _id;
-    delete3DENEntities [_deleted];
-};
-
-if (_type == "Comment") exitWith {
-    private _deleted = EOEX_var_Comments deleteAt _id;
-    delete3DENEntities [_deleted];
-};
-
-if (_type == "Waypoint") exitWith {
-    private _deleted = EOEX_var_Waypoints deleteAt _id;
-    delete3DENEntities [_deleted];
-};
-
-if (_type == "Layer") exitWith {
-    private _deleted = EOEX_var_Layers deleteAt _id;
+// deleteAt returns nil for unknown ids, which leaves _deleted undefined
+if (!isNil "_deleted") then {
     delete3DENEntities [_deleted];
 };

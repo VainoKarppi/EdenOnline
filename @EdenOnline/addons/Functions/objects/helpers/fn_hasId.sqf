@@ -8,6 +8,8 @@ if (isNil "_object") exitWith {
 
 private _type = [_object, typeName _object] call EOEX_fnc_getObjectType;
 
+if (isNil "_type") exitWith { false };
+
 private _foundId = "";
 
 switch (_type) do {

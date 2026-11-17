@@ -12,10 +12,9 @@
 ["LSZP9FEE","Layer",[["Name","Layer 2"],["Transformation",true],["Visibility",true],["Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
 ["QI56X8K6","Object",[["ItemClass","O_Soldier_GL_F"],["Position",[4536.22,1131.84,0]],["Layer","LSZP9FEE"]]] spawn EOEX_fnc_receiveObjectCreate;
 ["XH3CC3T9","Object",[["ItemClass","B_APC_Tracked_01_rcws_F"],["Position",[5609.42,1751.76,0]],["Layer",""],["EOEX_IS_EMPTY",true]]] spawn EOEX_fnc_receiveObjectCreate;
-
+["QYZ4ZR3G","Object",[["ItemClass","B_AFV_Wheeled_01_cannon_F"],["Position",[4588.52,6902.68,0]],["Layer",""],["EOEX_IS_EMPTY",false]]] spawn EOEX_fnc_receiveObjectCreate;
+["2QIONM7S","Object",[["ItemClass","B_Deck_Crew_F"],["Position",[4609.82,6903.2,0]],["Layer","KJG2E3NU"],["EOEX_IS_EMPTY",true],["EOEX_GROUP","P6CO3MJ7"]]] spawn EOEX_fnc_receiveObjectCreate;
 */
-
-diag_log _this;
 
 params ["_id", "_type", "_attributeMap"];
 
@@ -24,23 +23,64 @@ _attributeMap = createHashMapFromArray _attributeMap;
 // Before creating the object, store the ID in the map to prevent duplicate creation
 
 private _entity = if (_type == "Layer") then {
-    private _parent = EOEX_var_Layers get (_attributeMap deleteAt "Layer");
-    if (isNil "_parent") then {_parent = -1};
+    private _parent = EOEX_var_Layers getOrDefault [_attributeMap deleteAt "Layer", -1];
     _parent add3DENLayer (_attributeMap get "Name");
 } else {
     if (_type == "Waypoint") then {
-        sleep 0.01; // Give some time for the parent object to be created
-        // TODO ADD AS PROPER TIMER (waituntil Owner exists in EOEX_var_Objects)
-        _owner = EOEX_var_Objects get (_attributeMap deleteAt "EOEX_Owner");
-        (group _owner) create3DENEntity [_type, _attributeMap get "ItemClass", _attributeMap get "Position"];
+        // The owning unit may still be in flight from the server, wait until it exists
+        private _ownerId = _attributeMap deleteAt "EOEX_Owner";
+        private _owner = EOEX_var_Objects getOrDefault [_ownerId, objNull];
+        private _deadline = diag_tickTime + 5;
+        waitUntil {
+            sleep 0.05;
+            _owner = EOEX_var_Objects getOrDefault [_ownerId, objNull];
+            (!isNull _owner) || {diag_tickTime > _deadline}
+        };
+
+        if (isNull _owner) then {
+            diag_log format ["ERROR: Unable to create waypoint %1, owner %2 was not found", _id, _ownerId];
+            nil
+        } else {
+            (group _owner) create3DENEntity [_type, _attributeMap get "ItemClass", _attributeMap get "Position"];
+        };
     } else {
         private _isEmpty = _attributeMap getOrDefault ["EOEX_IS_EMPTY", false];
-        diag_log _isEmpty;
         create3DENEntity [_type, _attributeMap get "ItemClass", _attributeMap get "Position", _isEmpty];
     };
 };
 
+if (isNil "_entity") exitWith {
+    diag_log format ["ERROR: Unable to create %1 (%2)", _type, _id];
+};
 
+// Eden groups units placed within 5 m of each other. create3DENEntity always makes a new group,
+// so join the one the sender used. The leader may still be in flight, wait for it briefly.
+// This runs before the ID is registered: joining a group raises OnEntityParentChanged, and
+// EOEX_fnc_updateObjectLayer must not find an ID and send that parent change back to the server.
+private _groupId = _attributeMap getOrDefault ["EOEX_GROUP", ""];
+
+if (_groupId != "" && {_type == "Object"}) then {
+    _attributeMap deleteAt "EOEX_GROUP";
+
+    private _leader = EOEX_var_Objects getOrDefault [_groupId, objNull];
+
+    if (isNull _leader) then {
+        private _deadline = diag_tickTime + 2;
+        waitUntil {
+            sleep 0.05;
+            _leader = EOEX_var_Objects getOrDefault [_groupId, objNull];
+            (!isNull _leader) || {diag_tickTime > _deadline}
+        };
+    };
+
+    if (isNull _leader) then {
+        diag_log format ["WARNING: Group leader %1 not found for %2 (%3)", _groupId, _id, _type];
+    } else {
+        if !((group _entity) isEqualTo (group _leader)) then {
+            add3DENConnection ["Group", [_entity], group _leader];
+        };
+    };
+};
 
 if (_type == "Object" || _type == "Trigger" || _type == "Logic") then {
     EOEX_var_Objects set [_id, _entity];

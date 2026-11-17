@@ -2,7 +2,7 @@
 
 [] spawn {
 
-(findDisplay 312) closeDisplay 0;
+(findDisplay 316000) closeDisplay 1;
 
 sleep 0.5;
 
@@ -32,6 +32,20 @@ sleep 1;
 
 sleep 2;
 
+// RECEIVE GROUPED UNITS
+// Eden groups a unit placed within 5 m of another unit, so the create message names the leader.
+["GRPA","Object",[["ItemClass","B_Soldier_F"],["Position",[4700,6500,0]],["Layer",""]]] call EOEX_fnc_receiveObjectCreate;
+["GRPB","Object",[["ItemClass","B_Soldier_F"],["Position",[4703,6500,0]],["Layer",""],["EOEX_GROUP","GRPA"]]] call EOEX_fnc_receiveObjectCreate;
+
+sleep 1;
+
+private _groupUnitA = EOEX_var_Objects getOrDefault ["GRPA", objNull];
+private _groupUnitB = EOEX_var_Objects getOrDefault ["GRPB", objNull];
+
+diag_log format ["[EdenOnline] testReceive: grouped units share a group = %1", (group _groupUnitA) isEqualTo (group _groupUnitB)];
+
+sleep 1;
+
 // RECEIVE UPDATES
 ["QI56X8K6","Object",[["Layer",""]]] call EOEX_fnc_receiveObjectUpdate;
 ["QI56X8K6","Object",[["pitch",0.98],["speaker","Male02PER"],["Name","asdasd"]]] call EOEX_fnc_receiveObjectUpdate;
@@ -40,15 +54,17 @@ sleep 2;
 ["CXCZIO8E","Trigger",[["Size3",[100,100,-1]]]] call EOEX_fnc_receiveObjectUpdate;
 ["HK6WCLSR","Logic",[["ModuleAnimals_F_Type","Hen_random_F"]]] call EOEX_fnc_receiveObjectUpdate;
 ["HK6WCLSR","Logic",[["Init","aadddd"],["Name","testtest"]]] call EOEX_fnc_receiveObjectUpdate;
-["KFCJ1X8C","Marker",[["ItemClass","mil_dot"],["BaseColor","Default"]]] call EOEX_fnc_receiveObjectUpdate;
 ["OZX6ABI7","Marker",[["Text","mymarker"],["BaseColor","Default"]]] call EOEX_fnc_receiveObjectUpdate;
 ["QI56X8K4","Object",[["Position",[4630.61,1510.41,0]]]] call EOEX_fnc_receiveObjectUpdate;
 
 sleep 1;
 
-// TODO
+// CLASS CHANGES (the entity is recreated, Eden cannot change ItemClass in place)
+
+["KFCJ1X8C","Marker",[["ItemClass","mil_dot"],["BaseColor","Default"]]] call EOEX_fnc_receiveObjectUpdate;
 ["OZX6ABI7","Marker",[["ItemClass","mil_dot"],["BaseColor","Default"]]] call EOEX_fnc_receiveObjectUpdate;
-["XH3CC3T9","Object",[["ItemClass","B_Heli_Transport_01_F"],["EOEX_IS_EMPTY",true]]] call EOEX_fnc_receiveObjectUpdate;
+["XH3CC3T9","Object",[["ItemClass","B_Heli_Transport_01_F"]]] call EOEX_fnc_receiveObjectUpdate;
+["QI56X8K6","Object",[["ItemClass","B_Soldier_AR_F"]]] call EOEX_fnc_receiveObjectUpdate;
 
 sleep 2;
 
@@ -62,5 +78,7 @@ sleep 2;
 ["GJRZY90Y","Comment"] call EOEX_fnc_receiveObjectDelete;
 ["LSZP9FEE","Layer"] call EOEX_fnc_receiveObjectDelete;
 ["XH3CC3T9","Object"] call EOEX_fnc_receiveObjectDelete;
-
+["OZX6ABI7","Marker"] call EOEX_fnc_receiveObjectDelete;
+["GRPA","Object"] call EOEX_fnc_receiveObjectDelete;
+["GRPB","Object"] call EOEX_fnc_receiveObjectDelete;
 };

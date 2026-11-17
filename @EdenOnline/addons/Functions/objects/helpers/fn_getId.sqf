@@ -9,6 +9,9 @@ if (isNil "_entity") exitWith {
 
 private _type = [_entity, typeName _entity] call EOEX_fnc_getObjectType;
 
+// Unknown entity (e.g. a layer index): nothing to register.
+if (isNil "_type") exitWith {};
+
 private _foundId = "";
 
 private _registry = switch (_type) do {

@@ -22,7 +22,8 @@ if (isNil {missionNamespace getVariable "EOEX_var_OtherClients"}) then {
 ctrlDelete (uiNamespace getVariable ["EOEX_var_PlayerListDialog", controlNull]);
 uiNamespace setVariable ["EOEX_var_PlayerListDialog", nil];
 
-if (count EOEX_var_OtherClients == 0) exitWith { diag_log "No other players on server, hiding player list GUI!" };
+// No other players on server, hiding player list GUI!
+if (count EOEX_var_OtherClients == 0) exitWith {};
 
 disableSerialization;
 

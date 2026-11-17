@@ -12,19 +12,21 @@ if (_moveId isNotEqualTo _activeMoveId) exitWith {};
     private _objectId = _x select 0;
     private _finalPosition = _x select 1;
 
-    private _object = objNull;
+    if (!isNil "_objectId" && {!isNil "_finalPosition"}) then {
+        private _object = objNull;
 
-    {
-        if ((_x call EOEX_fnc_getId) isEqualTo _objectId) exitWith {
-            _object = _x;
+        {
+            if (([_x, true] call EOEX_fnc_getId) isEqualTo _objectId) exitWith {
+                _object = _x;
+            };
+        } forEach (all3DENEntities select 0);
+
+        if !(isNull _object) then {
+            _object set3DENAttribute [
+                "Position",
+                _finalPosition
+            ];
         };
-    } forEach (all3DENEntities select 0);
-
-    if !(isNull _object) then {
-        _object set3DENAttribute [
-            "Position",
-            _finalPosition
-        ];
     };
 } forEach _finalPositions;
 

@@ -2,27 +2,13 @@
 params ["_fromID", "_toID", "_type"];
 
 
-private _fromObject = objNull;
-private _toObject = objNull;
-
-
-// Find source object
-{
-    private _objectID = _x getVariable ["EOEX_var_objectID", nil];
-    if (!isNil "_objectID" && {_objectID == _fromID}) exitWith { _fromObject = _x };
-} forEach (all3DENEntities # 0);
-
-
-// Find target object
-{
-    private _objectID = _x getVariable ["EOEX_var_objectID", nil];
-    if (!isNil "_objectID" && {_objectID == _toID}) exitWith { _toObject = _x };
-} forEach (all3DENEntities # 0);
+private _fromObject = EOEX_var_Objects getOrDefault [_fromID, objNull];
+private _toObject = EOEX_var_Objects getOrDefault [_toID, objNull];
 
 
 // Validate source
 if (isNull _fromObject) exitWith {
-    diag_log format ["[EdenOnline] Failed to remove SyncConnection: source object not found: %1", b_fromID];
+    diag_log format ["[EdenOnline] Failed to remove SyncConnection: source object not found: %1", _fromID];
 };
 
 

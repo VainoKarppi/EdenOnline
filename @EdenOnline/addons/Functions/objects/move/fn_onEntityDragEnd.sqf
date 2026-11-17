@@ -13,11 +13,12 @@ private _entities = missionNamespace getVariable ["Eden_MoveEntities", []];
 private _finalPositions = [];
 
 {
-    private _objectId = _x call EOEX_fnc_getId;
+    private _position = (_x get3DENAttribute "Position") param [0, nil];
 
-    private _position = (_x get3DENAttribute "Position") select 0;
-
-    _finalPositions pushBack [_objectId, _position];
+    // Groups have no position of their own and cannot be moved directly.
+    if (!isNil "_position") then {
+        _finalPositions pushBack [[_x, false] call EOEX_fnc_getId, _position];
+    };
 } forEach _entities;
 
 // Send END_MOVE via TCP

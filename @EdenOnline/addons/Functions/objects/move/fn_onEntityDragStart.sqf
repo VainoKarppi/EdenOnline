@@ -12,9 +12,14 @@ private _position = (_entity get3DENAttribute "Position") select 0;
 
 // Start a new move operation
 if !(missionNamespace getVariable ["Eden_MoveActive", false]) then {
-    private _moveId = _entity call EOEX_fnc_getId;
-    private _entities = flatten (get3DENSelected "");
-    _entities append (get3DENSelected "comment");
+    private _moveId = [_entity, false] call EOEX_fnc_getId;
+
+    // Query each type separately: get3DENSelected "" nests the categories, and flattening would
+    // break waypoint references into a group and an index.
+    private _entities = [];
+    {
+        _entities append (get3DENSelected _x);
+    } forEach ["object", "trigger", "logic", "waypoint", "marker", "comment"];
 
     if (_entities isEqualTo []) then {
         _entities = [_entity];
@@ -23,7 +28,7 @@ if !(missionNamespace getVariable ["Eden_MoveActive", false]) then {
     private _objectIds = [];
 
     {
-        _objectIds pushBack (_x call EOEX_fnc_getId);
+        _objectIds pushBack ([_x, false] call EOEX_fnc_getId);
     } forEach _entities;
 
     missionNamespace setVariable ["Eden_MoveActive", true];
