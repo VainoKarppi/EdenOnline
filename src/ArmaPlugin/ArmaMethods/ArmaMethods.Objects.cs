@@ -46,11 +46,15 @@ public static partial class ArmaMethods
     /// <summary>
     /// Removes a synchronized object and notifies the server.
     /// </summary>
-    public static async Task RemoveObject(string objectID)
+    public static async Task RemoveObject(string objectID, string type)
     {
         if (!Client.IsTcpConnected()) throw new Exception("Client is not connected. Cannot remove object.");
 
-        await Client.SendTcpMessageAsync(0, "RemoveObject", objectID);
+        ArmaObject obj = new(objectID) {
+            Type = type // Set the type of the object ("Object", "Trigger", "Waypoint", "Logic", "Marker", or "Comment")
+        };
+
+        await Client.SendTcpMessageAsync(0, "RemoveObject", obj);
     }
 
     /// <summary>

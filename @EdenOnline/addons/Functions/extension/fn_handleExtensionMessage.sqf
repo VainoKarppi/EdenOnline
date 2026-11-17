@@ -33,12 +33,10 @@ if (_function select [0,8] == "REQUEST|") exitWith {
 
 
 if (_requestID == "-1" && _method != "CameraUpdate" && _method != "ASYNC_RESPONSE" && _method != "SetInitialMissionAttributes" && _method != "UpdateObjectDrag") then {
-	diag_log "";
 	diag_log "================================ RECIEVED DATA (CALLIN) =================================";
 	diag_log format ["_function: %1, _requestID: %2", _function, _requestID];
 	diag_log _data;
 	diag_log "=========================================================================================";
-	diag_log "";
 };
 
 

@@ -14,7 +14,6 @@ if (_fireAndForget) then {_function = _function + "|-1"};
 
 // TODO Temp
 if !(_function in EOEX_var_blackListLogging) then {
-	diag_log "";
 	diag_log "=================================== SENT DATA (SYNC) ====================================";
 	diag_log _function;
 	diag_log _arguments;
@@ -36,11 +35,10 @@ if (_return select 0 == "ERROR") exitWith { diag_log formatText ["ERROR: %1", _d
 
 
 if !(_function in EOEX_var_blackListLogging) then {
-    diag_log "================================= RESPONSE DATA (SYNC) ==================================";
+    diag_log "---------------------------------- RESPONSE DATA (SYNC) ----------------------------------";
     diag_log _function;
     diag_log (_data select 0);
     diag_log "=========================================================================================";
-	diag_log "";
 };
 
 _data select 0

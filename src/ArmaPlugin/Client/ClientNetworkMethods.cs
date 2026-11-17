@@ -50,8 +50,8 @@ public class ClientNetworkMethods {
     public static void UpdateObject(ArmaObject updatedObj) {
         Extension.SendToArma("ObjectUpdated", [updatedObj.Id, updatedObj.Type, updatedObj.Attributes]);
     }
-    public static void RemoveObject(string objectID) {
-        Extension.SendToArma("ObjectRemoved", [objectID]);
+    public static void RemoveObject(ArmaObject removedObj) {
+        Extension.SendToArma("ObjectRemoved", [removedObj.Id, removedObj.Type]);
     }
 
     public static void StartObjectDrag(string moveId, object[] objectIds) {

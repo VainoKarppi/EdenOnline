@@ -5,7 +5,7 @@
 
 params ["_entity"];
 
-if !(_entity isEqualType objNull) exitWith {};
+
 
 private _now = diag_tickTime;
 private _position = (_entity get3DENAttribute "Position") select 0;
@@ -13,7 +13,8 @@ private _position = (_entity get3DENAttribute "Position") select 0;
 // Start a new move operation
 if !(missionNamespace getVariable ["Eden_MoveActive", false]) then {
     private _moveId = _entity call EOEX_fnc_getId;
-    private _entities = get3DENSelected "object";
+    private _entities = flatten (get3DENSelected "");
+    _entities append (get3DENSelected "comment");
 
     if (_entities isEqualTo []) then {
         _entities = [_entity];

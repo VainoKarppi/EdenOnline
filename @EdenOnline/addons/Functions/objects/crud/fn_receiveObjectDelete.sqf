@@ -1,25 +1,38 @@
 // EOEX_fnc_receiveObjectDelete
 
+/*
+["QI56X8K6","Object"] call EOEX_fnc_receiveObjectDelete;
+["HK6WCLSR","Logic"] call EOEX_fnc_receiveObjectDelete;
+["CXCZIO8E","Trigger"] call EOEX_fnc_receiveObjectDelete;
+["KFCJ1X8C","Marker"] call EOEX_fnc_receiveObjectDelete;
+["M7TGTYM2","Waypoint"] call EOEX_fnc_receiveObjectDelete;
+["QI56X8K4","Object"] call EOEX_fnc_receiveObjectDelete;
+["GJRZY90Y","Comment"] call EOEX_fnc_receiveObjectDelete;
+["LSZP9FEE","Layer"] call EOEX_fnc_receiveObjectDelete;
+*/
+params ["_id", "_type"];
 
-params ["_id"];
-
-if (_id in EOEX_var_Markers) exitWith {
-    private _marker = EOEX_var_Markers get _id;
-    diag_log format ["DELETE_MARKER: %1, ID: %2", _marker, _id];
-    EOEX_var_Markers deleteAt _id;
-    deleteMarker _marker;
-
-    // TODO MAYBE ??? PREVENT FEEDBACK LOOP: This will trigger a "EntityRemoved" event, which will call this function again. We need to prevent that from happening.
+if (_type == "Object" || _type == "Trigger" || _type == "Logic") exitWith {
+    private _deleted = EOEX_var_Objects deleteAt _id;
+    delete3DENEntities [_deleted];
 };
 
-//  all3DENEntities params ["_objects", "_groups", "_triggers", "_systems/logic", "_waypoints", "_markers", "_layers", "_comments"];
+if (_type == "Marker") exitWith {
+    private _deleted = EOEX_var_Markers deleteAt _id;
+    delete3DENEntities [_deleted];
+};
 
-{
-    private _objects = (all3DENEntities # _x) select {
-        _x getVariable ["EOEX_var_objectID", "-1"] == _id
-    };
+if (_type == "Comment") exitWith {
+    private _deleted = EOEX_var_Comments deleteAt _id;
+    delete3DENEntities [_deleted];
+};
 
-    if (_objects isNotEqualTo []) exitWith {
-        delete3DENEntities _objects;
-    };
-} forEach [0, 2, 3];
+if (_type == "Waypoint") exitWith {
+    private _deleted = EOEX_var_Waypoints deleteAt _id;
+    delete3DENEntities [_deleted];
+};
+
+if (_type == "Layer") exitWith {
+    private _deleted = EOEX_var_Layers deleteAt _id;
+    delete3DENEntities [_deleted];
+};

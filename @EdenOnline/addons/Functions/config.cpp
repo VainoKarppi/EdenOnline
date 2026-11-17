@@ -51,6 +51,8 @@ class CfgFunctions
 
             class addSkipAttributeChange {};
             class checkSkipAttributeChange {};
+
+            class testReceive {};
         };
 
         class Functions_Objects_CRUD {
@@ -63,6 +65,10 @@ class CfgFunctions
             class receiveObjectCreate {};
             class receiveObjectUpdate {};
             class receiveObjectDelete {};
+
+            class handleCreateObject {};
+            class handleDeleteObject {};
+            class updateObjectLayer {};
         };
 
         class Functions_Objects_Move {
@@ -94,6 +100,30 @@ class CfgFunctions
             class sendCreateMarker {};
             class sendDeleteMarker {};
             class sendUpdateMarker {};
+        };
+
+        class Functions_Objects_Waypoints {
+            file = "z\eoex\addons\functions\objects\waypoints";
+
+            class sendCreateWaypoint {};
+            class sendDeleteWaypoint {};
+            class sendUpdateWaypoint {};
+        };
+
+        class Functions_Objects_Comments {
+            file = "z\eoex\addons\functions\objects\comments";
+
+            class sendCreateComment {};
+            class sendDeleteComment {};
+            class sendUpdateComment {};
+        };
+
+        class Functions_Objects_Layers {
+            file = "z\eoex\addons\functions\objects\layers";
+
+            class sendCreateLayer {};
+            class sendDeleteLayer {};
+            class sendUpdateLayer {};
         };
 
         class Functions_Mission {

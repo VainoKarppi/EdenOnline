@@ -17,6 +17,10 @@
     "logLevel": "info",
     "watchInterval": 1000,
     "watchExpressions": [],
+    "excludedFolders": [
+        "**/Publish",
+        "**/publish"
+    ],
     "modTypes": {
         "@EdenOnline": "client"
     },

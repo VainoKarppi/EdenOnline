@@ -1,15 +1,26 @@
 // EOEX_fnc_sendObjectAttributes
 
+// TODO Updating Unit/Vehicle ItemClass removes the object!
 
 params ["_entity", "_property"];
 
 if !(missionNamespace getVariable ["EOEX_var_Connected",false]) exitWith {};
 
-// Ignore if the entity is a group
-if (_entity in allGroups) exitWith {};
+if (_entity isEqualType grpNull) exitWith {};
 
-// Get the unique ID of the object or marker
-private _id = _entity call EOEX_fnc_getId;
+diag_log _this;
+private _type = [_entity, typeName _entity] call EOEX_fnc_getObjectType;
+
+if (_type == "Marker" && _property != "ItemClass") then {
+	[_entity, "ItemClass"] spawn EOEX_fnc_sendObjectAttributes; // Always update ItemClass for markers, since this cannot be detected by the eventhandler
+};
+
+// Ignore if the entity is a group
+if (_type == "Group") exitWith {};
+
+// TODO WAYPOINTS
+
+private _id = [_entity, true] call EOEX_fnc_getId;
 if (isNil "_id" || {_id == ""}) exitWith {};
 
 // Get value of the attribute that was changed.
@@ -19,28 +30,7 @@ if (isNil "_value") exitWith {};
 // Check if the edit has to be skipped (e.g. because it was triggered by an incoming update from another client)
 // Added via: [id, [property, value]] call EOEX_fnc_addSkipAttributeChange
 private _skip = [_id, [_property, _value]] call EOEX_fnc_checkSkipAttributeChange;
-if (_skip) exitWith {};
-
-
-
-// TODO check if marker
-if (_entity isEqualType "") exitWith {
-	// TODO queue marker attribute updates to avoid sending multiple updates in a single frame
-	// TODO send data to server
-	diag_log _entity;
-	diag_log _property;
-	diag_log "marker edited";
-};
-
-// Event was triggered by incoming update from another client
-if (_entity getVariable ["EOEX_updateRequested", false]) exitWith {
-	_entity setVariable ["EOEX_updateRequested", nil];
-};
-_entity setVariable ["EOEX_updateRequested", nil];
-
-
-
-
+if (_skip) exitWith { diag_log format ["SKIPPING (%1) INCOMING CHANGE: %2, (%3)", _id, _property, _value] };
 
 
 private _queue = EOEX_var_AttributeQueues getOrDefault [_id, createHashMap, true];
