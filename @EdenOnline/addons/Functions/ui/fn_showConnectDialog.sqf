@@ -1,13 +1,16 @@
 #include "\a3\3den\ui\resincl.inc"
 #include "\a3\3den\ui\macros.inc"
 
-// EOEX_fnc_showConnectDialog
 disableSerialization;
 
-// Create empty display
-private _display = (if (is3DEN) then {findDisplay IDD_DISPLAY3DEN} else {[] call BIS_fnc_displayMission}) createDisplay "RscDisplayEmpty";
+if (!is3DEN) exitWith {false};
+
+private _display = findDisplay IDD_DISPLAY3DEN createDisplay "EOEX_DisplayEmpty";
 
 uiNamespace setVariable ["EOEX_ConnectDialog_Display", _display];
+
+_display ctrlCreate ["ctrlStaticBackgroundDisable", -1];
+_display ctrlCreate ["ctrlStaticBackgroundDisableTiles", -1];
 
 // Title
 private _title = _display ctrlCreate ["ctrlStaticTitle", -1];
@@ -227,3 +230,5 @@ if (missionNamespace getVariable ["EOEX_var_Connected", false]) then {
 };
 
 allControls _display apply {_x ctrlCommit 0};
+
+true
