@@ -1,0 +1,46 @@
+{
+    "enabled": true,
+    "armaProfile": "",
+    "apiUrl": "http://127.0.0.1",
+    "apiPort": 8764,
+    "requestTimeout": 3000,
+    "runTimeout": 30,
+    "autoJunction": true,
+    "junctionMode": "addon",
+    "reloadOnSave": "reload",
+    "deletedFunctionBehavior": "clear",
+    "notifyOnError": true,
+    "extraLaunchArguments": "-noSplash -skipIntro -noPause -window",
+    "serverLaunchArguments": "",
+    "createExampleWithMission": true,
+    "clearArmaMissionArtifacts": true,
+    "logLevel": "info",
+    "watchInterval": 1000,
+    "watchExpressions": [],
+    "modTypes": {
+        "@EdenOnline": "client"
+    },
+    "externalMods": [],
+    "hooks": {
+        "preClientLaunch": {
+            "commands": [
+                "${workspaceFolder}\\Tools\\BuildForArma.ps1"
+            ],
+            "blocking": true,
+            "continueOnError": false
+        },
+        "postClientLaunch": {
+            "commands": [
+                "${workspaceFolder}\\Tools\\StartMonitoring.ps1"
+            ],
+            "blocking": false,
+            "continueOnError": true
+        }
+    },
+    "hookPresentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared"
+    }
+}

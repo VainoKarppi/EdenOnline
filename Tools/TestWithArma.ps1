@@ -22,41 +22,15 @@ Write-Host "Project Path: $projectPath" -ForegroundColor Blue
 Write-Host "Mod Path: $modFolder" -ForegroundColor Blue
 Write-Host ""
 
+# Add function name on top of each file, if it doesent exists. (helps when using search)
+Add-SQFFunctionTags -ModFolder $modFolder
+
 # Terminate-ExistingProcess
 
 if (Build-Project -projectPath $projectPath -destinationPath $modFolder) {
     if (Pack-Addons -modFolder $modFolder) {
         if (Start-Arma) {
-            # Combine Watch-ExtensionLog and Watch-RPTLog in the same console
-            # E:\SteamLibrary\steamapps\common\Arma 3\EdenOnline_Logs
-
-            $armaPath = Get-ArmaPath
-            
-
-            # TODO FIX WHERE ONLY RPT IS LOGGED
-            Start-Job -ScriptBlock {
-                . "$using:functionsScript"
-                Watch-ExtensionLog | ForEach-Object { Write-Host "[EXT] $_" }
-            }
-
-            Watch-RPTLog | ForEach-Object { Write-Host "[RPT] $_" }
-
-            # Ask if the user wants to terminate Arma 3 before exit
-            $userInput = Read-Host "Do you want to terminate Arma 3 before exiting? (Y/N)"
-
-            if ($userInput -eq 'Y' -or $userInput -eq 'y') {
-                # Terminate Arma 3 process
-                $armaProcess = Get-Process -Name "arma3_x64" -ErrorAction SilentlyContinue
-                if ($armaProcess) {
-                    Write-Host "Terminating Arma 3..."
-                    Stop-Process -Name "arma3_x64" -Force
-                }
-            } else {
-                Write-Host "Arma 3 will remain running."
-            }
-
-            # Stop the background job
-            Get-Job | Stop-Job | Remove-Job
+            & (Join-Path $PSScriptRoot "StartMonitoring.ps1")
         }
     }
 }

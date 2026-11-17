@@ -3,9 +3,12 @@ bin/
 obj/
 [Tt]ools/callExtension/
 
-**/[P]ublish/
+**/Publish
+**/publish
 **/EdenOnline_**
 **/EdenOnline_Logs
+
+**/.hemttout
 
 *.dll
 *.pbo

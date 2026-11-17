@@ -62,7 +62,7 @@ public static partial class Client
         }
 
         var payload = new MethodRequest { MethodName = methodName, Args = args };
-        var packet = MessageBuilder.CreatePacket(msg, payload);
+        var packet = MessageBuilder.CreatePacket(msg, payload, NetworkSide.Client);
 
         if (OnTcpMessageSent != null) {
             _ = Task.Run(() => OnTcpMessageSent.Invoke(msg));
@@ -81,7 +81,7 @@ public static partial class Client
             TargetId = [targetId],
             MessageType = type
         };
-        var packet = MessageBuilder.CreatePacket(message, data);
+        var packet = MessageBuilder.CreatePacket(message, data, NetworkSide.Client);
 
         await _tcpClient!.GetStream().WriteAsync(packet);
     }

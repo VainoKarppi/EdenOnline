@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
-using static EdenOnline.Logger;
+using static EdenOnline.ArmaLog;
 using EdenOnline;
 
 using System.Text.Json;
@@ -26,11 +26,13 @@ public static class ServerStateManager
     public static Dictionary<int, string> UsernameList { get; set; } = [];
     public static ClientStateManager ServerObjectManager { get; } = new ClientStateManager();
     public static MissionAttributeManager MissionAttributeManager { get; } = new MissionAttributeManager();
+    public static List<ArmaSyncConnection> SyncConnections { get; set; } = [];
 
     public static void Reset()
     {
         UsernameList.Clear();
         ServerObjectManager.Clear();
         MissionAttributeManager.Clear();
+        SyncConnections.Clear();
     }
 }

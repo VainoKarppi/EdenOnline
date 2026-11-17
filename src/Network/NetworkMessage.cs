@@ -14,7 +14,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using DynTypeSerializer;
-using static DynTypeNetwork.Settings.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace DynTypeNetwork;
 
@@ -116,7 +116,7 @@ internal class HandshakeMessage
 public static class MessageBuilder
 {
     #region TCP
-    internal static byte[] CreateTcpMessage(NetworkMessage msg, bool isServerBroadcast = false)
+    internal static byte[] CreateTcpMessage(NetworkMessage msg, NetworkSide side, bool isServerBroadcast = false)
     {
         msg.Timestamp = DateTime.UtcNow.Ticks;
 
@@ -126,8 +126,7 @@ public static class MessageBuilder
 
         msg.TargetId = NetworkMessage.NormalizeTargetIds(msg.TargetId);
 
-        if (LogItem(LogLevel.Debug))
-            Console.WriteLine($"{(msg.SenderId == Server.SERVER_ID ? "[SERVER]" : "[CLIENT]")} (CreateMessage) SenderId:{msg.SenderId}, TargetId:{string.Join(",", msg.TargetId)}, MessageId:{msg.MessageId}: {msg.Payload}");
+        Log.For(side).Debug($"(CreateMessage) SenderId:{msg.SenderId}, TargetId:{string.Join(",", msg.TargetId)}, MessageId:{msg.MessageId}: {msg.Payload}");
 
         var buffer = new List<byte>();
 
@@ -155,13 +154,13 @@ public static class MessageBuilder
         return [.. lengthPrefix, ..envelope];
     }
 
-    private static NetworkMessage ReadTcpMessage(byte[] data, bool includeData = false, int? connectionId = null)
+    private static NetworkMessage ReadTcpMessage(byte[] data, NetworkSide side, bool includeData = false, int? connectionId = null)
     {
         byte[] messageBytes = MessageCrypto.DecodeTcpEnvelope(data, connectionId);
-        return ParseTcpMessage(messageBytes, includeData);
+        return ParseTcpMessage(messageBytes, side, includeData);
     }
 
-    private static NetworkMessage ParseTcpMessage(byte[] data, bool includeData = false)
+    private static NetworkMessage ParseTcpMessage(byte[] data, NetworkSide side, bool includeData = false)
     {
         if (data.Length < 4 + 4 + 2 + 2 + 8 + 4)
             throw new ArgumentException("Packet too short.", nameof(data));
@@ -188,7 +187,7 @@ public static class MessageBuilder
             payload = Encoding.UTF8.GetString(data, offset, payloadLength);
         }
 
-        if (LogItem(LogLevel.Debug)) Console.WriteLine($"{(targetIds.Contains(Server.SERVER_ID) ? "[SERVER]" : "[CLIENT]")} (ReadMessage) MessageType:{messageType}, SenderId:{senderId}, TargetId:{string.Join(",", targetIds)}, MessageId:{messageId}: {payload}");
+        Log.For(side).Debug($"(ReadMessage) MessageType:{messageType}, SenderId:{senderId}, TargetId:{string.Join(",", targetIds)}, MessageId:{messageId}: {payload}");
 
         return new NetworkMessage
         {
@@ -200,7 +199,7 @@ public static class MessageBuilder
             Payload = payload
         };
     }
-    internal static NetworkMessage? ReadTcpMessage(NetworkStream stream, int? connectionId = null) {
+    internal static NetworkMessage? ReadTcpMessage(NetworkStream stream, NetworkSide side, int? connectionId = null) {
         // --- READ LENGTH PREFIX (4 bytes) ---
         byte[] lenBuf = new byte[4];
         stream.ReadExactly(lenBuf);
@@ -215,7 +214,7 @@ public static class MessageBuilder
         stream.ReadExactly(messageBytes);
 
         // --- DESERIALIZE ---
-        NetworkMessage msg = ReadTcpMessage(messageBytes, includeData: true, connectionId);
+        NetworkMessage msg = ReadTcpMessage(messageBytes, side, includeData: true, connectionId);
 
         return msg;
     }
@@ -227,7 +226,7 @@ public static class MessageBuilder
     #region UDP
     private static readonly uint[] Crc32Table = CreateCrc32Table();
 
-    internal static byte[] CreateUdpMessage(NetworkMessage msg, bool isServerBroadcast = false)
+    internal static byte[] CreateUdpMessage(NetworkMessage msg, NetworkSide side, bool isServerBroadcast = false)
     {
         msg.Timestamp = DateTime.UtcNow.Ticks;
 
@@ -236,7 +235,7 @@ public static class MessageBuilder
 
         msg.TargetId = NetworkMessage.NormalizeTargetIds(msg.TargetId);
 
-        if (LogItem(LogLevel.Debug)) Console.WriteLine($"{(msg.SenderId == Server.SERVER_ID ? "[SERVER]" : "[CLIENT]")} (CreateMessage) SenderId:{msg.SenderId}, TargetId:{string.Join(",", msg.TargetId)}, MessageId:{msg.MessageId}: {msg.Payload}");
+        Log.For(side).Debug($"(CreateMessage) SenderId:{msg.SenderId}, TargetId:{string.Join(",", msg.TargetId)}, MessageId:{msg.MessageId}: {msg.Payload}");
 
         byte[] messageBytes = new byte[4 + 4 + 4 + (msg.TargetId.Length * 4) + 2 + 2 + 8 + 4 + payloadLength]; // checksum + sender + target-count + targets + header + payload
         int offset = 4; // leave space for checksum
@@ -270,7 +269,7 @@ public static class MessageBuilder
         return MessageCrypto.CreateUdpEnvelope(messageBytes, msg.MessageType, senderId, msg.TargetId);
     }
 
-    internal static NetworkMessage ReadUdpMessage(byte[] data, bool includeData = false, int? senderId = null)
+    internal static NetworkMessage ReadUdpMessage(byte[] data, NetworkSide side, bool includeData = false, int? senderId = null)
     {
         byte[] packet = MessageCrypto.DecodeUdpEnvelope(data, senderId);
 
@@ -301,7 +300,7 @@ public static class MessageBuilder
         if (includeData && payloadLength > 0)
             payload = Encoding.UTF8.GetString(packet, offset, payloadLength);
 
-        if (LogItem(LogLevel.Debug)) Console.WriteLine($"{(targetIds.Contains(Server.SERVER_ID) ? "[SERVER]" : "[CLIENT]")} (ReadMessage) SenderId:{sender}, TargetId:{string.Join(",", targetIds)}, MessageId:{messageId}: {payload}");
+        Log.For(side).Debug($"(ReadMessage) SenderId:{sender}, TargetId:{string.Join(",", targetIds)}, MessageId:{messageId}: {payload}");
 
         return new NetworkMessage
         {
@@ -345,14 +344,14 @@ public static class MessageBuilder
         if (string.IsNullOrEmpty(data)) return default;
         return Serializer.Deserialize<T>(data);
     }
-    internal static byte[] CreatePacket(NetworkMessage msg)
+    internal static byte[] CreatePacket(NetworkMessage msg, NetworkSide side)
     {
-        return CreateTcpMessage(msg);
+        return CreateTcpMessage(msg, side);
     }
-    internal static byte[] CreatePacket<T>(NetworkMessage msg, T data)
+    internal static byte[] CreatePacket<T>(NetworkMessage msg, T data, NetworkSide side)
     {
         msg.Payload = Serializer.Serialize(data);
-        return CreateTcpMessage(msg);
+        return CreateTcpMessage(msg, side);
     }
 
     internal static async Task<object?> HandleBroadcastMessageOnServer(NetworkMessage msg, CancellationToken token)
@@ -368,13 +367,13 @@ public static class MessageBuilder
 
             if (result == null && !isVoidMethod) throw new Exception("Result was expected, but not returned");
         } catch (Exception ex) {
-            if (LogItem(LogLevel.Debug)) Console.WriteLine(ex);
+            Log.Server.Debug(ex.ToString());
         }
 
         return result;
     }
 
-    internal static async Task HandleCustomMessage(NetworkStream stream, NetworkMessage msg, CancellationToken token)
+    internal static async Task HandleCustomMessage(NetworkStream stream, NetworkMessage msg, NetworkSide side, CancellationToken token)
     {
         // TODO handle errors. (Also dont waitForReturn on sender, if target method in opposite end is void, and returns nothing)
         object? result = null;
@@ -407,7 +406,7 @@ public static class MessageBuilder
             bool isVoidMethod = MethodBuilder.GetAvailableServerMethods().FirstOrDefault(m => m.Name.Equals(request.MethodName, StringComparison.OrdinalIgnoreCase))?.ReturnType == null;
             if (result == null && !isVoidMethod) throw new Exception("Result was expected, but not returned");
         } catch (Exception ex) {
-            if (LogItem(LogLevel.Debug)) Console.WriteLine(ex);
+            Log.For(side).Debug(ex.ToString());
             success = false;
             //result = ex.Message;
         }
@@ -435,14 +434,13 @@ public static class MessageBuilder
         if (!success) wrapperType.GetProperty("ErrorMessage")!.SetValue(responseWrapper, result?.ToString());
 
         if (LogItem(LogLevel.Debug)) Console.WriteLine($"{(msg.SenderId == Server.SERVER_ID ? "[SERVER]" : "[CLIENT]")} Sending response for method: SUCCESS:{success}, ({responseType}):{Serializer.Serialize(result)}");
-
         byte[] packet = CreateMessage(responseMessage, responseWrapper);
         await stream.WriteAsync(packet, token);
         */
 
-        if (LogItem(LogLevel.Debug)) Console.WriteLine($"{(responseMessage.SenderId == Server.SERVER_ID ? "[SERVER]" : "[CLIENT]")} Sending response for method: SUCCESS:{success}, ({(result == null ? "null" : result.GetType().Name)}):{Serializer.Serialize(result)}");
+        Log.For(side).Debug($"Sending response for method: SUCCESS:{success}, ({(result == null ? "null" : result.GetType().Name)}):{Serializer.Serialize(result)}");
         
-        byte[] packet = CreatePacket(responseMessage, result);
+        byte[] packet = CreatePacket(responseMessage, result, side);
         await stream.WriteAsync(packet, token);
     }
     internal static ushort GenerateRequestId(ref int requestId)

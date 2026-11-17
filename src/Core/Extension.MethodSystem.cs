@@ -47,7 +47,7 @@ public static partial class MethodSystem {
             if (string.IsNullOrEmpty(originalMethod)) throw new Exception("Invalid Method");
 
             int asyncKey = -1;
-            bool async = pipeIndex >= 0 && int.TryParse(method[(pipeIndex + 1)..], out asyncKey);
+            bool hasAsyncKey = pipeIndex >= 0 && int.TryParse(method[(pipeIndex + 1)..], out asyncKey);
 
             // Add method info to context
             ExtensionContext = (ExtensionContext ?? new ExtensionCallContext()) with { MethodName = method, AsyncKey = null };
@@ -78,10 +78,12 @@ public static partial class MethodSystem {
             if (!MethodExists(originalMethod)) throw new Exception($"Method {originalMethod} not found!");
 
             // Execute method
+            // A negative async key (-1) is a fire-and-forget request: the method is invoked without waiting
+            // for its result and no response is sent back to Arma.
             if (asyncKey >= 0) {
                 return ExecuteAsyncMethod(originalMethod, argArray, asyncKey, output, outputSize);
             } else {
-                return ExecuteSyncMethod(originalMethod, argArray, output, outputSize);
+                return ExecuteSyncMethod(originalMethod, argArray, output, outputSize, fireAndForget: hasAsyncKey);
             }
 
         } catch (Exception ex) {
@@ -128,11 +130,11 @@ public static partial class MethodSystem {
             (int)ReturnCodes.Success);
     }
 
-    private static int ExecuteSyncMethod(string originalMethod, string[] argArray, nint output, int outputSize)
+    private static int ExecuteSyncMethod(string originalMethod, string[] argArray, nint output, int outputSize, bool fireAndForget = false)
     {
         MethodInfo methodToInvoke = GetMethod(originalMethod);
 
-        if (IsAsyncWithReturn(methodToInvoke)) {
+        if (IsAsyncWithReturn(methodToInvoke) && !fireAndForget) {
             throw new Exception($"Method {methodToInvoke.Name} can only be called using async key!");
         }
 
@@ -141,9 +143,10 @@ public static partial class MethodSystem {
         bool isVoid = IsVoidMethod(methodToInvoke);
 
         object? returnValue = null;
-        if (isVoid && IsAsync(methodToInvoke)) {
-            // Fire and forget
-            _ = Task.Run(() => methodToInvoke.Invoke(null, unserializedData));
+        if (IsAsync(methodToInvoke)) {
+            // Fire-and-forget: start the task, but never wait for it and never return its result.
+            RunWithoutWaiting(methodToInvoke, unserializedData);
+            isVoid = true;
         } else {
             returnValue = methodToInvoke.Invoke(null, unserializedData);
         }
@@ -154,6 +157,25 @@ public static partial class MethodSystem {
         return WriteOutput(output, outputSize, originalMethod,
             $@"[""{ExtensionResultCode.SUCCESS}"",{(isVoid ? "[]" : Serializer.PrintArray([returnValue]))}]",
             (int)ReturnCodes.Success);
+    }
+
+    /// <summary>
+    /// Executes an async method on a worker thread without waiting for it and without sending a response
+    /// to Arma. Used by fire-and-forget requests (async key -1).
+    /// </summary>
+    private static void RunWithoutWaiting(MethodInfo methodToInvoke, object?[] unserializedData) {
+        _ = Task.Run(() => {
+            try {
+                if (methodToInvoke.Invoke(null, unserializedData) is Task task) {
+                    task.ContinueWith(
+                        t => Log($"[FIRE-AND-FORGET] {methodToInvoke.Name} failed: {t.Exception?.GetBaseException().Message}", LogLevel.Error),
+                        TaskContinuationOptions.OnlyOnFaulted
+                    );
+                }
+            } catch (Exception ex) {
+                Log($"[FIRE-AND-FORGET] {methodToInvoke.Name} failed: {(ex.InnerException ?? ex).Message}", LogLevel.Error);
+            }
+        });
     }
 
     private static int HandleGetMethods(nint output, int outputSize, string originalMethod)

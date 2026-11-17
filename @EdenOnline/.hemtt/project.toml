@@ -1,0 +1,48 @@
+name = "@EdenOnline"
+author = "Razer"
+prefix = "EOEX"
+mainprefix = "z"
+
+[version]
+major = 1
+minor = 1
+patch = 0
+build = 0
+git_hash = 0
+
+[files]
+include = [
+    "logo.paa",
+    "hash.txt",
+    "EdenOnline_x64.dll",
+]
+
+[hemtt.launch.default]
+parameters = [
+    "-noBattleEye",
+    "-window"
+]
+
+mission = "EdenOnline.VR"
+
+[hemtt.launch.tools]
+extends = "default"
+
+workshop = [
+    # Pythia
+    "1751569185",
+    # 7erra's Editing Extensions
+    "1387934106",
+    # 3Den Stringtable Viewer
+    "2073243184",
+    # CBA
+    "450814997",
+    # Advanced Developer Tools
+    # "3499977893"
+    # 3den Enhanced
+    "623475643"
+]
+
+parameters = [
+    "-limitFPS=60"
+]

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DynTypeNetwork;
-using static EdenOnline.Logger;
+using static EdenOnline.ArmaLog;
 
 
 namespace EdenOnline;
@@ -21,7 +21,7 @@ public static partial class ArmaMethods
     /// </summary>
     public static async Task<int> Connect(string host, int port, string username, string worldname, string armaVersion, object[] modHashes, string password = "")
     {
-        if (Client.IsTcpConnected() && !Settings.ALLOW_DUAL_CONNECTIONS) throw new Exception("Client is already connected. Please disconnect before connecting again.");
+        if (Client.IsTcpConnected()) throw new Exception("Client is already connected. Please disconnect before connecting again.");
 
         string clientHash = HashUtils.GetHash(new object[] { Extension.Version });
         Log($"[CLIENT] Connect: {host}:{port}, world: {worldname}, user: {username}, hash: {clientHash}");
@@ -35,6 +35,8 @@ public static partial class ArmaMethods
             SubscribeClientEvents();
 
             await ShowLoadingScreen(true, 10);
+            await Task.Delay(500); // Give receivers some time to process the changes (ping)
+
             await SyncUsernames(clientID, username);
 
             await ShowLoadingScreen(true, 20);
@@ -43,9 +45,13 @@ public static partial class ArmaMethods
             await ShowLoadingScreen(true, 30);
             await SyncObjects();
 
-            await ShowLoadingScreen(true, 50);
+            await ShowLoadingScreen(true, 70);
+            await SyncConnections();
+            
 
             Log($"[CLIENT] Connect finished: {host}:{port}, clientID: {clientID}");
+
+            // TODO Make client send the message, that all objects were synced from Arma 3. 
             await ShowLoadingScreen(false, 100);
 
             return clientID;
@@ -64,9 +70,10 @@ public static partial class ArmaMethods
 
     private static void RegisterClientAuthentication(string worldname, string armaVersion, object[] modHashes, string password)
     {
+        Debug("[CLIENT] Registering client authentication...");
         Authentication.SetClientAuthentication(() =>
         {
-            Console.WriteLine("[CLIENT] Sending authentication data to server...");
+            Debug("[CLIENT] Sending authentication data to server...");
             return Task.FromResult<object[]?>([worldname, armaVersion, modHashes, password]);
         });
     }
@@ -160,7 +167,6 @@ public static partial class ArmaMethods
     private static async Task ShowLoadingScreen(bool enable, int progress)
     {
         await Client.SendTcpMessageAsync(-1, "LoadingScreen", [enable, progress]);
-        await Task.Delay(50);
     }
 
     private static async Task SyncUsernames(int clientID, string username)
@@ -176,7 +182,7 @@ public static partial class ArmaMethods
             Extension.SendToArma("UpdateClientList", [otherUsersArray]);
         }
 
-        Log($"[CLIENT] Received {ClientStateManager.UsernameList?.Count - 1 ?? 0} other users.");
+        Log($"[CLIENT] Received {Math.Max(0, (ClientStateManager.UsernameList?.Count ?? 0) - 1)} other users.");
     }
 
     private static async Task SyncMissionAttributes()
@@ -188,14 +194,11 @@ public static partial class ArmaMethods
 
         Log($"[CLIENT] Received {missionAttributes.Count} mission attributes from server.");
 
-        object?[] attributes = missionAttributes
-            .Select(kvp => (object?)new object?[]
-            {
+        object?[] attributes = missionAttributes.Select(kvp => (object?)new object?[] {
                 kvp.Key.Length > 0 ? kvp.Key[0] : "",
                 kvp.Key.Length > 1 ? kvp.Key[1] : "",
                 kvp.Value
-            })
-            .ToArray();
+            }).ToArray();
 
         Extension.SendToArma("SetInitialMissionAttributes", [attributes]);
     }
@@ -206,18 +209,36 @@ public static partial class ArmaMethods
         int objectCount = await Client.RequestTcpDataAsync<int>(1, "GetObjectCount");
         Extension.SendToArma("ObjectSyncCount", [objectCount]);
 
-        if (objectCount > 0)
-        {
+        Log($"[CLIENT] Syncing {objectCount} objects...");
+
+        int finalCount = 0;
+        if (objectCount > 0) {
             List<ArmaObject>? objects = await Client.RequestTcpDataAsync<List<ArmaObject>>(1, "GetAllObjects");
+            finalCount = objects?.Count ?? 0;
 
             if (objects == null || objects.Count == 0)
                 throw new Exception("Failed to sync objects: Received null from server");
 
             foreach (var obj in objects)
-                Extension.SendToArma("ObjectSyncData", [obj.Id, obj.Attributes]);
+                Extension.SendToArma("ObjectSyncData", [obj.Id, obj.Type, obj.Attributes]);
         }
 
-        Log($"[CLIENT] Object sync complete. Total objects synced: {objectCount}");
+        if (objectCount != finalCount) Error($"[CLIENT] Object sync failed! ExpectedSyncCount: {objectCount}, Received: {finalCount}");
+        Log($"[CLIENT] Object sync complete. Total objects synced: {finalCount}");
+    }
+
+    private static async Task SyncConnections() {
+        Log("[CLIENT] Requesting connections from server...");
+
+        List<ArmaSyncConnection>? connections = await Client.RequestTcpDataAsync<List<ArmaSyncConnection>>(1, "GetAllConnections");
+
+        if (connections == null) throw new Exception("Failed to sync connections: Received null from server");
+        
+        foreach (var connection in connections) {
+            Extension.SendToArma("CreateSyncConnection", [connection.FromID, connection.ToID, connection.Type]);
+        }
+
+        Log($"[CLIENT] Connection sync complete. Total connections synced: {connections.Count}");
     }
 
     private static object[] BuildOtherUsersArray()
