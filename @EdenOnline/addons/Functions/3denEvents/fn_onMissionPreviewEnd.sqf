@@ -1,0 +1,1 @@
+call EOEX_fnc_initExtension;
