@@ -48,7 +48,7 @@ if (isNil "_entity") exitWith {
 
 // Eden ignores set3DENAttribute "ItemClass", the entity has to be created again with the new class.
 private _classChange = _attributeMap select { (_x param [0, ""]) isEqualTo "ItemClass" };
-if !(_classChange isEqualTo []) then {
+if (_classChange isNotEqualTo []) then {
     private _newClass = (_classChange select 0) param [1, ""];
     private _currentClass = (_entity get3DENAttribute "ItemClass") param [0, ""];
 
