@@ -42,6 +42,14 @@ Assert(deserializeMethod is not null, "DeserializeArmaArray should exist.");
 var values = (object?[])deserializeMethod!.Invoke(null, [setMissionAttributeMethod!, new string[] { "\"Briefing\"", "\"Scenario\"", "[1,2,3]" }, null])!;
 Assert(values[2] is object[] array && array.Length == 3, "Array payloads should deserialize as object[] for object parameters.");
 
+// Strings sent to Arma are parsed with parseSimpleArray, so a quote inside a value must be
+// doubled the same way SQF escapes it. Attribute values such as Init or ammoBox contain quotes.
+var printArrayMethod = serializerType?.GetMethod("PrintArray", BindingFlags.NonPublic | BindingFlags.Static);
+Assert(printArrayMethod is not null, "PrintArray should exist.");
+
+string printedArray = (string)printArrayMethod!.Invoke(null, [new object?[] { "hint \"hello\"" }])!;
+Assert(printedArray == "[\"hint \"\"hello\"\"\"]", $"Quotes in strings must be doubled for SQF, got: {printedArray}");
+
 // Fire-and-forget requests (async key -1) must invoke async-only methods (e.g. Disconnect) without
 // waiting for their result and without sending a response back to Arma.
 MethodSystem.RegisterMethods(typeof(FireAndForgetProbeMethods));

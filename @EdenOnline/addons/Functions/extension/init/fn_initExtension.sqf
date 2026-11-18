@@ -40,6 +40,10 @@ EOEX_var_OtherClients = createHashMap;
 
 EOEX_var_Objects = createHashMap;
 EOEX_var_Markers = createHashMap;
+EOEX_var_Comments = createHashMap;
+EOEX_var_Waypoints = createHashMap;
+EOEX_var_Layers = createHashMap;
+
 
 missionNamespace setVariable ["Eden_MoveActive", false];
 missionNamespace setVariable ["Eden_MoveLastUpdate", 0];

@@ -1,15 +1,25 @@
 // EOEX_fnc_sendObjectAttributes
 
+// TODO Updating Unit/Vehicle ItemClass removes the object!
 
 params ["_entity", "_property"];
 
 if !(missionNamespace getVariable ["EOEX_var_Connected",false]) exitWith {};
 
-// Ignore if the entity is a group
-if (_entity in allGroups) exitWith {};
+if (_entity isEqualType grpNull) exitWith {};
 
-// Get the unique ID of the object or marker
-private _id = _entity call EOEX_fnc_getId;
+private _type = [_entity, typeName _entity] call EOEX_fnc_getObjectType;
+
+if (_type == "Marker" && _property != "ItemClass") then {
+	[_entity, "ItemClass"] spawn EOEX_fnc_sendObjectAttributes; // Always update ItemClass for markers, since this cannot be detected by the eventhandler
+};
+
+// Ignore if the entity is a group
+if (_type == "Group") exitWith {};
+
+// TODO WAYPOINTS
+
+private _id = [_entity, true] call EOEX_fnc_getId;
 if (isNil "_id" || {_id == ""}) exitWith {};
 
 // Get value of the attribute that was changed.
@@ -20,27 +30,6 @@ if (isNil "_value") exitWith {};
 // Added via: [id, [property, value]] call EOEX_fnc_addSkipAttributeChange
 private _skip = [_id, [_property, _value]] call EOEX_fnc_checkSkipAttributeChange;
 if (_skip) exitWith {};
-
-
-
-// TODO check if marker
-if (_entity isEqualType "") exitWith {
-	// TODO queue marker attribute updates to avoid sending multiple updates in a single frame
-	// TODO send data to server
-	diag_log _entity;
-	diag_log _property;
-	diag_log "marker edited";
-};
-
-// Event was triggered by incoming update from another client
-if (_entity getVariable ["EOEX_updateRequested", false]) exitWith {
-	_entity setVariable ["EOEX_updateRequested", nil];
-};
-_entity setVariable ["EOEX_updateRequested", nil];
-
-
-
-
 
 
 private _queue = EOEX_var_AttributeQueues getOrDefault [_id, createHashMap, true];
@@ -59,7 +48,7 @@ _timer = [_id, _entity] spawn {
 	private _queue = EOEX_var_AttributeQueues getOrDefault [_id, createHashMap];
 	if (count _queue == 0) exitWith {};
 
-	private _type = _entity call EOEX_fnc_getObjectType;
+	private _type = [_entity, typeName _entity] call EOEX_fnc_getObjectType;
 	if (isNil "_type") exitWith { diag_log format ["ERROR: Object type not found for ID: %1", _id] };
 
 	["UpdateObject", [_id, _type, _queue], true] call EOEX_fnc_callExtensionAsync;

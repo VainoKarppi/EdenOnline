@@ -1,11 +1,10 @@
 // EOEX_fnc_sendCreateMarker
 
-params ["_id", "_marker"];
+params ["_id", "_marker","_layerId"];
 
-if !(missionNamespace getVariable ["EOEX_var_Connected",false]) exitWith {};
+private _class = (_marker get3DENAttribute "ItemClass") select 0; // Eg. "mil_destroy", "mil_ambush" ...
+private _position = (_marker get3DENAttribute "Position") select 0;
 
-EOEX_var_Markers set [_id, _marker];
 
-private _attributes = _marker get3DENAttributes "";
-
-["CreateObject", [_id, "Marker", _attributes]] spawn EOEX_fnc_callExtensionAsync;
+// TODO Verify creation. Delete if needed and retry.
+["CreateObject", [_id, "Marker", [["ItemClass", _class], ["Position", _position], ["Layer", _layerId]]], true] spawn EOEX_fnc_callExtensionAsync;

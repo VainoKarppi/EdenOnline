@@ -1,5 +1,5 @@
 // EOEX_fnc_addSkipAttributeChange
-params ["_id", "_change", ["_removeAfter", -1]];
+params ["_id", "_change", ["_removeAfter", 3]];
 
 private _changes = EOEX_var_SkipAttributeChanges getOrDefault [_id, []];
 

@@ -28,14 +28,11 @@ private _request = _function + "|" + str(_requestId); // Add ASYNC key to reques
 // TODO Temp
 if (_function != "CameraUpdate" && _function != "SetInitialMissionAttributes" && _function != "UpdateObjectDrag") then {
     if (_requestId == -1) then {
-		diag_log "";
         diag_log "========================== SENT DATA (ASYNC) - FIRE-AND-FORGET ==========================";
         diag_log _function;
         diag_log _arguments;
 		diag_log "=========================================================================================";
-		diag_log "";
     } else {
-		diag_log "";
         diag_log "=================================== SENT DATA (ASYNC) ===================================";
         diag_log _function;
         diag_log _arguments;
@@ -106,11 +103,10 @@ if !(_success) exitWith {
 
 
 if (_function != "CameraUpdate" && _function != "SetInitialMissionAttributes") then {
-    diag_log "================================= RESPONSE DATA (ASYNC) =================================";
+    diag_log "---------------------------------- RESPONSE DATA (ASYNC) ----------------------------------";
     diag_log format ["_function: %1, _requestId: %2", _function, _requestId];
     diag_log _returnData;
     diag_log "=========================================================================================";
-	diag_log "";
 };
 
 [_success, _returnData]

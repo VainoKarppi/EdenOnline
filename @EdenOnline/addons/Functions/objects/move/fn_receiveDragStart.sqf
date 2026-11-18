@@ -6,34 +6,44 @@ params ["_moveId", "_objectIds"];
 
 // TODO LOCK OBJECT, SO THAT IT CANNOT BE EDITED
 
-private _objects = [];
-
-private _objectsById = createHashMap;
-
-{
-    _objectsById set [_x call EOEX_fnc_getId, _x];
-} forEach (all3DENEntities select 0);
+// Every registry maps an EOEX id to its entity, so a drag can carry objects, triggers, logics,
+// markers, waypoints and comments. Markers are stored by name and waypoints as [group, index],
+// they are kept as they are and never passed to isNull.
+private _entitiesById = createHashMap;
 
 {
-    private _object = _objectsById getOrDefault [_x, objNull];
+    private _registry = _x;
+    { _entitiesById set [_x, _y] } forEach _registry;
+} forEach [EOEX_var_Objects, EOEX_var_Markers, EOEX_var_Waypoints, EOEX_var_Comments];
 
-    if !(isNull _object) then {
-        _objects pushBack [_object, (_object get3DENAttribute "Position") select 0];
+private _moved = [];
+
+{
+    private _entity = _entitiesById getOrDefault [_x, nil];
+
+    if (isNil "_entity") then {
+        diag_log format ["MOVE_START: %1 was not found for move %2", _x, _moveId];
+        continue;
     };
+
+    private _position = (_entity get3DENAttribute "Position") param [0, nil];
+
+    if (isNil "_position") then {
+        diag_log format ["MOVE_START: %1 has no position for move %2", _x, _moveId];
+        continue;
+    };
+
+    _moved pushBack [_x, _entity, _position];
 } forEach _objectIds;
 
-if (_objects isEqualTo []) exitWith {
-    diag_log format ["MOVE_START: No objects found for move %1", _moveId];
+if (_moved isEqualTo []) exitWith {
+    diag_log format ["MOVE_START: No entities found for move %1", _moveId];
 };
 
 missionNamespace setVariable ["Eden_RemoteMoveActive", true];
 missionNamespace setVariable ["Eden_RemoteMoveId", _moveId];
-missionNamespace setVariable ["Eden_RemoteMoveObjects", _objects];
+missionNamespace setVariable ["Eden_RemoteMoveObjects", _moved];
 
-private _targets = [];
+private _targets = _moved apply { [_x # 1, _x # 2] };
 
-{
-    _targets pushBack [_x select 0, _x select 1];
-} forEach _objects;
-
-missionNamespace setVariable ["Eden_RemoteMoveTargets", _targets ];
+missionNamespace setVariable ["Eden_RemoteMoveTargets", _targets];

@@ -2,24 +2,8 @@
 params ["_fromID", "_toID", "_type"];
 
 
-private _fromObject = objNull;
-private _toObject = objNull;
-
-
-// Find source object
-{
-    private _objectID = _x getVariable ["EOEX_var_objectID", nil];
-
-    if (!isNil "_objectID" && {_objectID == _fromID}) exitWith { _fromObject = _x };
-} forEach (all3DENEntities # 0);
-
-
-// Find target object
-{
-    private _objectID = _x getVariable ["EOEX_var_objectID", nil];
-
-    if (!isNil "_objectID" && {_objectID == _toID}) exitWith { _toObject = _x };
-} forEach (all3DENEntities # 0);
+private _fromObject = EOEX_var_Objects getOrDefault [_fromID, objNull];
+private _toObject = EOEX_var_Objects getOrDefault [_toID, objNull];
 
 
 // Validate source
@@ -45,7 +29,7 @@ add3DENConnection [_type,[_fromObject],_toObject];
 
 
 // Check whether Eden accepted the connection.
-_success = false;
+private _success = false;
 {
     if ((_x select 0) != _type) then { continue };
     if (_x select 1 == _toObject) exitWith { _success = true };

@@ -297,7 +297,7 @@ internal static class Serializer
     {
         null => "nil",
         bool b => b.ToString().ToLower(),
-        string s => $"\"{s}\"",
+        string s => $"\"{s.Replace("\"", "\"\"")}\"", // SQF escapes a quote inside a string by doubling it
         object[] arr => PrintArray(arr),
         IDictionary<string, object?> dict => PrintDictionary(dict),
         IEnumerable<object?> list => PrintArray(list.ToArray()),
@@ -310,7 +310,7 @@ internal static class Serializer
         if (dict.Count == 0) return "[]";
 
         var items = dict.Select(kvp =>
-            $"[\"{kvp.Key}\",{PrintItem(kvp.Value)}]"
+            $"[{PrintItem(kvp.Key)},{PrintItem(kvp.Value)}]"
         );
 
         return "[" + string.Join(",", items) + "]";

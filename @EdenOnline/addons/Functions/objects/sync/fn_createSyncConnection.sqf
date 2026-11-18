@@ -25,7 +25,7 @@ if !(_sources isEqualType []) exitWith {
     diag_log format ["[EdenOnline] Cannot create connection: invalid source array: %1", _sources];
 };
 
-private _toID = _to getVariable ["EOEX_var_objectID", nil];
+private _toID = [_to, true] call EOEX_fnc_getId;
 
 if (isNil "_toID") exitWith {
     diag_log format ["[EdenOnline] Cannot create connection: target has no object ID: %1", _to];
@@ -34,7 +34,7 @@ if (isNil "_toID") exitWith {
 {
     private _fromObject = _x;
 
-    private _fromID = _fromObject getVariable ["EOEX_var_objectID", nil];
+    private _fromID = [_fromObject, true] call EOEX_fnc_getId;
 
     if (isNil "_fromID") then {
         diag_log format ["[EdenOnline] Cannot create connection: source has no object ID: %1", _fromObject];

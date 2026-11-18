@@ -1,22 +1,42 @@
 // EOEX_fnc_getId
-params ["_object"];
 
 
-if (!isNil "_object" && {_object isEqualType objNull && {_object getVariable ["EOEX_var_objectID",""] != ""}}) exitWith {
-    _object getVariable "EOEX_var_objectID";
+params ["_entity", ["_skipNew", false, [true]]];
+
+if (isNil "_entity") exitWith {
+    ["_entity undefined as a parameter!"] call bis_fnc_error;
 };
 
-// Existing marker
-if (!isNil "_object" && {_object isEqualType "" && {!isNil "EOEX_var_Markers"}}) then {
-    private _id = ""; 
-    { 
-        _id = _x; 
-        if (_y == _object) exitWith {_id};
-        _id = "";
-    } forEach EOEX_var_Markers; 
-    if (_id != "") exitWith { breakWith _id };
+private _type = [_entity, typeName _entity] call EOEX_fnc_getObjectType;
+
+// Unknown entity (e.g. a layer index): nothing to register.
+if (isNil "_type") exitWith {};
+
+private _foundId = "";
+
+private _registry = switch (_type) do {
+    case "Object";
+    case "Trigger";
+    case "Logic": { EOEX_var_Objects };
+
+    case "Marker": { EOEX_var_Markers };
+
+    case "Comment": { EOEX_var_Comments };
+
+    case "Waypoint": { EOEX_var_Waypoints };
+
+    case "Layer": { EOEX_var_Layers };
+
+    default { [] };
 };
 
+{
+    if (_y isEqualTo _entity) exitWith { _foundId = _x };
+} forEach _registry;
+
+if (_foundId != "") exitWith { _foundId };
+
+if (_skipNew) exitWith {};
 
 /*
     Generates a random ID like: "A9F3K2ZQ"
@@ -35,19 +55,38 @@ private _generateRandomId = {
     _id
 };
 
-private _id = call _generateRandomId;
+private _newId = call _generateRandomId;
 
 // Object
-if (!isNil "_object" && {_object isEqualType objNull}) exitWith {
-    _object setVariable ["EOEX_var_objectID",_id];
-    _id
+if (_type == "Object" || _type == "Trigger" || _type == "Logic") exitWith {
+    EOEX_var_Objects set [_newId, _entity];
+    _newId
 };
 
 
 // Marker
-if (!isNil "_object" && {_object isEqualType ""}) exitWith {
-    EOEX_var_Markers set [_id, _object];
-    _id
+if (_type == "Marker") exitWith {
+    EOEX_var_Markers set [_newId, _entity];
+    _newId
 };
 
-_id
+// Comment
+if (_type == "Comment") exitWith {
+    diag_log format ["ADDING COMMENT ID TO EOEX_var_Comments %1", _newId];
+    EOEX_var_Comments set [_newId, _entity];
+    _newId
+};
+
+// Layer
+if (_type == "Layer") exitWith {
+    EOEX_var_Layers set [_newId, _entity];
+    _newId
+};
+
+if (_type == "Waypoint") exitWith {
+    EOEX_var_Waypoints set [_newId, _entity];
+    _newId
+};
+
+
+_newId

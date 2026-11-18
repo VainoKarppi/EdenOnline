@@ -55,10 +55,10 @@ public class ServerNetworkMethods {
         // Only update local server database
         ServerStateManager.ServerObjectManager.AddOrUpdateObject(armaObject);
     }
-    public static bool RemoveObject(string objectID)
+    public static bool RemoveObject(ArmaObject armaObject)
     {
         // Only update local server database
-        bool success = ServerStateManager.ServerObjectManager.RemoveObject(objectID);
+        bool success = ServerStateManager.ServerObjectManager.RemoveObject(armaObject.Id);
         return success;
     }
 

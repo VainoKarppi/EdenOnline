@@ -47,7 +47,7 @@ private _removedConnections = [];
 {
     private _sourceObject = _x;
 
-    private _objectID = _sourceObject getVariable ["EOEX_var_objectID", nil];
+    private _objectID = [_sourceObject, true] call EOEX_fnc_getId;
 
 
     if (isNil "_objectID") then {

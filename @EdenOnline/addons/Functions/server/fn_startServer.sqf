@@ -100,40 +100,49 @@ uiSleep 0.1;
 private _sentConnections = createHashMap;
 
 {
-    private _object = _x;
-    private _connections = get3DENConnections _object;
+    // Skip arrays where item cannot be synced to.
+    if (_forEachIndex in [1,4,5,6,7]) then { continue };
 
-    if (isNil "_connections") then { continue };
-
-    private _id = _object call EOEX_fnc_getId;
-
-    if (isNil "_id") then { continue};
+    private _objects = _x;
 
     {
-        private _connectionType = _x#0;
-        private _targetObject = _x#1;
+        private _object = _x;
 
-        // TODO FIX GROUPS
-        if (_connectionType != "Sync") then { continue };
+        private _connections = get3DENConnections _objects;
+        
+        if (isNil "_connections") then { continue };
 
-        private _toID = _targetObject call EOEX_fnc_getId;
+        private _id = _objects call EOEX_fnc_getId;
 
-        if (isNil "_toID") then { continue };
+        if (isNil "_id") then { continue};
 
-        // Create direction-independent key
-        private _ids = [_id, _toID];
-        _ids sort true;
+        {
+            private _connectionType = _x#0;
+            private _targetObject = _x#1;
 
-        private _key = format ["%1|%2|%3", _ids#0, _ids#1, _connectionType];
+            // TODO FIX GROUPS
+            if (_connectionType != "Sync") then { continue };
 
-        // Already sent this connection
-        if (_sentConnections getOrDefault [_key, false]) then { continue };
+            private _toID = _targetObject call EOEX_fnc_getId;
 
-        _sentConnections set [_key, true];
+            if (isNil "_toID") then { continue };
 
-        ["CreateSyncConnection", [_id, _toID, _connectionType]] call EOEX_fnc_callExtensionAsync;
+            // Create direction-independent key
+            private _ids = [_id, _toID];
+            _ids sort true;
 
-    } forEach _connections;
+            private _key = format ["%1|%2|%3", _ids#0, _ids#1, _connectionType];
+
+            // Already sent this connection
+            if (_sentConnections getOrDefault [_key, false]) then { continue };
+
+            _sentConnections set [_key, true];
+
+            ["CreateSyncConnection", [_id, _toID, _connectionType]] call EOEX_fnc_callExtensionAsync;
+
+        } forEach _connections;
+
+    } forEach _objects;
 
 } forEach _allObjects;
 

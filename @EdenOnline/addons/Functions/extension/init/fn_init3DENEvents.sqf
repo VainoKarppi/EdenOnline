@@ -15,102 +15,25 @@ if (isNil "EOEX_var_AttributeQueues") then {
 
 removeAll3DENEventHandlers "OnEditableEntityAdded";
 add3DENEventHandler ["OnEditableEntityAdded", {
-
-    // _this = [entity] - entity is an Object, Group, Trigger, Logic, Marker, Layer or Comment.
-    // Do not use _x here: it is only defined inside forEach, so it is nil in an event handler.
-    _this spawn {
-        params ["_entity"];
-        
-        if !(missionNamespace getVariable ["EOEX_var_Connected",false]) exitWith {};
-
-        sleep 0.01; // Give time for the ID to be set, if the object was created by a network message.
-
-        // If Id is already added --> incoming network message --> exit
-        private _hasId = _entity call EOEX_fnc_hasId;
-        if (_hasId) exitWith {};
-        
-
-        diag_log typeName _entity;
-        diag_log _entity;
-        
-        // Generate id, if not exist
-        private _id = _entity call EOEX_fnc_getId;
-
-        private _type = _entity call EOEX_fnc_getObjectType;
-
-        // Object, Trigger, System
-        if (_type == "Object" || _type == "Trigger" || _type == "Logic") exitWith {
-            [_id, _entity, _type] call EOEX_fnc_sendCreateObject;
-        };
-
-        // Group
-        if (_type == "Group") exitWith {
-            // TODO similiar to SyncConnection, but for groups
-            diag_log _entity;
-            diag_log "GROUP CREATED";
-        };
-
-        // Marker
-        if (_type == "Marker") exitWith {
-            [_id, _entity] call EOEX_fnc_sendCreateMarker
-        };
-
-        // Waypoint
-        if (_type == "Waypoint") exitWith {
-            _waypoint = +_entity;
-            _entity params ["_entity","_index"];
-
-            _type = waypointType _waypoint;
-
-
-            // TODO
-            diag_log _waypoint;
-            diag_log _type;
-            diag_log "WAYPOINT CREATED";
-        };
-
-        // LAYER OR COMMENT
-        if (_type == "Layer") exitWith {
-            // TODO Comment runs: updateObjectAttributes for some reason?
-            diag_log _entity;
-            diag_log "LAYER OR COMMENT CREATED";
-        };
-
-        if (_type == "Comment") exitWith {
-            // TODO Comment runs: updateObjectAttributes for some reason?
-            diag_log _entity;
-            diag_log "COMMENT CREATED";
-        };
-    };
+    // Spawn to a new thread to give incoming network messages time to set the ID, if the object was created by a network message.
+    _this spawn EOEX_fnc_handleCreateObject;
 }];
 
 removeAll3DENEventHandlers "OnEditableEntityRemoved";
 add3DENEventHandler ["OnEditableEntityRemoved", {
-	params ["_entity"];
-
-	// FIX UNTIL THIS GETS FIXED BY BI (single object)
-	if (_entity isEqualType grpNull) exitWith {
-		{
-			[_x] call EOEX_fnc_sendDeleteObject;
-		} forEach get3DENSelected "object";
-	};
-
-	// OBJECT
-	if (_entity isEqualType objNull) exitWith {
-		[_entity] call EOEX_fnc_sendDeleteObject;
-	};
-
-    // MARKER
-    if (_entity isEqualType "") exitWith {
-        [_entity] call EOEX_fnc_sendDeleteMarker;
-    };
+    _this call EOEX_fnc_handleDeleteObject;
 }];
 
 removeAll3DENEventHandlers "OnEntityAttributeChanged";
 add3DENEventHandler ["OnEntityAttributeChanged", {
-	_this spawn EOEX_fnc_sendObjectAttributes;
+    _this spawn EOEX_fnc_sendObjectAttributes;
 }];
 
+// TODO FIX This can run multiple times.
+removeAll3DENEventHandlers "OnEntityParentChanged";
+add3DENEventHandler ["OnEntityParentChanged", {
+    _this call EOEX_fnc_updateObjectLayer;
+}];
 
 // * CONNECTIONS
 removeAll3DENEventHandlers "OnConnectingEnd";
