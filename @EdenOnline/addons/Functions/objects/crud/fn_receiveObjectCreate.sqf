@@ -45,6 +45,7 @@ private _entity = if (_type == "Layer") then {
         };
     } else {
         private _isEmpty = _attributeMap getOrDefault ["EOEX_IS_EMPTY", false];
+        _attributeMap deleteAt "EOEX_IS_EMPTY";
         create3DENEntity [_type, _attributeMap get "ItemClass", _attributeMap get "Position", _isEmpty];
     };
 };
@@ -109,6 +110,9 @@ if (_type == "Layer") then {
 
 // Set attributes
 {
+    // EOEX custom keys are bookkeeping for the create above, not Eden attributes.
+    if (_x select [0,5] == "EOEX_") then { continue };
+
     // Add skip attribute to prevent feedback loop
     [_id, [_x,_y]] call EOEX_fnc_addSkipAttributeChange;
 
