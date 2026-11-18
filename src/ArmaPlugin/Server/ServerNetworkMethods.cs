@@ -55,11 +55,14 @@ public class ServerNetworkMethods {
         // Only update local server database
         ServerStateManager.ServerObjectManager.AddOrUpdateObject(armaObject);
     }
-    public static bool RemoveObject(ArmaObject armaObject)
+    public static void RemoveObjects(ArmaObject[] armaObjects)
     {
-        // Only update local server database
-        bool success = ServerStateManager.ServerObjectManager.RemoveObject(armaObject.Id);
-        return success;
+        // Only update local server database; the network layer forwards the message to the
+        // remaining clients, which remove the same batch in their editor.
+        foreach (ArmaObject armaObject in armaObjects)
+        {
+            ServerStateManager.ServerObjectManager.RemoveObject(armaObject.Id);
+        }
     }
 
     public static string GetServerTime() {

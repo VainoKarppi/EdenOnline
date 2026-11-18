@@ -44,17 +44,29 @@ public static partial class ArmaMethods
     }
 
     /// <summary>
-    /// Removes a synchronized object and notifies the server.
+    /// Removes a batch of synchronized objects and notifies the server with a single message.
+    /// Arma sends [[id, type], ...], so a single delete is a one element list and a multi-select
+    /// delete, a composition removal or an undo costs one packet instead of one per entity.
     /// </summary>
-    public static async Task RemoveObject(string objectID, string type)
+    public static async Task RemoveObjects(object?[][] objects)
     {
-        if (!Client.IsTcpConnected()) throw new Exception("Client is not connected. Cannot remove object.");
+        if (!Client.IsTcpConnected()) throw new Exception("Client is not connected. Cannot remove objects.");
 
-        ArmaObject obj = new(objectID) {
-            Type = type // Set the type of the object ("Object", "Trigger", "Waypoint", "Logic", "Marker", or "Comment")
-        };
+        List<ArmaObject> removed = [];
 
-        await Client.SendTcpMessageAsync(0, "RemoveObject", obj);
+        foreach (object?[] pair in objects) {
+            if (pair.Length < 2) continue;
+
+            string? id = pair[0]?.ToString();
+            if (string.IsNullOrWhiteSpace(id)) continue;
+
+            // Type is "Object", "Trigger", "Waypoint", "Logic", "Marker" or "Comment"
+            removed.Add(new ArmaObject(id) { Type = pair[1]?.ToString() ?? "Object" });
+        }
+
+        if (removed.Count == 0) return;
+
+        await Client.SendTcpMessageAsync(0, "RemoveObjects", removed.ToArray());
     }
 
     /// <summary>

@@ -69,16 +69,21 @@ sleep 1;
 sleep 2;
 
 // RECEIVE DELETIONS
-["QI56X8K6","Object"] call EOEX_fnc_receiveObjectDelete;
-["HK6WCLSR","Logic"] call EOEX_fnc_receiveObjectDelete;
-["CXCZIO8E","Trigger"] call EOEX_fnc_receiveObjectDelete;
-["KFCJ1X8C","Marker"] call EOEX_fnc_receiveObjectDelete;
-["M7TGTYM2","Waypoint"] call EOEX_fnc_receiveObjectDelete;
-["QI56X8K4","Object"] call EOEX_fnc_receiveObjectDelete;
-["GJRZY90Y","Comment"] call EOEX_fnc_receiveObjectDelete;
-["LSZP9FEE","Layer"] call EOEX_fnc_receiveObjectDelete;
-["XH3CC3T9","Object"] call EOEX_fnc_receiveObjectDelete;
-["OZX6ABI7","Marker"] call EOEX_fnc_receiveObjectDelete;
-["GRPA","Object"] call EOEX_fnc_receiveObjectDelete;
-["GRPB","Object"] call EOEX_fnc_receiveObjectDelete;
+// One message carries the whole batch, so a single delete is a one element list.
+private _removals = [
+    ["QI56X8K6","Object"],
+    ["HK6WCLSR","Logic"],
+    ["CXCZIO8E","Trigger"],
+    ["KFCJ1X8C","Marker"],
+    ["M7TGTYM2","Waypoint"],
+    ["QI56X8K4","Object"],
+    ["GJRZY90Y","Comment"],
+    ["LSZP9FEE","Layer"],
+    ["XH3CC3T9","Object"],
+    ["OZX6ABI7","Marker"],
+    ["GRPA","Object"],
+    ["GRPB","Object"]
+];
+
+[_removals] call EOEX_fnc_receiveObjectDelete;
 };

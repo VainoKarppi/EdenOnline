@@ -50,6 +50,41 @@ Assert(printArrayMethod is not null, "PrintArray should exist.");
 string printedArray = (string)printArrayMethod!.Invoke(null, [new object?[] { "hint \"hello\"" }])!;
 Assert(printedArray == "[\"hint \"\"hello\"\"\"]", $"Quotes in strings must be doubled for SQF, got: {printedArray}");
 
+// A removal batch arrives as [[id, type], ...] in the single argument of ArmaMethods.RemoveObjects.
+var removeObjectsMethod = typeof(ArmaMethods).GetMethod("RemoveObjects", BindingFlags.Public | BindingFlags.Static);
+Assert(removeObjectsMethod is not null, "RemoveObjects should exist.");
+
+var removeArgs = (object?[])deserializeMethod!.Invoke(null, [removeObjectsMethod!, new string[] { "[[\"A1\",\"Object\"],[\"A2\",\"Marker\"]]" }, null])!;
+object?[][]? removeBatch = removeArgs[0] as object?[][];
+Assert(removeBatch is not null && removeBatch.Length == 2, $"RemoveObjects should receive [id, type] pairs, got: {removeArgs[0]}");
+Assert((string?)removeBatch![0][0] == "A1" && (string?)removeBatch[1][1] == "Marker", "RemoveObjects pairs should keep id and type.");
+
+ServerStateManager.ServerObjectManager.AddOrUpdateObject(new ArmaObject("A1") { Type = "Object" });
+ServerStateManager.ServerObjectManager.AddOrUpdateObject(new ArmaObject("A2") { Type = "Marker" });
+ServerNetworkMethods.RemoveObjects([new ArmaObject("A1"), new ArmaObject("A2")]);
+Assert(!ServerStateManager.ServerObjectManager.Objects.ContainsKey("A1") && !ServerStateManager.ServerObjectManager.Objects.ContainsKey("A2"),
+    "RemoveObjects should drop every entity of the batch from the server state.");
+
+// The batch reaches Arma as one ObjectRemoved message with [[id, type], ...] as its only argument.
+string? removalMethod = null;
+object?[]? removalData = null;
+
+Events.OnSendToArma += (method, data) => {
+    removalMethod = method;
+    removalData = data;
+};
+
+ClientNetworkMethods.RemoveObjects([new ArmaObject("B1") { Type = "Object" }, new ArmaObject("B2") { Type = "Marker" }]);
+
+var removalTimeout = DateTime.UtcNow.AddSeconds(5);
+while (removalMethod is null && DateTime.UtcNow < removalTimeout)
+    Thread.Sleep(10);
+
+Assert(removalMethod == "ObjectRemoved", $"Removal should be forwarded as ObjectRemoved, got: {removalMethod}");
+Assert(removalData is [object?[][] removalPairs] && removalPairs.Length == 2, "ObjectRemoved should carry one list of id/type pairs.");
+Assert((string)printArrayMethod.Invoke(null, [removalData])! == "[[[\"B1\",\"Object\"],[\"B2\",\"Marker\"]]]",
+    "ObjectRemoved should reach Arma as a single list argument.");
+
 // Fire-and-forget requests (async key -1) must invoke async-only methods (e.g. Disconnect) without
 // waiting for their result and without sending a response back to Arma.
 MethodSystem.RegisterMethods(typeof(FireAndForgetProbeMethods));

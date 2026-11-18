@@ -124,6 +124,19 @@ is why `fn_moveInterpolation` and `fn_receiveDragEnd` carry a local `_isEntityVa
 `isNull`, markers: `all3DENEntities # 5`, comments: `# 7`, waypoints: two elements). `Eden_RemoteMoveObjects`
 stores `[id, entity, initialPosition]` and `Eden_RemoteMoveTargets` stores `[entity, targetPosition]`.
 
+## Delete message
+
+`RemoveObjects` carries every removal of one operation as a list of `[id, type]` pairs, so a
+multi-select delete, a composition removal or an undo is one message instead of one per entity.
+`fn_handleDeleteObject` queues the pair and flushes the queue 50 ms after the first removal;
+`fn_receiveObjectDelete` receives the list as its only argument (`params ["_entities"]`, a single
+delete is a one element list) and removes the whole batch with one `delete3DENEntities`.
+
+The extension forwards it as `ObjectRemoved` with the same list (`ClientNetworkMethods.RemoveObjects`
+wraps it once), and `ArmaMethods.RemoveObjects` deserializes Arma's `[[id, type], ...]` into
+`object?[][]`. The payload shape changed with the method name, so sender and receiver must be updated
+together.
+
 ## Create message attributes
 
 `CreateObject` carries the entity's full attribute list from `get3DENAttributes ""`, so a created

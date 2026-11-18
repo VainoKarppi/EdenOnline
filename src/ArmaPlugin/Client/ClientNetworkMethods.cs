@@ -50,8 +50,14 @@ public class ClientNetworkMethods {
     public static void UpdateObject(ArmaObject updatedObj) {
         Extension.SendToArma("ObjectUpdated", [updatedObj.Id, updatedObj.Type, updatedObj.Attributes]);
     }
-    public static void RemoveObject(ArmaObject removedObj) {
-        Extension.SendToArma("ObjectRemoved", [removedObj.Id, removedObj.Type]);
+    public static void RemoveObjects(ArmaObject[] removedObjects) {
+        // One message for the whole batch: Arma receives [[id, type], ...] as the single argument
+        // of EOEX_fnc_receiveObjectDelete.
+        object?[][] pairs = removedObjects
+            .Select(removedObj => new object?[] { removedObj.Id, removedObj.Type })
+            .ToArray();
+
+        Extension.SendToArma("ObjectRemoved", [pairs]);
     }
 
     public static void StartObjectDrag(string moveId, object[] objectIds) {

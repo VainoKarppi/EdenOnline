@@ -50,4 +50,32 @@ if (_type == "Comment") then {
 };
 
 // TODO Verify deletion. Recover if needed and retry.
-["RemoveObject", [_id, _type], true] spawn EOEX_fnc_callExtensionAsync;
+
+// A multi-select delete, a composition removal or an undo removes many entities at once. Queue
+// them and flush shortly after the first one, so the whole operation leaves as a single message
+// instead of one per entity.
+if (isNil "EOEX_var_DeleteQueue") then {
+    EOEX_var_DeleteQueue = [];
+    EOEX_var_DeleteTimer = nil;
+};
+
+EOEX_var_DeleteQueue pushBack [_id, _type];
+
+if (isNil "EOEX_var_DeleteTimer" || {scriptDone EOEX_var_DeleteTimer}) then {
+    EOEX_var_DeleteTimer = [] spawn {
+        // Drain until a window passes without a new removal, so nothing that arrives while the
+        // message is being sent stays in the queue.
+        while { true } do {
+            sleep 0.05; // Collect the removals of this operation first.
+
+            private _pairs = EOEX_var_DeleteQueue;
+            EOEX_var_DeleteQueue = [];
+
+            if (_pairs isNotEqualTo []) then {
+                ["RemoveObjects", _pairs, true] call EOEX_fnc_callExtensionAsync;
+            };
+
+            if (EOEX_var_DeleteQueue isEqualTo []) exitWith {};
+        };
+    };
+};
