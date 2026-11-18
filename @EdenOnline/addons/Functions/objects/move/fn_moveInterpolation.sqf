@@ -4,9 +4,9 @@ if !(isNil "Eden_RemoteMoveEachFrame") then {
 };
 
 Eden_RemoteMoveEachFrame = addMissionEventHandler ["EachFrame", {
-        if !(missionNamespace getVariable ["Eden_RemoteMoveActive", false]) exitWith {};
+        if !(missionNamespace getVariable ["EOEX_var_RemoteMoveActive", false]) exitWith {};
 
-        private _targets = missionNamespace getVariable ["Eden_RemoteMoveTargets", []];
+        private _targets = missionNamespace getVariable ["EOEX_var_RemoteMoveTargets", []];
 
         if (_targets isEqualTo []) exitWith {};
 

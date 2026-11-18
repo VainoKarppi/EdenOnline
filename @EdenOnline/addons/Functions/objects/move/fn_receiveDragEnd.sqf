@@ -2,13 +2,13 @@
 
 params ["_moveId", "_finalPositions"];
 
-if !(missionNamespace getVariable ["Eden_RemoteMoveActive", false]) exitWith {};
+if !(missionNamespace getVariable ["EOEX_var_RemoteMoveActive", false]) exitWith {};
 
-private _activeMoveId = missionNamespace getVariable ["Eden_RemoteMoveId", -1];
+private _activeMoveId = missionNamespace getVariable ["EOEX_var_RemoteMoveId", -1];
 
 if (_moveId isNotEqualTo _activeMoveId) exitWith {};
 
-private _moved = missionNamespace getVariable ["Eden_RemoteMoveObjects", []];
+private _moved = missionNamespace getVariable ["EOEX_var_RemoteMoveObjects", []];
 
 private _entitiesById = createHashMap;
 
@@ -46,7 +46,7 @@ private _isEntityValid = {
     };
 } forEach _finalPositions;
 
-missionNamespace setVariable ["Eden_RemoteMoveActive", false];
-missionNamespace setVariable ["Eden_RemoteMoveId", -1];
-missionNamespace setVariable ["Eden_RemoteMoveObjects", []];
-missionNamespace setVariable ["Eden_RemoteMoveTargets", []];
+missionNamespace setVariable ["EOEX_var_RemoteMoveActive", false];
+missionNamespace setVariable ["EOEX_var_RemoteMoveId", -1];
+missionNamespace setVariable ["EOEX_var_RemoteMoveObjects", []];
+missionNamespace setVariable ["EOEX_var_RemoteMoveTargets", []];

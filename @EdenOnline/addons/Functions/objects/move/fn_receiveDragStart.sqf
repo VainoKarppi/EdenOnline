@@ -40,10 +40,10 @@ if (_moved isEqualTo []) exitWith {
     diag_log format ["MOVE_START: No entities found for move %1", _moveId];
 };
 
-missionNamespace setVariable ["Eden_RemoteMoveActive", true];
-missionNamespace setVariable ["Eden_RemoteMoveId", _moveId];
-missionNamespace setVariable ["Eden_RemoteMoveObjects", _moved];
+missionNamespace setVariable ["EOEX_var_RemoteMoveActive", true];
+missionNamespace setVariable ["EOEX_var_RemoteMoveId", _moveId];
+missionNamespace setVariable ["EOEX_var_RemoteMoveObjects", _moved];
 
 private _targets = _moved apply { [_x # 1, _x # 2] };
 
-missionNamespace setVariable ["Eden_RemoteMoveTargets", _targets];
+missionNamespace setVariable ["EOEX_var_RemoteMoveTargets", _targets];

@@ -11,7 +11,7 @@ private _now = diag_tickTime;
 private _position = (_entity get3DENAttribute "Position") select 0;
 
 // Start a new move operation
-if !(missionNamespace getVariable ["Eden_MoveActive", false]) then {
+if !(missionNamespace getVariable ["EOEX_var_MoveActive", false]) then {
     private _moveId = [_entity, false] call EOEX_fnc_getId;
 
     // Query each type separately: get3DENSelected "" nests the categories, and flattening would
@@ -31,11 +31,11 @@ if !(missionNamespace getVariable ["Eden_MoveActive", false]) then {
         _objectIds pushBack ([_x, false] call EOEX_fnc_getId);
     } forEach _entities;
 
-    missionNamespace setVariable ["Eden_MoveActive", true];
-    missionNamespace setVariable ["Eden_MoveId", _moveId];
-    missionNamespace setVariable ["Eden_MoveEntities", _entities];
-    missionNamespace setVariable ["Eden_MoveReferencePosition", _position];
-    missionNamespace setVariable ["Eden_MoveLastUpdate", _now];
+    missionNamespace setVariable ["EOEX_var_MoveActive", true];
+    missionNamespace setVariable ["EOEX_var_MoveId", _moveId];
+    missionNamespace setVariable ["EOEX_var_MoveEntities", _entities];
+    missionNamespace setVariable ["EOEX_var_MoveReferencePosition", _position];
+    missionNamespace setVariable ["EOEX_var_MoveLastUpdate", _now];
 
     // Send START_MOVE via TCP
     ["StartObjectDrag", [_moveId, _objectIds], true] spawn EOEX_fnc_callExtensionAsync;
@@ -43,13 +43,13 @@ if !(missionNamespace getVariable ["Eden_MoveActive", false]) then {
 
 
 // Send movement updates at 10 Hz
-private _lastUpdate = missionNamespace getVariable ["Eden_MoveLastUpdate", 0];
+private _lastUpdate = missionNamespace getVariable ["EOEX_var_MoveLastUpdate", 0];
 
 if ((_now - _lastUpdate) < 0.1) exitWith {};
 
-private _moveId = missionNamespace getVariable ["Eden_MoveId", -1];
+private _moveId = missionNamespace getVariable ["EOEX_var_MoveId", -1];
 
-private _referencePosition = missionNamespace getVariable ["Eden_MoveReferencePosition", _position];
+private _referencePosition = missionNamespace getVariable ["EOEX_var_MoveReferencePosition", _position];
 
 // Delta is relative to the position when the move started
 private _delta = _position vectorDiff _referencePosition;
@@ -57,4 +57,4 @@ private _delta = _position vectorDiff _referencePosition;
 // Send MOVE_UPDATE via UDP
 ["UpdateObjectDrag", [_moveId, _delta], true] spawn EOEX_fnc_callExtensionAsync;
 
-missionNamespace setVariable ["Eden_MoveLastUpdate", _now];
+missionNamespace setVariable ["EOEX_var_MoveLastUpdate", _now];

@@ -113,14 +113,14 @@ removeAll3DENEventHandlers "OnEntityDragged";
 
 private _display = findDisplay 313;
 
-missionNamespace setVariable ["Eden_MoveActive", false];
-missionNamespace setVariable ["Eden_MoveLastUpdate", 0];
-missionNamespace setVariable ["Eden_MoveId", -1];
-missionNamespace setVariable ["Eden_MoveEntities", []];
-missionNamespace setVariable ["Eden_MoveReferencePosition", [0, 0, 0]];
-missionNamespace setVariable ["Eden_MoveInitialPositions", []];
-missionNamespace setVariable ["Eden_MoveTargets", []];
-missionNamespace setVariable ["Eden_MoveLastUpdate", 0];
+missionNamespace setVariable ["EOEX_var_MoveActive", false];
+missionNamespace setVariable ["EOEX_var_MoveLastUpdate", 0];
+missionNamespace setVariable ["EOEX_var_MoveId", -1];
+missionNamespace setVariable ["EOEX_var_MoveEntities", []];
+missionNamespace setVariable ["EOEX_var_MoveReferencePosition", [0, 0, 0]];
+missionNamespace setVariable ["EOEX_var_MoveInitialPositions", []];
+missionNamespace setVariable ["EOEX_var_MoveTargets", []];
+missionNamespace setVariable ["EOEX_var_MoveLastUpdate", 0];
 
 // Create test objects
 

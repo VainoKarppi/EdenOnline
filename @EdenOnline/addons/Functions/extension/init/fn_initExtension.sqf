@@ -45,11 +45,11 @@ EOEX_var_Waypoints = createHashMap;
 EOEX_var_Layers = createHashMap;
 
 
-missionNamespace setVariable ["Eden_MoveActive", false];
-missionNamespace setVariable ["Eden_MoveLastUpdate", 0];
-missionNamespace setVariable ["Eden_MoveId", -1];
-missionNamespace setVariable ["Eden_MoveEntities", []];
-missionNamespace setVariable ["Eden_MoveReferencePosition", [0, 0, 0]];
+missionNamespace setVariable ["EOEX_var_MoveActive", false];
+missionNamespace setVariable ["EOEX_var_MoveLastUpdate", 0];
+missionNamespace setVariable ["EOEX_var_MoveId", -1];
+missionNamespace setVariable ["EOEX_var_MoveEntities", []];
+missionNamespace setVariable ["EOEX_var_MoveReferencePosition", [0, 0, 0]];
 
 EOEX_var_IsHost = false;
 
