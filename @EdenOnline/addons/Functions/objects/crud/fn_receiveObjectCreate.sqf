@@ -81,7 +81,7 @@ if (_groupId != "" && {_type == "Object"}) then {
     if (isNull _leader) then {
         diag_log format ["WARNING: Group leader %1 not found for %2 (%3)", _groupId, _id, _type];
     } else {
-        if !((group _entity) isEqualTo (group _leader)) then {
+        if ((group _entity) isNotEqualTo (group _leader)) then {
             add3DENConnection ["Group", [_entity], group _leader];
         };
     };
