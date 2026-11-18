@@ -138,6 +138,13 @@ Attribute values can contain quotes (e.g. `Init`, `ammoBox`), and Arma parses th
 `parseSimpleArray`. `Serializer.PrintArray` therefore doubles quotes inside strings; keep that
 escaping when adding values to a message sent to Arma.
 
+A burst of callbacks is coalesced by the extension into one `BATCH` callback, and
+`fn_initExtensionEvents` dispatches its entries synchronously and in order. Every entity of a paste
+therefore passes through `fn_receiveObjectCreate` one after another, so never add an unconditional
+`sleep` there: a 30 ms wait per entity turned a 100 entity composition into a 3 s long trickle. Wait
+only when a dependency (layer, group leader, waypoint owner) is really missing — the messages are
+ordered, so those are normally already applied.
+
 ## Grouping units
 
 Eden groups a unit that is placed within 5 m of another unit. `create3DENEntity` always creates a

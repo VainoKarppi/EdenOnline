@@ -27,14 +27,18 @@ private _entity = if (_type == "Layer") then {
     _parent add3DENLayer (_attributeMap get "Name");
 } else {
     if (_type == "Waypoint") then {
-        // The owning unit may still be in flight from the server, wait until it exists
+        // The owning unit may still be in flight from the server, wait until it exists.
+        // A batch is applied in order, so the owner is normally already there.
         private _ownerId = _attributeMap deleteAt "EOEX_Owner";
         private _owner = EOEX_var_Objects getOrDefault [_ownerId, objNull];
-        private _deadline = diag_tickTime + 5;
-        waitUntil {
-            sleep 0.05;
-            _owner = EOEX_var_Objects getOrDefault [_ownerId, objNull];
-            (!isNull _owner) || {diag_tickTime > _deadline}
+
+        if (isNull _owner) then {
+            private _deadline = diag_tickTime + 5;
+            waitUntil {
+                sleep 0.05;
+                _owner = EOEX_var_Objects getOrDefault [_ownerId, objNull];
+                (!isNull _owner) || {diag_tickTime > _deadline}
+            };
         };
 
         if (isNull _owner) then {
@@ -118,13 +122,25 @@ if (_type == "Layer") then {
 
     // Special custom attributes:
     if (_x == "Layer") then {
+        // "" means the entity is not in a custom layer, nothing to do.
+        if (_y != "") then {
+            // A composition sends its layers before the entities that use them, and a batch is
+            // applied in order, so the layer is normally already registered. Only wait when it
+            // is still in flight; sleeping unconditionally made every entity in a large paste
+            // 30 ms slower and serialized the whole batch.
+            private _layer = EOEX_var_Layers get _y;
 
-        sleep 0.03; // Give Layer some time to be created before trying this.
-        // TODO ADD A PROPER TIMER
-        private _layer = EOEX_var_Layers get _y;
-        if (!isNil "_layer") then {
-            private _success = _entity set3DENLayer _layer;
-            if (!_success) then { diag_log format ["ERROR: Unable to change objects layer: %1, layer: %2", _entity, _y] };
+            if (isNil "_layer") then {
+                sleep 0.03;
+                _layer = EOEX_var_Layers get _y;
+            };
+
+            if (!isNil "_layer") then {
+                private _success = _entity set3DENLayer _layer;
+                if (!_success) then { diag_log format ["ERROR: Unable to change objects layer: %1, layer: %2", _entity, _y] };
+            } else {
+                diag_log format ["WARNING: Unknown layer %1 for %2 (%3)", _y, _id, _type];
+            };
         };
         continue;
     };
