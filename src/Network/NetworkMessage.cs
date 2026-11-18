@@ -126,7 +126,7 @@ public static class MessageBuilder
 
         msg.TargetId = NetworkMessage.NormalizeTargetIds(msg.TargetId);
 
-        Log.For(side).Debug($"(CreateMessage) SenderId:{msg.SenderId}, TargetId:{string.Join(",", msg.TargetId)}, MessageId:{msg.MessageId}: {msg.Payload}");
+        Log.For(side).Debug($"TCP (CreateMessage) MessageType:{msg.MessageType}, SenderId:{msg.SenderId}, TargetId:{string.Join(",", msg.TargetId)}, MessageId:{msg.MessageId}: {msg.Payload}");
 
         var buffer = new List<byte>();
 
@@ -187,7 +187,7 @@ public static class MessageBuilder
             payload = Encoding.UTF8.GetString(data, offset, payloadLength);
         }
 
-        Log.For(side).Debug($"(ReadMessage) MessageType:{messageType}, SenderId:{senderId}, TargetId:{string.Join(",", targetIds)}, MessageId:{messageId}: {payload}");
+        Log.For(side).Debug($"TCP (ReadMessage) MessageType:{messageType}, SenderId:{senderId}, TargetId:{string.Join(",", targetIds)}, MessageId:{messageId}: {payload}");
 
         return new NetworkMessage
         {
@@ -235,7 +235,10 @@ public static class MessageBuilder
 
         msg.TargetId = NetworkMessage.NormalizeTargetIds(msg.TargetId);
 
-        Log.For(side).Debug($"(CreateMessage) SenderId:{msg.SenderId}, TargetId:{string.Join(",", msg.TargetId)}, MessageId:{msg.MessageId}: {msg.Payload}");
+        // The 3 s UDP registration packet is a bare keepalive with no payload, so logging it
+        // would only flood the log. The message type is included for every other message.
+        if (msg.MessageType != MessageType.UdpRegister)
+            Log.For(side).Debug($"UDP (CreateMessage) MessageType:{msg.MessageType}, SenderId:{msg.SenderId}, TargetId:{string.Join(",", msg.TargetId)}, MessageId:{msg.MessageId}: {msg.Payload}");
 
         byte[] messageBytes = new byte[4 + 4 + 4 + (msg.TargetId.Length * 4) + 2 + 2 + 8 + 4 + payloadLength]; // checksum + sender + target-count + targets + header + payload
         int offset = 4; // leave space for checksum
@@ -300,7 +303,9 @@ public static class MessageBuilder
         if (includeData && payloadLength > 0)
             payload = Encoding.UTF8.GetString(packet, offset, payloadLength);
 
-        Log.For(side).Debug($"(ReadMessage) SenderId:{sender}, TargetId:{string.Join(",", targetIds)}, MessageId:{messageId}: {payload}");
+        // See CreateUdpMessage: the registration keepalive is not worth a log line.
+        if (messageType != MessageType.UdpRegister)
+            Log.For(side).Debug($"UDP (ReadMessage) MessageType:{messageType}, SenderId:{sender}, TargetId:{string.Join(",", targetIds)}, MessageId:{messageId}: {payload}");
 
         return new NetworkMessage
         {

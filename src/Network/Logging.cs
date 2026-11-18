@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -59,6 +61,10 @@ public static class Log
 
     internal static void Write(NetworkSide side, LogLevel level, string? message, Exception? exception = null)
     {
+        if ((int)level < 4 && message is not null &&
+                NetworkLogger.BlackListKeyWords.Any(keyword => message.Contains(keyword, StringComparison.OrdinalIgnoreCase)))
+            return;
+
         if (!IsEnabled(side)) return;
 
         ILogger logger = side == NetworkSide.Server ? _serverLogger : _clientLogger;
@@ -75,6 +81,8 @@ public readonly struct NetworkLogger
     internal NetworkLogger(NetworkSide side) => Side = side;
 
     public NetworkSide Side { get; }
+
+    public static List<string> BlackListKeyWords = ["""MethodName":"UpdateCamera"""];
 
     public void Debug(string? message) => Log.Write(Side, LogLevel.Debug, message);
 

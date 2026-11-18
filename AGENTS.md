@@ -137,6 +137,12 @@ wraps it once), and `ArmaMethods.RemoveObjects` deserializes Arma's `[[id, type]
 `object?[][]`. The payload shape changed with the method name, so sender and receiver must be updated
 together.
 
+Every element of the SQF arguments array becomes one separate `callExtension` argument, so a method
+whose only parameter is an array needs it wrapped once: `["RemoveObjects", [_pairs], true]`. Passing
+`_pairs` directly would spread the pairs over one argument each, and the extension would try to
+deserialize the first pair as a list of pairs and fail ("Object cannot be stored in an array of this
+type").
+
 ## Create message attributes
 
 `CreateObject` carries the entity's full attribute list from `get3DENAttributes ""`, so a created

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using DynTypeNetwork;
 using static EdenOnline.ArmaLog;
@@ -22,9 +23,11 @@ public static partial class ArmaMethods
 
 
         ArmaObject obj = new(objectID, metadata) {
-            Type = type // Set the type of the object ("Object", "Trigger", "Waypoint", "Logic", "Marker", or "Comment")
+            Type = type // Set the type of the object ("Object", "Trigger", "Waypoint", "Logic", "Marker", "Comment" or "Layer")
         };
         await Client.SendTcpMessageAsync(0, "CreateObject", obj);
+
+        Log($"[CLIENT] CreateObject. Type: {type}, ID: {objectID}, Properties: {string.Join(", ", metadata.Keys)}");
 
         return obj.Id;
     }
@@ -40,6 +43,9 @@ public static partial class ArmaMethods
         ArmaObject obj = new(objectID, metadata) {
             Type = type
         };
+
+        Log($"[CLIENT] UpdateObject. Type: {type}, ID: {objectID}, Properties: {string.Join(", ", metadata.Keys)}");
+
         await Client.SendTcpMessageAsync(0, "UpdateObject", obj);
     }
 
@@ -63,8 +69,9 @@ public static partial class ArmaMethods
             // Type is "Object", "Trigger", "Waypoint", "Logic", "Marker" or "Comment"
             removed.Add(new ArmaObject(id) { Type = pair[1]?.ToString() ?? "Object" });
         }
-
         if (removed.Count == 0) return;
+
+        Log($"[CLIENT] RemoveObjects: [{string.Join(", ", removed.Select(x => $"[{x.Type} ({x.Id})]"))}]");
 
         await Client.SendTcpMessageAsync(0, "RemoveObjects", removed.ToArray());
     }

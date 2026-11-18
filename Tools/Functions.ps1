@@ -258,12 +258,13 @@ function Build-Project {
 
         if (-not $destinationPath) { return $true }
 
-        $currentHash.Hash | Set-Content -Path $hashFilePath
-
         $sourceDllPath = "$outputPath\$dllName"
         $destinationDllPath = "$destinationPath\$dllName"
 
+        # Record the hash only after the DLL is deployed: writing it first makes the next run
+        # skip the build when the copy failed (e.g. Arma still has the DLL locked).
         Copy-Item -Path $sourceDllPath -Destination $destinationDllPath -Force
+        $currentHash.Hash | Set-Content -Path $hashFilePath
         Write-Host "Copied $dllName to $destinationPath" -ForegroundColor Green
 
         return $true

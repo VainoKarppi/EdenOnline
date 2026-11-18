@@ -72,7 +72,9 @@ if (isNil "EOEX_var_DeleteTimer" || {scriptDone EOEX_var_DeleteTimer}) then {
             EOEX_var_DeleteQueue = [];
 
             if (_pairs isNotEqualTo []) then {
-                ["RemoveObjects", _pairs, true] call EOEX_fnc_callExtensionAsync;
+                // Every element of the arguments array becomes one separate callExtension argument,
+                // so the pair list is wrapped once to arrive as the method's single argument.
+                ["RemoveObjects", [_pairs], true] call EOEX_fnc_callExtensionAsync;
             };
 
             if (EOEX_var_DeleteQueue isEqualTo []) exitWith {};
