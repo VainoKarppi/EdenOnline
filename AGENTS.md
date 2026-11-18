@@ -143,6 +143,13 @@ whose only parameter is an array needs it wrapped once: `["RemoveObjects", [_pai
 deserialize the first pair as a list of pairs and fail ("Object cannot be stored in an array of this
 type").
 
+The same one-argument-per-parameter rule applies on the wire, and there it fails silently: remote
+methods bind one wire argument to one parameter, so the batch must go out as a single argument —
+`SendTcpMessageAsync(0, "RemoveObjects", [removed.ToArray()])`. Spreading `removed` instead makes the
+receiver's `DynamicInvoke` see N arguments for a one-parameter method, the detached fire-and-forget
+task throws `TargetParameterCountException`, and no other client ever hears about the deletion.
+`SetInitialMissionAttributes` already follows the same pattern (`[attributeList]`).
+
 ## Create message attributes
 
 `CreateObject` carries the entity's full attribute list from `get3DENAttributes ""`, so a created

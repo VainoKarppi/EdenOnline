@@ -73,7 +73,9 @@ public static partial class ArmaMethods
 
         Log($"[CLIENT] RemoveObjects: [{string.Join(", ", removed.Select(x => $"[{x.Type} ({x.Id})]"))}]");
 
-        await Client.SendTcpMessageAsync(0, "RemoveObjects", removed.ToArray());
+        // Remote methods map one wire argument to one parameter, so the batch has to be sent as a
+        // single ArmaObject[] argument instead of being spread over one argument per object.
+        await Client.SendTcpMessageAsync(0, "RemoveObjects", [removed.ToArray()]);
     }
 
     /// <summary>

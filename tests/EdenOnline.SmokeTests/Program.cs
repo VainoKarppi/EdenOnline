@@ -65,6 +65,28 @@ ServerNetworkMethods.RemoveObjects([new ArmaObject("A1"), new ArmaObject("A2")])
 Assert(!ServerStateManager.ServerObjectManager.Objects.ContainsKey("A1") && !ServerStateManager.ServerObjectManager.Objects.ContainsKey("A2"),
     "RemoveObjects should drop every entity of the batch from the server state.");
 
+// Remote methods map one wire argument to one parameter, so the batch travels as ONE argument that
+// is the ArmaObject[] (see ArmaMethods.RemoveObjects). The dispatcher must bind the whole array to
+// the single ArmaObject[] parameter instead of treating every object as a separate argument.
+DynTypeNetwork.MethodBuilder.RegisterServerMethods(new ServerNetworkMethods());
+
+ServerStateManager.ServerObjectManager.AddOrUpdateObject(new ArmaObject("C1") { Type = "Object" });
+ServerStateManager.ServerObjectManager.AddOrUpdateObject(new ArmaObject("C2") { Type = "Marker" });
+
+var callServerMethod = typeof(DynTypeNetwork.MethodBuilder)
+    .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
+    .First(method => method.Name == "CallServerMethod" && method.IsGenericMethodDefinition);
+
+callServerMethod.MakeGenericMethod(typeof(object)).Invoke(null,
+[
+    "RemoveObjects",
+    new DynTypeNetwork.NetworkMessage(),
+    new object?[] { new ArmaObject[] { new ArmaObject("C1") { Type = "Object" }, new ArmaObject("C2") { Type = "Marker" } } }
+]);
+
+Assert(!ServerStateManager.ServerObjectManager.Objects.ContainsKey("C1") && !ServerStateManager.ServerObjectManager.Objects.ContainsKey("C2"),
+    "A batch sent as a single array argument should be bound to RemoveObjects(ArmaObject[]).");
+
 // The batch reaches Arma as one ObjectRemoved message with [[id, type], ...] as its only argument.
 string? removalMethod = null;
 object?[]? removalData = null;

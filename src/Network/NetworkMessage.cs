@@ -393,7 +393,16 @@ public static class MessageBuilder
                     result = MethodBuilder.CallServerMethod<object>(request.MethodName!, msg, request.Args!);
                 } else {
                     // Is fire and forget
-                    _ = Task.Run(() => MethodBuilder.CallServerMethod<object>(request.MethodName!, msg, request.Args!), token);
+                    // The task is detached, so an argument binding failure would otherwise vanish
+                    // without a trace (e.g. a method whose only parameter is an array being sent
+                    // one argument per element).
+                    _ = Task.Run(() => {
+                        try {
+                            MethodBuilder.CallServerMethod<object>(request.MethodName!, msg, request.Args!);
+                        } catch (Exception ex) {
+                            Log.For(side).Debug($"Fire-and-forget {request.MethodName} failed: {ex.GetBaseException().Message}");
+                        }
+                    }, token);
                     return; // Dont send response
                 }
             } else {
@@ -403,7 +412,13 @@ public static class MessageBuilder
                 } else {
                     // Is fire and forget
                     // Already validated on sender (Synced Method lists)
-                    _ = Task.Run(() => MethodBuilder.CallClientMethod<object>(request.MethodName!, msg, request.Args!), token);
+                    _ = Task.Run(() => {
+                        try {
+                            MethodBuilder.CallClientMethod<object>(request.MethodName!, msg, request.Args!);
+                        } catch (Exception ex) {
+                            Log.For(side).Debug($"Fire-and-forget {request.MethodName} failed: {ex.GetBaseException().Message}");
+                        }
+                    }, token);
                     return; // Dont send response
                 }
             }
