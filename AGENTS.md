@@ -116,6 +116,14 @@ waypoint references (`[group, index]`) into a group and a bare index. Also never
 `isNull`, and always call helpers with an array (`[_entity, true] call EOEX_fnc_getId`), because a
 waypoint array is itself a parameter list for `params`.
 
+The drag receiver resolves the ids through all four registries (`EOEX_var_Objects`, `_Markers`,
+`_Waypoints`, `_Comments`), so a drag can carry every entity type. Their handles differ — object
+handle, marker name, comment index, waypoint `[group, index]` — but `get3DENAttribute "Position"`
+and `set3DENAttribute ["Position", …]` work for all of them. Only the liveness check differs, which
+is why `fn_moveInterpolation` and `fn_receiveDragEnd` carry a local `_isEntityValid` (objects:
+`isNull`, markers: `all3DENEntities # 5`, comments: `# 7`, waypoints: two elements). `Eden_RemoteMoveObjects`
+stores `[id, entity, initialPosition]` and `Eden_RemoteMoveTargets` stores `[entity, targetPosition]`.
+
 ## Create message attributes
 
 `CreateObject` carries the entity's full attribute list from `get3DENAttributes ""`, so a created

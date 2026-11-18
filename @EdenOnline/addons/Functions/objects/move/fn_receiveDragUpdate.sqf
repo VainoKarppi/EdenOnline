@@ -8,17 +8,9 @@ private _activeMoveId = missionNamespace getVariable ["Eden_RemoteMoveId", -1];
 
 if (_moveId isNotEqualTo _activeMoveId) exitWith {};
 
-private _objects = missionNamespace getVariable ["Eden_RemoteMoveObjects", []];
+private _moved = missionNamespace getVariable ["Eden_RemoteMoveObjects", []];
 
-private _targets = [];
-
-{
-    private _object = _x select 0;
-    private _initialPosition = _x select 1;
-
-    private _targetPosition = _initialPosition vectorAdd _delta;
-
-    _targets pushBack [_object, _targetPosition];
-} forEach _objects;
+// [_id, _entity, _initialPosition] -> [_entity, _targetPosition]
+private _targets = _moved apply { [_x # 1, (_x # 2) vectorAdd _delta] };
 
 missionNamespace setVariable ["Eden_RemoteMoveTargets", _targets];
