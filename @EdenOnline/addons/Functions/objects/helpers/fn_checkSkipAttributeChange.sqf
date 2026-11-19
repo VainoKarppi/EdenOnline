@@ -24,7 +24,7 @@ private _valuesMatch = {
         if (_leftValue isEqualType 0 && {_x isEqualType 0}) then {
             if (abs (_leftValue - _x) > 0.02) then { _match = false };
         } else {
-            if !(_leftValue isEqualTo _x) then { _match = false };
+            if (_leftValue isNotEqualTo _x) then { _match = false };
         };
     } forEach _right;
 

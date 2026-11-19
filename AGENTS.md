@@ -84,6 +84,53 @@ Add `diag_log format ["EOEX: %1", _value];` to the suspect function, reload it, 
 `call EOEX_fnc_testReceive` again and read the new RPT lines. Remove the temporary logging once the
 problem is understood.
 
+## Testing the entity lock indicator
+
+[`fn_testLock`](@EdenOnline/addons/functions/objects/helpers/fn_testLock.sqf) draws the lock indicator
+(icon + "LOCKED by <user> (<mode>) - <id>") in the editor without a second client, so the visuals of
+the planned attribute/drag lock can be checked:
+
+```sqf
+["lock"] call EOEX_fnc_testLock;                          # empty building in front of the camera, locked
+["lock", cursorObject, "Razer", "drag"] call EOEX_fnc_testLock;
+["hide"] call EOEX_fnc_testLock;                          # keep the lock, hide the indicator
+["show"] call EOEX_fnc_testLock;
+["unlock"] call EOEX_fnc_testLock;                        # release and delete the created building
+```
+
+The indicator is a `Draw3D` mission event handler, not an Eden marker or icon, so nothing else in the
+scenario changes. The helper reads the ID with `[_entity, true] call EOEX_fnc_getId` — passing `false`
+registers a new ID, which makes `fn_handleCreateObject` skip the entity and the create never reaches
+the server. Creating a building must not pass the `isEmpty` argument either: Eden logs "Trying to
+create an invalid center EMPTY" and kills the calling script.
+
+## Entity locks (attributes window / drag)
+
+Eden has no 3DEN event for "the attributes window of an entity was opened", so
+[`fn_watchAttributesEdit`](@EdenOnline/addons/functions/objects/lock/fn_watchAttributesEdit.sqf) polls
+it: the window is the separate display `Display3DENEditAttributes` (idd **315**), which Eden opens on
+a double-click. `get3DENActionState` cannot be used for this — it returns `0` while the window is
+open, but `do3DENAction "OpenAttributes"` opens it (handy in tests), and
+`findDisplay 315 closeDisplay 0` closes it again.
+
+The locked entities are only a **local mirror** per client: `EOEX_var_Locks` maps
+`id -> [entity, username, mode, position]` with `mode` `"attributes"` or `"drag"`.
+
+| message | sent when | receiver |
+| --- | --- | --- |
+| `StartAttributesEdit` (`ids`, `username`) | the attributes window opens, or the selection changes while it is open | `fn_receiveAttributesEditStart` locks every id |
+| `StopAttributesEdit` (`ids`) | the window closes | `fn_receiveAttributesEditStop` unlocks them |
+| `StartObjectDrag` (`moveId`, `ids`, `username`) | a drag starts | `fn_receiveDragStart` locks the moved ids |
+| `EndObjectDrag` (`moveId`, `finalPositions`) | a drag ends | `fn_receiveDragEnd` unlocks them |
+
+`fn_lockEntity` draws the indicator (one `Draw3D` mission event handler, removed again by
+`fn_unlockEntity` when the last lock is gone) and `fn_onEntityDragStart` refuses to move a locked
+entity: it notifies who holds the lock and puts the entity back to the position stored in the lock.
+`fn_watchAttributesEdit` closes the attributes window of a locked entity the same way.
+
+Both clients must run the same extension build, because the method signatures are part of the
+handshake hash.
+
 ## Testing the send path
 
 ```sqf

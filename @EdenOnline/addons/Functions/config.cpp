@@ -63,6 +63,8 @@ class CfgFunctions
             class getObjectType {};
             class getTypeIndex {};
 
+            class getEntityById {};
+
             class addSkipAttributeChange {};
             class checkSkipAttributeChange {};
 
@@ -70,6 +72,7 @@ class CfgFunctions
 
             class testReceive {};
             class testSend {};
+            class testLock {};
             class syncSendTest {};
             class syncReceiveTest {};
         };
@@ -101,6 +104,20 @@ class CfgFunctions
 
             class onEntityDragStart {};
             class onEntityDragEnd {};
+        };
+
+        class Functions_Objects_Lock {
+            file = "z\eoex\addons\functions\objects\lock";
+
+            class lockEntity {};
+            class unlockEntity {};
+            class drawLocks {};
+
+            class watchAttributesEdit {};
+
+            class receiveAttributesEditStart {};
+            class receiveAttributesEditStop {};
+            class receiveLocksReleased {};
         };
 
         class Functions_Objects_Sync {

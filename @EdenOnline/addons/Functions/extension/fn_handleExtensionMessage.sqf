@@ -67,6 +67,18 @@ if (_method == "ASYNC_RESPONSE") then {
 			_data call EOEX_fnc_receiveDragEnd;
 		};
 
+		case "AttributesEditStarted": {
+			_data call EOEX_fnc_receiveAttributesEditStart;
+		};
+
+		case "AttributesEditStopped": {
+			_data call EOEX_fnc_receiveAttributesEditStop;
+		};
+
+		case "LocksReleased": {
+			_data call EOEX_fnc_receiveLocksReleased;
+		};
+
 		case "CreateSyncConnection": {
 			_data call EOEX_fnc_receiveCreateSyncConnection;
 		};

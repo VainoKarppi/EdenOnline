@@ -17,10 +17,29 @@ if (_entity isEqualType objNull && {isNull _entity}) exitWith {};
 
 private _now = diag_tickTime;
 private _positionResults = _entity get3DENAttribute "Position";
-private _position = if (_positionResults isEqualType [] && {!(_positionResults isEqualTo [])}) then { _positionResults # 0 } else { nil };
+private _position = if (_positionResults isEqualType [] && {_positionResults isNotEqualTo []}) then { _positionResults # 0 } else { nil };
 
 // Nothing to stream for an entity without a position (e.g. an empty group).
 if (isNil "_position") exitWith {};
+
+// Another client holds the entity (its attributes window is open, or it is being dragged there):
+// do not start a move here, and put the entity back where it was when the lock was taken.
+private _entityId = [_entity, true] call EOEX_fnc_getId;
+private _lock = if (isNil "_entityId") then { [] } else { (missionNamespace getVariable ["EOEX_var_Locks", createHashMap]) getOrDefault [_entityId, []] };
+
+if !(_lock isEqualTo []) exitWith {
+    _lock params ["_lockedEntity", "_username", "_mode", "_lockedPosition"];
+
+    [format ["%1 is editing %2 (%3). You cannot move it until the lock is released.", _username, _entityId, _mode], 1, 6] call BIS_fnc_3DENNotification;
+
+    if (!isNil "_lockedPosition") then {
+        [_entityId, ["Position", _lockedPosition]] call EOEX_fnc_addSkipAttributeChange;
+
+        ignore3DENHistory {
+            _entity set3DENAttribute ["Position", _lockedPosition];
+        };
+    };
+};
 
 // Start a new move operation
 if !(missionNamespace getVariable ["EOEX_var_MoveActive", false]) then {
@@ -70,7 +89,7 @@ if !(missionNamespace getVariable ["EOEX_var_MoveActive", false]) then {
     missionNamespace setVariable ["EOEX_var_MoveLastUpdate", _now];
 
     // Send START_MOVE via TCP
-    ["StartObjectDrag", [_moveId, _objectIds], true] spawn EOEX_fnc_callExtensionAsync;
+    ["StartObjectDrag", [_moveId, _objectIds, profileNameSteam], true] spawn EOEX_fnc_callExtensionAsync;
 };
 
 
@@ -78,7 +97,7 @@ if !(missionNamespace getVariable ["EOEX_var_MoveActive", false]) then {
 // calls this function again whenever the dragged entity's position changes.
 private _lastUpdate = missionNamespace getVariable ["EOEX_var_MoveLastUpdate", 0];
 
-if ((_now - _lastUpdate) < 0.1) exitWith {};
+if ((_now - _lastUpdate) < EOEX_var_DragUpdateSpeed) exitWith {};
 
 private _moveId = missionNamespace getVariable ["EOEX_var_MoveId", -1];
 

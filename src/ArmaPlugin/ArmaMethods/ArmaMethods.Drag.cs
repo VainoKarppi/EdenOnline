@@ -17,12 +17,12 @@ public static partial class ArmaMethods
     /// Notifies the server that an object drag has started.
     /// Sent via TCP (fire-and-forget), similar to CreateObject.
     /// </summary>
-    public static async Task StartObjectDrag(string moveId, object[] objectIds)
+    public static async Task StartObjectDrag(string moveId, object[] objectIds, string username)
     {
         if (!Client.IsTcpConnected())
             throw new Exception("Client is not connected. Cannot start object drag.");
 
-        await Client.SendTcpMessageAsync(-1, "StartObjectDrag", moveId, objectIds);
+        await Client.SendTcpMessageAsync(-1, "StartObjectDrag", moveId, objectIds, username);
     }
 
     /// <summary>

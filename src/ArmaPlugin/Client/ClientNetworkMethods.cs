@@ -60,8 +60,8 @@ public class ClientNetworkMethods {
         Extension.SendToArma("ObjectRemoved", [pairs]);
     }
 
-    public static void StartObjectDrag(string moveId, object[] objectIds) {
-        Extension.SendToArma("StartObjectDrag", [moveId, objectIds]);
+    public static void StartObjectDrag(string moveId, object[] objectIds, string username) {
+        Extension.SendToArma("StartObjectDrag", [moveId, objectIds, username]);
     }
 
     public static void UpdateObjectDrag(string moveId, object[] delta) {
@@ -70,6 +70,16 @@ public class ClientNetworkMethods {
 
     public static void EndObjectDrag(string moveId, object[] finalPositions) {
         Extension.SendToArma("EndObjectDrag", [moveId, finalPositions]);
+    }
+
+    public static void StartAttributesEdit(object[] objectIds, string username) {
+        Log($"[CLIENT] StartAttributesEdit. {username} is editing {string.Join(", ", objectIds)}");
+        Extension.SendToArma("AttributesEditStarted", [objectIds, username]);
+    }
+
+    public static void StopAttributesEdit(object[] objectIds) {
+        Log($"[CLIENT] StopAttributesEdit. {string.Join(", ", objectIds)}");
+        Extension.SendToArma("AttributesEditStopped", [objectIds]);
     }
 
     public static void CreateSyncConnection(ArmaSyncConnection connection) {

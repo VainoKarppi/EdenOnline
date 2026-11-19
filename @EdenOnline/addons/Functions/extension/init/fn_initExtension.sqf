@@ -28,6 +28,8 @@ private _data = (_return select 1) select 0;
 
 if (_return select 0 == "ERROR") exitWith { diag_log format ["ERROR: %1", _data]; false };
 
+EOEX_var_DragUpdateSpeed = 0.1;
+
 EOEX_var_extensionVersion = _data;
 
 EOEX_var_extensionResponses = createHashMap;
@@ -37,6 +39,10 @@ EOEX_var_SkipAttributeChanges = createHashMap;
 
 
 EOEX_var_OtherClients = createHashMap;
+
+// id -> [entity, username, mode, position] for entities another client is editing or dragging.
+EOEX_var_Locks = createHashMap;
+EOEX_var_LocksHandler = nil;
 
 EOEX_var_PastedObjects = [];
 EOEX_var_RemovedEntities = [];

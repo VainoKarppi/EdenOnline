@@ -29,7 +29,7 @@ if (_type == "Group") exitWith {};
 // destroyed before the handler runs), so the timestamp and type are the main signal.
 if (_type == "Object" || {_type == "Trigger"} || {_type == "Logic"} || {_type == "Waypoint"}) then {
     private _positionResults = _entity get3DENAttribute "Position";
-    private _position = if (_positionResults isEqualType [] && {!(_positionResults isEqualTo [])}) then { _positionResults # 0 } else { nil };
+    private _position = if (_positionResults isEqualType [] && {_positionResults isNotEqualTo []}) then { _positionResults # 0 } else { nil };
 
     // Entries older than a second cannot belong to the same operation anymore.
     private _removed = (missionNamespace getVariable ["EOEX_var_RemovedEntities", []]) select { (diag_tickTime - (_x # 0)) < 1 };

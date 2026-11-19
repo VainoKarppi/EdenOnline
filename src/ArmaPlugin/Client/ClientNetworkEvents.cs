@@ -54,6 +54,14 @@ public class ClientNetworkEvents {
         } catch (Exception ex) {
             Log($"[CLIENT] Failed to send UpdateClientList to Arma after other client disconnected: {ex}");
         }
+
+        // A disconnected client cannot send StopAttributesEdit / EndObjectDrag anymore, so every
+        // lock it held has to be released locally.
+        try {
+            Extension.SendToArma("LocksReleased", [username]);
+        } catch (Exception ex) {
+            Log($"[CLIENT] Failed to send LocksReleased to Arma: {ex}");
+        }
     }
 
 

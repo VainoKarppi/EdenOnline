@@ -45,7 +45,7 @@ if (_type == "Waypoint") then {
 };
 
 private _positionResults = _entity get3DENAttribute "Position";
-private _position = if (_positionResults isEqualType [] && {!(_positionResults isEqualTo [])}) then { _positionResults # 0 } else { [0, 0, 0] };
+private _position = if (_positionResults isEqualType [] && {_positionResults isNotEqualTo []}) then { _positionResults # 0 } else { [0, 0, 0] };
 
 // Same rule the sender uses, so the recreated entity is crewed the same way.
 private _isEmpty = _type == "Object" && {!(_entity isKindOf "Man")} && {crew _entity isEqualTo []};
@@ -84,10 +84,10 @@ _registry set [_id, _newEntity];
             // different float), so register what the engine reports as well.
             private _applied = _newEntity get3DENAttribute _class;
 
-            if (!isNil "_applied" && {!(_applied isEqualTo [])}) then {
+            if (!isNil "_applied" && {_applied isNotEqualTo []}) then {
                 private _appliedValue = _applied # 0;
 
-                if (!isNil "_appliedValue" && {!(_appliedValue isEqualTo _value)}) then {
+                if (!isNil "_appliedValue" && {_appliedValue isNotEqualTo _value}) then {
                     [_id, [_class, _appliedValue]] call EOEX_fnc_addSkipAttributeChange;
                 };
             };

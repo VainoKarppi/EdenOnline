@@ -1,10 +1,9 @@
 // EOEX_fnc_receiveDragStart
 
-params ["_moveId", "_objectIds"];
+params ["_moveId", "_objectIds", ["_username", "another client", [""]]];
 
-
-
-// TODO LOCK OBJECT, SO THAT IT CANNOT BE EDITED
+// The moved entities are locked while the other client drags them: they cannot be dragged or edited
+// here until EndObjectDrag arrives.
 
 // Every registry maps an EOEX id to its entity, so a drag can carry objects, triggers, logics,
 // markers, waypoints and comments. Markers are stored by name and waypoints as [group, index],
@@ -46,6 +45,12 @@ missionNamespace setVariable ["EOEX_var_RemoteMoveActive", true];
 missionNamespace setVariable ["EOEX_var_RemoteMoveId", _moveId];
 missionNamespace setVariable ["EOEX_var_RemoteMoveIds", _moved apply { _x # 0 }];
 missionNamespace setVariable ["EOEX_var_RemoteMoveObjects", _moved];
+
+{
+    [_x # 0, _username, "drag"] call EOEX_fnc_lockEntity;
+} forEach _moved;
+
+[format ["%1 is moving %2.", _username, (_moved apply { _x # 0 }) joinString ", "], 0, 4] call BIS_fnc_3DENNotification;
 
 private _targets = _moved apply { [_x # 1, _x # 2] };
 

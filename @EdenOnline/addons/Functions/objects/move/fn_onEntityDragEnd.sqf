@@ -17,7 +17,7 @@ private _finalPositions = [];
     if (_x isEqualType grpNull) then { continue };
 
     private _positionResults = _x get3DENAttribute "Position";
-    private _position = if (_positionResults isEqualType [] && {!(_positionResults isEqualTo [])}) then { _positionResults # 0 } else { nil };
+    private _position = if (_positionResults isEqualType [] && {_positionResults isNotEqualTo []}) then { _positionResults # 0 } else { nil };
 
     private _id = [_x, false] call EOEX_fnc_getId;
 
@@ -27,7 +27,7 @@ private _finalPositions = [];
         // The rotation changes during the drag are not sent as UpdateObject either, so carry the
         // final one here as well (fn_receiveDragEnd applies it as the optional third element).
         private _rotationResults = _x get3DENAttribute "Rotation";
-        private _rotation = if (_rotationResults isEqualType [] && {!(_rotationResults isEqualTo [])}) then { _rotationResults # 0 } else { nil };
+        private _rotation = if (_rotationResults isEqualType [] && {_rotationResults isNotEqualTo []}) then { _rotationResults # 0 } else { nil };
 
         if (!isNil "_rotation") then { _finalState pushBack _rotation };
 

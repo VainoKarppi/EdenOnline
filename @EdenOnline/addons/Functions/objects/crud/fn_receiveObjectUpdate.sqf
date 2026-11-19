@@ -105,10 +105,10 @@ if (_classChange isNotEqualTo []) then {
     // reports as well, otherwise the update is sent back and echoes between the clients forever.
     private _applied = _entity get3DENAttribute _class;
 
-    if (!isNil "_applied" && {!(_applied isEqualTo [])}) then {
+    if (!isNil "_applied" && {_applied isNotEqualTo []}) then {
         private _appliedValue = _applied # 0;
 
-        if (!isNil "_appliedValue" && {!(_appliedValue isEqualTo _value)}) then {
+        if (!isNil "_appliedValue" && {_appliedValue isNotEqualTo _value}) then {
             [_entityId, [_class, _appliedValue]] call EOEX_fnc_addSkipAttributeChange;
         };
     };

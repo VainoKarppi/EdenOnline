@@ -34,6 +34,14 @@ uiNamespace setVariable ["EOEX_var_PlayerListDialog", nil];
 ["EOEX_var_CameraDrawEvent", "onEachFrame"] call BIS_fnc_removeStackedEventHandler;
 ((findDisplay 313) displayCtrl 51) ctrlRemoveEventHandler ["Draw", missionNamespace getVariable ["EOEX_var_MAPCTRL", -1]];
 
+// The locks are held by the other clients, so none of them survives the disconnect.
+missionNamespace setVariable ["EOEX_var_Locks", createHashMap];
+
+if (!isNil "EOEX_var_LocksHandler") then {
+    removeMissionEventHandler ["Draw3D", EOEX_var_LocksHandler];
+    missionNamespace setVariable ["EOEX_var_LocksHandler", nil];
+};
+
 if (missionNamespace getVariable ["EOEX_var_Connected", false]) then {
     // If there is no reason, it was successful
     if (_reason == "") then {

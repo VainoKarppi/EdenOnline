@@ -110,6 +110,7 @@ if (_groupId != "" && {_type == "Object"}) then {
     if (isNull _leader) then {
         diag_log format ["WARNING: Group leader %1 not found for %2 (%3)", _groupId, _id, _type];
     } else {
+        #pragma hemtt ignore_variables ["_entity"]
         if ((group _entity) isNotEqualTo (group _leader)) then {
             ignore3DENHistory {
                 add3DENConnection ["Group", [_entity], group _leader];
@@ -200,10 +201,10 @@ if (_type == "Layer") then {
         // the engine reports as well, otherwise every receive echoes back as an endless update.
         private _applied = _entity get3DENAttribute _x;
 
-        if (!isNil "_applied" && {!(_applied isEqualTo [])}) then {
+        if (!isNil "_applied" && {_applied isNotEqualTo []}) then {
             private _appliedValue = _applied # 0;
 
-            if (!isNil "_appliedValue" && {!(_appliedValue isEqualTo _y)}) then {
+            if (!isNil "_appliedValue" && {_appliedValue isNotEqualTo _y}) then {
                 [_id, [_x, _appliedValue]] call EOEX_fnc_addSkipAttributeChange;
             };
         };

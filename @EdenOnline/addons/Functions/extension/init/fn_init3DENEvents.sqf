@@ -127,6 +127,18 @@ if !(isNull _display) then {
 };
 
 
+// -----------------------------------------------------------------------------
+// Entity locks (attributes window / drag of another client)
+// -----------------------------------------------------------------------------
+
+// The locks are held by the other clients; drop whatever is left from a previous session.
+EOEX_var_Locks = createHashMap;
+EOEX_var_LocksHandler = nil;
+
+// Reports the attributes window of this client to the others, so they lock the entity.
+[] spawn EOEX_fnc_watchAttributesEdit;
+
+
 /*
 // -----------------------------------------------------------------------------
 // OnEntityDragged

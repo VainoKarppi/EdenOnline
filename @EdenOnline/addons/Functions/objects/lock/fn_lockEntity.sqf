@@ -1,0 +1,34 @@
+// EOEX_fnc_lockEntity
+
+// Marks an entity as locked by another client. The lock is only a local mirror: the client that
+// holds the lock removes it again with StopAttributesEdit / EndObjectDrag, or when it disconnects.
+//
+// A locked entity cannot be dragged and its attributes window cannot be opened here (see
+// fn_onEntityDragStart and fn_watchAttributesEdit).
+//
+// Entry: id -> [entity, username, mode, position]
+//   mode     "attributes" (attributes window open) or "drag" (being dragged)
+
+params [["_id", "", [""]], ["_username", "another client", [""]], ["_mode", "attributes", [""]]];
+
+if (_id isEqualTo "") exitWith {};
+
+if (isNil "EOEX_var_Locks") then {
+    EOEX_var_Locks = createHashMap;
+};
+
+private _existing = EOEX_var_Locks getOrDefault [_id, []];
+
+if (!(_existing isEqualTo []) && {(_existing # 1) isEqualTo _username} && {(_existing # 2) isEqualTo _mode}) exitWith {};
+
+private _entity = [_id] call EOEX_fnc_getEntityById;
+
+// Unknown id: the entity is not created here (yet), so there is nothing to lock.
+if (isNil "_entity") exitWith {};
+
+private _position = (_entity get3DENAttribute "Position") param [0, nil];
+
+EOEX_var_Locks set [_id, [_entity, _username, _mode, _position]];
+
+// Draws the indicator for every lock from a single handler.
+call EOEX_fnc_drawLocks;

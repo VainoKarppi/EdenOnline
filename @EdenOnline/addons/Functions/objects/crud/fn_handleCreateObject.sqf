@@ -28,7 +28,7 @@ private _isCopy = if (_index != -1) then {
 // preserved locally are not reset on the other clients.
 if (!_isCopy && {_type == "Object" || {_type == "Trigger"} || {_type == "Logic"} || {_type == "Waypoint"}}) then {
     private _positionResults = _entity get3DENAttribute "Position";
-    private _position = if (_positionResults isEqualType [] && {!(_positionResults isEqualTo [])}) then { _positionResults # 0 } else { nil };
+    private _position = if (_positionResults isEqualType [] && {_positionResults isNotEqualTo []}) then { _positionResults # 0 } else { nil };
 
     private _removed = missionNamespace getVariable ["EOEX_var_RemovedEntities", []];
     private _removedIndex = _removed findIf {

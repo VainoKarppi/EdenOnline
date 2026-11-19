@@ -79,3 +79,8 @@ missionNamespace setVariable ["EOEX_var_RemoteMoveId", ""];
 missionNamespace setVariable ["EOEX_var_RemoteMoveIds", []];
 missionNamespace setVariable ["EOEX_var_RemoteMoveObjects", []];
 missionNamespace setVariable ["EOEX_var_RemoteMoveTargets", []];
+
+// The other client finished the drag: the entities can be edited here again.
+{
+    [_x # 0] call EOEX_fnc_unlockEntity;
+} forEach _moved;
