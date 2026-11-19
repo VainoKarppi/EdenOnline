@@ -32,6 +32,12 @@ private _finalPositions = [];
 // TODO We should be able to remove this, as we already send UpdateObject
 ["EndObjectDrag", [_moveId, _finalPositions], true] spawn EOEX_fnc_callExtensionAsync;
 
+// This client owns the final state of the entities it just dragged. Position/Rotation updates that
+// are still in flight from the other clients are echoes of the drag and would only make the object
+// snap back, so ignore them for a moment.
+missionNamespace setVariable ["EOEX_var_MoveIgnoreIncomingIds", _finalPositions apply { _x # 0 }];
+missionNamespace setVariable ["EOEX_var_MoveIgnoreIncomingUntil", diag_tickTime + 0.5];
+
 // Reset move state
 missionNamespace setVariable ["EOEX_var_MoveActive", false];
 missionNamespace setVariable ["EOEX_var_MoveLastUpdate", 0];

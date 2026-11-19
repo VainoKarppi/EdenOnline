@@ -30,6 +30,17 @@ private _isEntityValid = {
     false
 };
 
+// Stop the interpolation first: a frame running between the final writes and the flag reset below
+// would move the entity away from the final position again.
+missionNamespace setVariable ["EOEX_var_RemoteMoveTargets", []];
+
+// The change events of the final writes are dispatched asynchronously, and several of them (one per
+// interpolation frame) can read the final value after the move was marked as finished. Ignore all
+// attribute changes of these entities for a moment so none of them is echoed back to the dragging
+// client, which is the authoritative owner of the final state.
+missionNamespace setVariable ["EOEX_var_RemoteMoveIgnoreIds", _moved apply { _x # 0 }];
+missionNamespace setVariable ["EOEX_var_RemoteMoveIgnoreUntil", diag_tickTime + 0.5];
+
 {
     _x params [["_objectId", nil], ["_finalPosition", nil], ["_finalRotation", nil]];
 

@@ -120,6 +120,18 @@ the position every frame, so `fn_sendObjectAttributes` ignores attribute events 
 active remote move (`EOEX_var_RemoteMoveIds`) — otherwise every interpolated frame is echoed back to
 the client that is dragging.
 
+The change events of those writes are dispatched asynchronously and several of them (one per
+interpolation frame) can read the final value right after `fn_receiveDragEnd` cleared the move. That
+is why the end of a drag opens a short ignore window (`EOEX_var_RemoteMoveIgnoreIds` /
+`_Until`, 0.5 s): a skip entry is single-use, so the first late event would consume it and the next
+one would be sent back. `fn_receiveDragEnd` also stops the interpolation (`RemoteMoveTargets = []`)
+before applying the final state, so a frame cannot overwrite it.
+
+The mirror image applies to the client that dragged: right after `EndObjectDrag` it owns the final
+state, so `fn_receiveObjectUpdate` drops `Position`/`Rotation` for those IDs for 0.5 s
+(`EOEX_var_MoveIgnoreIncomingIds` / `_Until`). Echoes from a client that still runs an older build
+therefore cannot snap the object back.
+
 Query the selection per type
 (`get3DENSelected "waypoint"` etc.): `get3DENSelected ""` nests the categories and `flatten` breaks
 waypoint references (`[group, index]`) into a group and a bare index. Also never pass a waypoint to

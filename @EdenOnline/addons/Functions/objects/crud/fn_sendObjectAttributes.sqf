@@ -30,6 +30,11 @@ if (_skip) exitWith {};
 // Those writes are not user edits and must not be sent back to the client that owns the drag.
 if ((missionNamespace getVariable ["EOEX_var_RemoteMoveActive", false]) && {_id in (missionNamespace getVariable ["EOEX_var_RemoteMoveIds", []])}) exitWith {};
 
+// The change events of the final drag writes arrive asynchronously and can still run after the
+// move was marked as finished. The dragging client already sent the authoritative final state, so
+// nothing that touches the just dragged entities may be echoed back.
+if ((missionNamespace getVariable ["EOEX_var_RemoteMoveIgnoreUntil", 0]) > diag_tickTime && {_id in (missionNamespace getVariable ["EOEX_var_RemoteMoveIgnoreIds", []])}) exitWith {};
+
 // This client is dragging the entity. The movement is streamed over UDP (UpdateObjectDrag) and the
 // final state is sent by EndObjectDrag, so sending every intermediate Position/Rotation as a TCP
 // UpdateObject only floods the connection. Feeding the position changes to onEntityDragStart keeps

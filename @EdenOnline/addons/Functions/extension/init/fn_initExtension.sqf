@@ -53,6 +53,10 @@ missionNamespace setVariable ["EOEX_var_MoveIds", []];
 missionNamespace setVariable ["EOEX_var_MoveEntities", []];
 missionNamespace setVariable ["EOEX_var_MoveReferencePosition", [0, 0, 0]];
 missionNamespace setVariable ["EOEX_var_RemoteMoveIds", []];
+missionNamespace setVariable ["EOEX_var_RemoteMoveIgnoreIds", []];
+missionNamespace setVariable ["EOEX_var_RemoteMoveIgnoreUntil", 0];
+missionNamespace setVariable ["EOEX_var_MoveIgnoreIncomingIds", []];
+missionNamespace setVariable ["EOEX_var_MoveIgnoreIncomingUntil", 0];
 
 EOEX_var_IsHost = false;
 

@@ -17,6 +17,15 @@
 */
 params ["_entityId", "_type", "_attributeMap"];
 
+// The client that just dragged this entity owns its final state. Position/Rotation updates that
+// are still in flight from the other clients are echoes of that drag and would only make the
+// object snap back, so drop them for a moment.
+if ((missionNamespace getVariable ["EOEX_var_MoveIgnoreIncomingUntil", 0]) > diag_tickTime && {_entityId in (missionNamespace getVariable ["EOEX_var_MoveIgnoreIncomingIds", []])}) then {
+    _attributeMap = _attributeMap select { !((_x param [0, ""]) in ["Position", "Rotation"]) };
+
+    if (_attributeMap isEqualTo []) exitWith {};
+};
+
 // [objects, groups, triggers, systems/logic, waypoints, markers, layers, comments]
 
 // Add to skip list to avoid sending back the same update to the server

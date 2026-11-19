@@ -40,6 +40,8 @@ if (_moved isEqualTo []) exitWith {
     diag_log format ["MOVE_START: No entities found for move %1", _moveId];
 };
 
+missionNamespace setVariable ["EOEX_var_RemoteMoveIgnoreIds", []];
+missionNamespace setVariable ["EOEX_var_RemoteMoveIgnoreUntil", 0];
 missionNamespace setVariable ["EOEX_var_RemoteMoveActive", true];
 missionNamespace setVariable ["EOEX_var_RemoteMoveId", _moveId];
 missionNamespace setVariable ["EOEX_var_RemoteMoveIds", _moved apply { _x # 0 }];
