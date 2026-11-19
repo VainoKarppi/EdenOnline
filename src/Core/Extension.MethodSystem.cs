@@ -90,8 +90,10 @@ public static partial class MethodSystem {
             ex = ex.InnerException ?? ex;
             Events.RaiseErrorOccurred(ex);
 
+            // The result is read by parseSimpleArray in Arma, so a quote inside the message (e.g. a
+            // JSON parser error) must be doubled like any SQF string literal.
             return WriteOutput(output, outputSize, method,
-                $@"[""{ExtensionResultCode.ERROR}"",[""{ex.Message}""]]",
+                $@"[""{ExtensionResultCode.ERROR}"",[""{ex.Message.Replace("\"", "\"\"")}""]]",
                 (int)ReturnCodes.Error);
         }
     }

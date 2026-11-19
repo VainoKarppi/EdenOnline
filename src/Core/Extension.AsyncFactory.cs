@@ -75,7 +75,11 @@ internal static class AsyncFactory {
                     asyncKey
                 );
             } catch (Exception ex) {
-                if (Extension.DEBUG) Log($"[ASYNC TASK ERROR] {ex}", LogLevel.Error, true);
+                // Always log: a fire-and-forget request has no response channel, so a deserialization
+                // or method failure would otherwise be invisible in the log.
+                Log($"[ASYNC TASK ERROR] {methodToInvoke.Name}: {ex.GetType().Name}: {ex.Message}", LogLevel.Error);
+
+                if (Extension.DEBUG) Log($"{(ex.InnerException ?? ex)}", LogLevel.Debug);
 
                 ex = ex.InnerException ?? ex;
 

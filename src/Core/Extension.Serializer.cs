@@ -54,7 +54,7 @@ internal static class Serializer
         if (string.IsNullOrWhiteSpace(input))
             return input;
 
-        var sb = new StringBuilder(input.Length);
+        var sb = new StringBuilder(input.Length + 16);
         bool inString = false;
 
         for (int i = 0; i < input.Length;)
@@ -63,8 +63,49 @@ internal static class Serializer
 
             if (c == '"')
             {
-                inString = !inString;
-                sb.Append(c);
+                if (!inString)
+                {
+                    inString = true;
+                    sb.Append('"');
+                    i++;
+                    continue;
+                }
+
+                // SQF's str writes a quote inside a string as two quotes ("a""b"), which is not
+                // valid JSON. Attribute values such as Init or ammoBox contain quotes, so without
+                // this the whole payload fails to parse and the message is silently dropped.
+                if (i + 1 < input.Length && input[i + 1] == '"')
+                {
+                    sb.Append("\\\"");
+                    i += 2;
+                    continue;
+                }
+
+                inString = false;
+                sb.Append('"');
+                i++;
+                continue;
+            }
+
+            if (inString)
+            {
+                // SQF does not escape anything inside a string, JSON does.
+                switch (c)
+                {
+                    case '\\': sb.Append("\\\\"); break;
+                    case '\b': sb.Append("\\b"); break;
+                    case '\f': sb.Append("\\f"); break;
+                    case '\n': sb.Append("\\n"); break;
+                    case '\r': sb.Append("\\r"); break;
+                    case '\t': sb.Append("\\t"); break;
+                    default:
+                        if (c < ' ')
+                            sb.Append("\\u").Append(((int)c).ToString("x4", CultureInfo.InvariantCulture));
+                        else
+                            sb.Append(c);
+                        break;
+                }
+
                 i++;
                 continue;
             }

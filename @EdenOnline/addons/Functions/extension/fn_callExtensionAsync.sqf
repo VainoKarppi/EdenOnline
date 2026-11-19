@@ -42,14 +42,27 @@ if (_function != "CameraUpdate" && _function != "SetInitialMissionAttributes" &&
 private _result = EOEX_var_extensionName callExtension [_request, _arguments];
 
 
-if (_result isEqualTo "" || _fireAndForget) exitWith {
-	EOEX_var_extensionRequests deleteAt _requestId;
+if (_fireAndForget) exitWith {
+	// A fire-and-forget request still gets a synchronous result: the extension reports argument
+	// (deserialization) failures there. Log it, otherwise a payload the extension could not parse
+	// disappears without a trace. Arma returns [resultString, returnCode, ...] (or just the string).
+	// The status is checked by prefix instead of parseSimpleArray, because an error message can
+	// contain quotes that break the parser.
+	private _raw = if (_result isEqualType []) then { _result param [0, ""] } else { _result };
+	private _errorPrefix = "[""ERROR"""; // ["ERROR",
 
-	if (_fireAndForget) then {
-		[true,nil]
-	} else {
-		[false,"Extension not found"]
+	if (_raw isEqualType "" && {(_raw select [0, count _errorPrefix]) isEqualTo _errorPrefix}) then {
+		diag_log formatText ["ERROR: (%1): %2", _function, _raw];
+		diag_log "=========================================================================================";
 	};
+
+	EOEX_var_extensionRequests deleteAt _requestId;
+	[true,nil]
+};
+
+if (_result isEqualTo "") exitWith {
+	EOEX_var_extensionRequests deleteAt _requestId;
+	[false,"Extension not found"]
 };
 
 

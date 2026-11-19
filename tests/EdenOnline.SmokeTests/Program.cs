@@ -50,6 +50,23 @@ Assert(printArrayMethod is not null, "PrintArray should exist.");
 string printedArray = (string)printArrayMethod!.Invoke(null, [new object?[] { "hint \"hello\"" }])!;
 Assert(printedArray == "[\"hint \"\"hello\"\"\"]", $"Quotes in strings must be doubled for SQF, got: {printedArray}");
 
+// The reverse direction: SQF escapes a quote inside a string by doubling it, and attribute values
+// such as Init or ammoBox contain quotes. The parser must turn that into legal JSON instead of
+// failing on the whole payload (which silently dropped every copied vehicle with a custom loadout).
+var createObjectMethod = typeof(ArmaMethods).GetMethod("CreateObject", BindingFlags.Public | BindingFlags.Static);
+Assert(createObjectMethod is not null, "CreateObject should exist.");
+
+var createArgs = (object?[])deserializeMethod!.Invoke(null, [createObjectMethod!, new string[] {
+    "\"COPY1\"",
+    "\"Object\"",
+    "[[\"ItemClass\",\"B_soldier_F\"],[\"Init\",\"hint \"\"hello\"\";\"],[\"ammoBox\",\"[[[[\"\"arifle_MX_F\"\"],[1]]],false]\"]]"
+}, null])!;
+
+var metadata = createArgs[2] as Dictionary<string, object?>;
+Assert(metadata is not null && metadata.Count == 3, $"The attribute map must survive values with quotes, got: {createArgs[2]?.GetType().Name}");
+Assert((string?)metadata!["Init"] == "hint \"hello\";", $"Quotes inside a value must be unescaped, got: {metadata["Init"]}");
+Assert((string?)metadata["ammoBox"] == "[[[[\"arifle_MX_F\"],[1]]],false]", $"ammoBox must round-trip, got: {metadata["ammoBox"]}");
+
 // A removal batch arrives as [[id, type], ...] in the single argument of ArmaMethods.RemoveObjects.
 var removeObjectsMethod = typeof(ArmaMethods).GetMethod("RemoveObjects", BindingFlags.Public | BindingFlags.Static);
 Assert(removeObjectsMethod is not null, "RemoveObjects should exist.");

@@ -23,7 +23,6 @@ private _isCopy = if (_index != -1) then {
     true
 } else { false };
 
-// TODO Do we still have to send all the data in case object was copy pasted? Can we detect this?
 
 // Check for an existing ID and register a new one without yielding in between: Eden can report the
 // same entity twice (e.g. a vehicle whose crew is added), and a sleep here would let both handlers

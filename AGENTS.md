@@ -215,6 +215,14 @@ Attribute values can contain quotes (e.g. `Init`, `ammoBox`), and Arma parses th
 `parseSimpleArray`. `Serializer.PrintArray` therefore doubles quotes inside strings; keep that
 escaping when adding values to a message sent to Arma.
 
+The reverse direction has to undo the same escaping: `callExtension` hands the extension SQF's `str`
+form, where a quote inside a string is written as `""`. `Serializer.NormalizeArmaJson` converts those
+to JSON `\"` (and escapes `\`, newlines and control characters) before `JsonNode.Parse`. Without
+that, any payload containing a quoted value — a copied vehicle's `ammoBox`, an `Init` with
+`hint "..."` — fails to deserialize, and since a fire-and-forget request has no response channel the
+message silently disappeared. `fn_callExtensionAsync` now logs the synchronous `["ERROR", [...]]`
+result that the extension returns in that case.
+
 A burst of callbacks is coalesced by the extension into one `BATCH` callback, and
 `fn_initExtensionEvents` dispatches its entries synchronously and in order. Every entity of a paste
 therefore passes through `fn_receiveObjectCreate` one after another, so never add an unconditional
