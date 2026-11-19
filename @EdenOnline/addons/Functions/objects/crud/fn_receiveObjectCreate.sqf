@@ -28,7 +28,9 @@ private _entity = if (_type == "Layer") then {
     _attributeMap deleteAt "EOEX_Layer";
     private _parent = if (_parentId isEqualTo "") then { -1 } else { EOEX_var_Layers getOrDefault [_parentId, -1] };
 
-    _parent add3DENLayer (_attributeMap get "Name");
+    ignore3DENHistory {
+        _parent add3DENLayer (_attributeMap get "Name");
+    };
 } else {
     if (_type == "Waypoint") then {
         // The owning unit may still be in flight from the server, wait until it exists.
@@ -53,7 +55,9 @@ private _entity = if (_type == "Layer") then {
                 diag_log format ["ERROR: Missing ItemClass or Position for %1 (%2)", _type, _id];
                 nil
             } else {
-                (group _owner) create3DENEntity [_type, _attributeMap get "ItemClass", _attributeMap get "Position"];
+                ignore3DENHistory {
+                    (group _owner) create3DENEntity [_type, _attributeMap get "ItemClass", _attributeMap get "Position"];
+                };
             };
         };
     } else {
@@ -66,7 +70,9 @@ private _entity = if (_type == "Layer") then {
             diag_log format ["ERROR: Missing ItemClass or Position for %1 (%2)", _type, _id];
             nil
         } else {
-            create3DENEntity [_type, _attributeMap get "ItemClass", _attributeMap get "Position", _isEmpty];
+            ignore3DENHistory {
+                create3DENEntity [_type, _attributeMap get "ItemClass", _attributeMap get "Position", _isEmpty];
+            };
         };
     };
 };
@@ -99,7 +105,9 @@ if (_groupId != "" && {_type == "Object"}) then {
         diag_log format ["WARNING: Group leader %1 not found for %2 (%3)", _groupId, _id, _type];
     } else {
         if ((group _entity) isNotEqualTo (group _leader)) then {
-            add3DENConnection ["Group", [_entity], group _leader];
+            ignore3DENHistory {
+                add3DENConnection ["Group", [_entity], group _leader];
+            };
         };
     };
 };
@@ -111,7 +119,9 @@ if (_type == "Object" || _type == "Trigger" || _type == "Logic") then {
 if (_type == "Marker") then {
     private _markerName = _attributeMap getOrDefault ["MarkerName",""];
     if (_markerName != "") then {
-        _entity set3DENAttribute ["MarkerName", _markerName];
+        ignore3DENHistory {
+            _entity set3DENAttribute ["MarkerName", _markerName];
+        };
         _entity = _markerName;
     };
     EOEX_var_Markers set [_id, _entity];
@@ -155,7 +165,10 @@ if (_type == "Layer") then {
                 };
 
                 if (!isNil "_layer") then {
-                    private _success = _entity set3DENLayer _layer;
+                    private _success = false;
+                    ignore3DENHistory {
+                        _success = _entity set3DENLayer _layer;
+                    };
                     if (!_success) then { diag_log format ["ERROR: Unable to change objects layer: %1, layer: %2", _entity, _y] };
                 } else {
                     diag_log format ["WARNING: Unknown layer %1 for %2 (%3)", _y, _id, _type];
@@ -168,7 +181,10 @@ if (_type == "Layer") then {
     // Add skip attribute to prevent feedback loop
     [_id, [_x,_y]] call EOEX_fnc_addSkipAttributeChange;
 
-    private _success = _entity set3DENAttribute [_x, _y];
+    private _success = false;
+    ignore3DENHistory {
+        _success = _entity set3DENAttribute [_x, _y];
+    };
 
     if (!_success) then {
         diag_log format ["WARNING: INVALID ATTRIBUTES %1, %2, [%3, %4]", _id, _type, _x, _y ];

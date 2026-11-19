@@ -81,14 +81,20 @@ if (_classChange isNotEqualTo []) then {
     if (_class == "EOEX_Layer") then {
         private _layer = EOEX_var_Layers get _value;
         if (!isNil "_layer") then {
-            private _success = _entity set3DENLayer _layer;
+            private _success = false;
+            ignore3DENHistory {
+                _success = _entity set3DENLayer _layer;
+            };
             if (!_success) then { diag_log format ["ERROR: Unable to change objects layer: %1, layer: %2", _entity, _value] };
         };
         continue;
     };
 
-    private _success = _entity set3DENAttribute [_class, _value];
-
+    private _success = false;
+    ignore3DENHistory {
+        _success = _entity set3DENAttribute [_class, _value];
+    };
+    
     if (!_success) then {
         diag_log format ["ERROR: INVALID ATTRIBUTES for %1 ID: %2", _type, _entityId];
         continue;

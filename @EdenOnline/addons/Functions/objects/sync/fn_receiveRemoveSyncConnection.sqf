@@ -25,7 +25,9 @@ if (_type != "Sync") exitWith {
 
 
 // Remove the Eden connection
-remove3DENConnection [_type, [_fromObject], _toObject];
+ignore3DENHistory {
+    remove3DENConnection [_type, [_fromObject], _toObject];
+};
 
 // Verify removal
 private _exists = false;

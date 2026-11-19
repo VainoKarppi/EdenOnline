@@ -39,5 +39,7 @@ private _deleted = [];
 
 // Removing the whole batch at once keeps a large removal cheap.
 if (_deleted isNotEqualTo []) then {
-    delete3DENEntities _deleted;
+    ignore3DENHistory {
+        delete3DENEntities _deleted;
+    };
 };

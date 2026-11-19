@@ -25,8 +25,9 @@ if (_type != "Sync") exitWith {
 
 
 // Create the Eden connection.
-add3DENConnection [_type,[_fromObject],_toObject];
-
+ignore3DENHistory {
+    add3DENConnection [_type,[_fromObject],_toObject];
+};
 
 // Check whether Eden accepted the connection.
 private _success = false;

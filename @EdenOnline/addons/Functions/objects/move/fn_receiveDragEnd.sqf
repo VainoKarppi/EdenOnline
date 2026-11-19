@@ -59,12 +59,17 @@ missionNamespace setVariable ["EOEX_var_RemoteMoveIgnoreUntil", diag_tickTime + 
         // raise their change events after the move was already marked as finished.
         if (!isNil "_finalPosition") then {
             [_objectId, ["Position", _finalPosition]] call EOEX_fnc_addSkipAttributeChange;
-            _entity set3DENAttribute ["Position", _finalPosition];
+            ignore3DENHistory {
+                _entity set3DENAttribute ["Position", _finalPosition];
+            };
         };
         
         if (!isNil "_finalRotation") then {
             [_objectId, ["Rotation", _finalRotation]] call EOEX_fnc_addSkipAttributeChange;
-            _entity set3DENAttribute ["Rotation", _finalRotation];
+
+            ignore3DENHistory {
+                _entity set3DENAttribute ["Rotation", _finalRotation];
+            };
         };
     };
 } forEach _finalPositions;

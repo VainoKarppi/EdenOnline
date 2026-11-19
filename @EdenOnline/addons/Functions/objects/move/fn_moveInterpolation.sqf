@@ -28,7 +28,9 @@ Eden_RemoteMoveEachFrame = addMissionEventHandler ["EachFrame", {
 
                     _newPosition set [2, (_newPosition select 2) max 0];
 
-                    _object set3DENAttribute ["Position", _newPosition];
+                    ignore3DENHistory {
+                        _object set3DENAttribute ["Position", _newPosition];
+                    };
                 };
             };
         } forEach _targets;
