@@ -23,6 +23,21 @@ if (_isCommentOrLayer && isNil "_type") then {
 
 if (_type == "Group") exitWith {};
 
+// Eden changes a class by removing the entity and adding a new one right after. Remember the
+// removal, so fn_handleCreateObject can recognise the replacement and send it with all of its
+// attributes instead of resetting them. The position is not always readable here (a vehicle is
+// destroyed before the handler runs), so the timestamp and type are the main signal.
+if (_type == "Object" || {_type == "Trigger"} || {_type == "Logic"} || {_type == "Waypoint"}) then {
+    private _positionResults = _entity get3DENAttribute "Position";
+    private _position = if (_positionResults isEqualType [] && {!(_positionResults isEqualTo [])}) then { _positionResults # 0 } else { nil };
+
+    // Entries older than a second cannot belong to the same operation anymore.
+    private _removed = (missionNamespace getVariable ["EOEX_var_RemovedEntities", []]) select { (diag_tickTime - (_x # 0)) < 1 };
+    _removed pushBack [diag_tickTime, _type, _position];
+
+    EOEX_var_RemovedEntities = _removed;
+};
+
 // Get id if not Layer or Comment
 if (isNil "_id") then { _id = [_entity, true] call EOEX_fnc_getId };
 if (isNil "_id") exitWith {}; // This event was a network message to delete object.

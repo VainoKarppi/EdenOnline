@@ -39,6 +39,7 @@ EOEX_var_SkipAttributeChanges = createHashMap;
 EOEX_var_OtherClients = createHashMap;
 
 EOEX_var_PastedObjects = [];
+EOEX_var_RemovedEntities = [];
 EOEX_var_Objects = createHashMap;
 EOEX_var_Markers = createHashMap;
 EOEX_var_Comments = createHashMap;

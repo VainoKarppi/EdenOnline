@@ -251,15 +251,28 @@ replicated. The join happens **before** the ID is registered, otherwise the resu
 ## Changing an entity class (`ItemClass`)
 
 Eden silently ignores `set3DENAttribute ["ItemClass", ...]` (it returns `true` and keeps the old
-class) for every entity type, including markers. A received class change therefore goes through
-[`EOEX_fnc_recreateEntity`](@EdenOnline/addons/functions/objects/helpers/fn_recreateEntity.sqf):
+class) for every entity type, including markers and waypoints. A received class change therefore
+goes through [`EOEX_fnc_recreateEntity`](@EdenOnline/addons/functions/objects/helpers/fn_recreateEntity.sqf):
 it stores the attributes, removes the registry ID, deletes the entity, creates it again with the
-new class and re-applies every attribute. Supported for objects, triggers, logics and markers;
-comments and layers have no class and waypoints are referenced by `[group, index]` (Eden does not
-reuse the freed index), so those still log an error.
+new class and re-applies every attribute. Supported for objects, triggers, logics, markers and
+waypoints; comments and layers have no class.
+
+A waypoint is addressed by `[group, index]` and Eden never reuses a freed index, so the recreated
+waypoint gets a new index and the registry is updated to it. Its `Order` attribute must **not** be
+replayed: it is the waypoint's slot inside the group, and applying it moves the waypoint there and
+takes over the class stored in that slot (which silently turned a recreated `Hold` back into
+`Move`). `fn_receiveObjectCreate` skips it for the same reason.
 
 `EOEX_fnc_receiveObjectUpdate` triggers the recreation whenever the update payload contains an
 `ItemClass` that differs from the current one.
+
+On the **local** side Eden does the same thing itself when the user picks a new class: it removes
+the entity and adds a replacement (new EOEX ID). `fn_handleDeleteObject` records the removal
+(timestamp, type, position — the position of a vehicle is already gone at that point) and
+`fn_handleCreateObject` treats an entity that appears within 0.5 s with the same type (and the same
+position when both are known) as that replacement, passing `_isCopy = true` so the create carries
+the full attribute list. Without it the other clients recreated a class-changed unit or vehicle
+with default attributes and lost its `Init`, loadout and waypoint settings.
 
 ## C# extension
 

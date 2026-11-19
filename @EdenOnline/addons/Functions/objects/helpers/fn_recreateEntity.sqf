@@ -27,15 +27,25 @@ if (_newClass == "" || {_type == "Comment"} || {_type == "Layer"}) exitWith {
     nil
 };
 
-// Waypoints are addressed as [group, index] and Eden does not reuse the freed index, so the
-// recreated waypoint cannot keep the same reference on other clients yet.
-if (_type == "Waypoint") exitWith {
-    diag_log format ["ERROR: Cannot recreate waypoint %1 as %2", _id, _newClass];
+// Waypoints are addressed as [group, index]. Eden does not reuse the freed index, so the recreated
+// waypoint gets a different index and the registry is updated to it below.
+private _waypointGroup = if (_type == "Waypoint") then { _entity # 0 } else { grpNull };
+
+if (_type == "Waypoint" && {isNull _waypointGroup}) exitWith {
+    diag_log format ["ERROR: Cannot recreate waypoint %1 as %2: its group is gone", _id, _newClass];
     nil
 };
 
 private _attributes = _entity get3DENAttributes "";
-private _position = (_entity get3DENAttribute "Position") param [0, [0, 0, 0]];
+
+// "Order" is the waypoint's slot inside its group: applying it moves the waypoint there and takes
+// over the class stored in that slot, so a recreated waypoint must stay at the end of the list.
+if (_type == "Waypoint") then {
+    _attributes = _attributes select { (_x param [0, ""]) isNotEqualTo "Order" };
+};
+
+private _positionResults = _entity get3DENAttribute "Position";
+private _position = if (_positionResults isEqualType [] && {!(_positionResults isEqualTo [])}) then { _positionResults # 0 } else { [0, 0, 0] };
 
 // Same rule the sender uses, so the recreated entity is crewed the same way.
 private _isEmpty = _type == "Object" && {!(_entity isKindOf "Man")} && {crew _entity isEqualTo []};
@@ -50,6 +60,7 @@ private _newEntity = switch (_type) do {
     case "Object";
     case "Trigger";
     case "Logic": { create3DENEntity [_type, _newClass, _position, _isEmpty] };
+    case "Waypoint": { _waypointGroup create3DENEntity ["Waypoint", _newClass, _position] };
     default       { create3DENEntity [_type, _newClass, _position] }; // Marker
 };
 

@@ -131,6 +131,10 @@ if (_type == "Layer") then {
 
 // Set attributes
 {
+    // "Order" is the waypoint's slot inside its group: applying it moves the waypoint there and
+    // takes over the class stored in that slot. The new waypoint belongs at the end of the list.
+    if (_type == "Waypoint" && {_x == "Order"}) then { continue };
+
     // EOEX custom keys are bookkeeping for the create above, not Eden attributes.
     if (_x select [0,5] == "EOEX_") then {
         if (_x == "EOEX_Layer") then {

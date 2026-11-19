@@ -23,6 +23,34 @@ private _isCopy = if (_index != -1) then {
     true
 } else { false };
 
+// Eden changes a class by removing the entity and adding a new one right after. Treat the
+// replacement like a copy, so the attributes (Init, loadout, waypoint settings, ...) that Eden
+// preserved locally are not reset on the other clients.
+if (!_isCopy && {_type == "Object" || {_type == "Trigger"} || {_type == "Logic"} || {_type == "Waypoint"}}) then {
+    private _positionResults = _entity get3DENAttribute "Position";
+    private _position = if (_positionResults isEqualType [] && {!(_positionResults isEqualTo [])}) then { _positionResults # 0 } else { nil };
+
+    private _removed = missionNamespace getVariable ["EOEX_var_RemovedEntities", []];
+    private _removedIndex = _removed findIf {
+        _x params ["_removedAt", "_removedType", "_removedPosition"];
+
+        private _recent = (diag_tickTime - _removedAt) < 0.5;
+        private _sameType = _removedType isEqualTo _type;
+        // The old position is unknown for entities that Eden destroys before the removal handler
+        // runs (vehicles), so only compare it when both are available.
+        private _samePlace = if (isNil "_position" || {isNil "_removedPosition"}) then { true } else {
+            (vectorMagnitude (_position vectorDiff _removedPosition)) < 2
+        };
+
+        _recent && {_sameType} && {_samePlace}
+    };
+
+    if (_removedIndex != -1) then {
+        _removed deleteAt _removedIndex;
+        _isCopy = true;
+    };
+};
+
 
 // Check for an existing ID and register a new one without yielding in between: Eden can report the
 // same entity twice (e.g. a vehicle whose crew is added), and a sleep here would let both handlers
