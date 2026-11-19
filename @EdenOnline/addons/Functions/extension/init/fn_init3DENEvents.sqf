@@ -26,13 +26,13 @@ add3DENEventHandler ["OnPaste", {
         _index = EOEX_var_PastedObjects pushBackUnique _x;
 
         // Only run the EOEX_fnc_handleCreateObject for soldiers, since OnEditableEntityAdded only runs for the group.
-        if !(_x isKindOf "Man") then { continue };
+        if (_x isEqualType objNull && {!(_x isKindOf "Man")}) then { continue };
 
         if (_index != -1) then {
             [_x] spawn EOEX_fnc_handleCreateObject;
         };
 
-    } forEach flatten (get3DENSelected "");
+    } forEach flatten ((get3DENSelected "") + (get3DENSelected "Comment"));
 }];
 
 removeAll3DENEventHandlers "OnEditableEntityAdded";
