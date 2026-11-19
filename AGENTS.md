@@ -113,6 +113,12 @@ without yielding in between; keep it that way, otherwise the same object is sent
 Dragging sends `StartObjectDrag` / `UpdateObjectDrag` / `EndObjectDrag`. `OnEntityDragged` only
 fires when the drag starts, so `fn_sendObjectAttributes` feeds the dragged entity's `Position`
 changes into `fn_onEntityDragStart`, which streams the delta over UDP at 10 Hz. While
+
+`OnEntityDragged` can report the **group** instead of the grabbed unit (like
+`OnEditableEntityAdded`), and a group has no `Position` (`get3DENAttribute` returns `[nil]`). Without
+resolving `leader _entity` the delta became `nil`, `vectorDiff` failed and the extension rejected
+`UpdateObjectDrag` with "Expected Object[], but received scalar". Keep that guard, the `nil` position
+check and the group filter in `fn_onEntityDragStart`/`fn_onEntityDragEnd`. While
 `EOEX_var_MoveIds` contains the entity, that function drops `Position`/`Rotation` instead of sending
 them as TCP `UpdateObject`; `EndObjectDrag` carries the final position **and** rotation, and
 `fn_receiveDragEnd` registers skips for both. On the receiving side `fn_moveInterpolation` writes

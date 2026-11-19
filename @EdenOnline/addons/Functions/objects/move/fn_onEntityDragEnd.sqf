@@ -13,15 +13,22 @@ private _entities = missionNamespace getVariable ["EOEX_var_MoveEntities", []];
 private _finalPositions = [];
 
 {
-    private _position = (_x get3DENAttribute "Position") param [0, nil];
-
     // Groups have no position of their own and cannot be moved directly.
-    if (!isNil "_position") then {
-        private _finalState = [[_x, false] call EOEX_fnc_getId, _position];
+    if (_x isEqualType grpNull) then { continue };
+
+    private _positionResults = _x get3DENAttribute "Position";
+    private _position = if (_positionResults isEqualType [] && {!(_positionResults isEqualTo [])}) then { _positionResults # 0 } else { nil };
+
+    private _id = [_x, false] call EOEX_fnc_getId;
+
+    if (!isNil "_position" && {!isNil "_id"}) then {
+        private _finalState = [_id, _position];
 
         // The rotation changes during the drag are not sent as UpdateObject either, so carry the
         // final one here as well (fn_receiveDragEnd applies it as the optional third element).
-        private _rotation = (_x get3DENAttribute "Rotation") param [0, nil];
+        private _rotationResults = _x get3DENAttribute "Rotation";
+        private _rotation = if (_rotationResults isEqualType [] && {!(_rotationResults isEqualTo [])}) then { _rotationResults # 0 } else { nil };
+
         if (!isNil "_rotation") then { _finalState pushBack _rotation };
 
         _finalPositions pushBack _finalState;

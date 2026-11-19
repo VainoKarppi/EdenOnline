@@ -7,12 +7,27 @@ params ["_entity"];
 
 
 
+// Eden reports the group instead of the unit that was grabbed (same as OnEditableEntityAdded), and
+// a group has no Position of its own: get3DENAttribute returns [nil].
+if (_entity isEqualType grpNull) then {
+    _entity = leader _entity;
+};
+
+if (_entity isEqualType objNull && {isNull _entity}) exitWith {};
+
 private _now = diag_tickTime;
-private _position = (_entity get3DENAttribute "Position") select 0;
+private _positionResults = _entity get3DENAttribute "Position";
+private _position = if (_positionResults isEqualType [] && {!(_positionResults isEqualTo [])}) then { _positionResults # 0 } else { nil };
+
+// Nothing to stream for an entity without a position (e.g. an empty group).
+if (isNil "_position") exitWith {};
 
 // Start a new move operation
 if !(missionNamespace getVariable ["EOEX_var_MoveActive", false]) then {
     private _moveId = [_entity, false] call EOEX_fnc_getId;
+
+    // Only entities that are on the network have an ID.
+    if (isNil "_moveId") exitWith {};
 
     // Query each type separately: get3DENSelected "" nests the categories, and flattening would
     // break waypoint references into a group and an index.
@@ -21,6 +36,9 @@ if !(missionNamespace getVariable ["EOEX_var_MoveActive", false]) then {
         _entities append (get3DENSelected _x);
     } forEach ["object", "trigger", "logic", "waypoint", "marker", "comment"];
 
+    // A group can be reported as well, but it has no ID and no position.
+    _entities = _entities select { !(_x isEqualType grpNull) };
+
     if (_entities isEqualTo []) then {
         _entities = [_entity];
     };
@@ -28,7 +46,9 @@ if !(missionNamespace getVariable ["EOEX_var_MoveActive", false]) then {
     private _objectIds = [];
 
     {
-        _objectIds pushBack ([_x, false] call EOEX_fnc_getId);
+        private _id = [_x, false] call EOEX_fnc_getId;
+
+        if (!isNil "_id") then { _objectIds pushBack _id };
     } forEach _entities;
 
     // Pending attribute updates describe the pre-drag position; drop them so they cannot overwrite
@@ -63,6 +83,10 @@ if ((_now - _lastUpdate) < 0.1) exitWith {};
 private _moveId = missionNamespace getVariable ["EOEX_var_MoveId", -1];
 
 private _referencePosition = missionNamespace getVariable ["EOEX_var_MoveReferencePosition", _position];
+
+if (!(_referencePosition isEqualType []) || {count _referencePosition != 3}) then {
+    _referencePosition = _position;
+};
 
 // Delta is relative to the position when the move started
 private _delta = _position vectorDiff _referencePosition;
