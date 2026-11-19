@@ -5,18 +5,15 @@
 //
 // While the window is open the selected entities are reported to the other clients with
 // StartAttributesEdit, and StopAttributesEdit is sent as soon as it closes or the selection changes.
-// The Start is repeated as a heartbeat: the receiving side drops an "attributes" lock that is not
-// renewed in time, so a Stop that never arrives (crashed or restarted client) cannot leave an entity
-// locked forever. Entities another client is editing are not reported and their window is closed.
+// Entities another client is editing are not reported and their window is closed.
+// The messages are only sent on a change: a lost release is recovered by `LocksReleased` when the
+// holder disconnects or registers again (see ClientNetworkMethods.RegisterUserName), not by a timer.
 
 if (!isNil "EOEX_var_AttributesWatchActive") exitWith {};
 
 EOEX_var_AttributesWatchActive = true;
 
-private _heartbeat = missionNamespace getVariable ["EOEX_var_LockHeartbeat", 1];
-
 private _sentIds = [];
-private _lastSend = 0;
 
 while { true } do {
     sleep 0.25;
@@ -51,7 +48,7 @@ while { true } do {
         } forEach _ids;
 
         if (!isNil "_lock") then {
-            [format ["%1 is editing %2. Wait until %1 closed it.", _lock # 1, _lock # 2], 1, 5] call BIS_fnc_3DENNotification;
+            [format ["%1 is editing %2. Wait until %1 closed it.", _lock # 1, _lock # 2], 1, 5, false, 0] call BIS_fnc_3DENNotification;
 
             findDisplay 315 closeDisplay 0;
             _open = false;
@@ -59,20 +56,22 @@ while { true } do {
         };
     };
 
-    private _changed = _ids isNotEqualTo _sentIds;
-    private _renew = _ids isNotEqualTo [] && {(diag_tickTime - _lastSend) > _heartbeat};
+    if (_ids isEqualTo _sentIds) then { continue };
 
-    if (!_changed && !_renew) then { continue };
-
-    // A release is always attempted: if the connection is gone, the other clients drop the lock by
-    // expiry instead.
-    if (_changed && {_sentIds isNotEqualTo []}) then {
+    // A release is always attempted: if the connection is gone, the other clients drop the lock when
+    // this client registers again.
+    if (_sentIds isNotEqualTo []) then {
         ["StopAttributesEdit", [_sentIds], true] call EOEX_fnc_callExtensionAsync;
     };
 
     if (_ids isNotEqualTo [] && {missionNamespace getVariable ["EOEX_var_Connected", false]}) then {
-        ["StartAttributesEdit", [_ids, profileNameSteam], true] call EOEX_fnc_callExtensionAsync;
-        _lastSend = diag_tickTime;
+        // The client id lets the receivers release exactly this client's locks, even when both
+        // clients use the same profile name.
+        private _clientId = missionNamespace getVariable ["EOEX_var_clientID", -1];
+
+        if (!(_clientId isEqualType 0)) then { _clientId = -1 };
+
+        ["StartAttributesEdit", [_ids, profileNameSteam, _clientId], true] call EOEX_fnc_callExtensionAsync;
     };
 
     _sentIds = _ids;

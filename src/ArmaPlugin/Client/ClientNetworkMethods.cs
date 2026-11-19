@@ -27,6 +27,15 @@ public class ClientNetworkMethods {
     {
         Log($"[CLIENT] Received username list update! ({clientID}) {username}");
         ClientStateManager.UsernameList[clientID] = username;
+
+        // A client that registers either just joined or reconnected (new ID). Any lock it held in a
+        // previous session is stale, so everything stored under its id is released.
+        try {
+            Extension.SendToArma("LocksReleased", [clientID, username]);
+        } catch (Exception ex) {
+            Log($"[CLIENT] Failed to send LocksReleased to Arma after RegisterUserName: {ex}");
+        }
+
         // Push updated client list to Arma UI (exclude ourselves)
         try {
             var otherUsersArray = ClientStateManager.UsernameList
@@ -72,9 +81,9 @@ public class ClientNetworkMethods {
         Extension.SendToArma("EndObjectDrag", [moveId, finalPositions]);
     }
 
-    public static void StartAttributesEdit(object[] objectIds, string username) {
-        Log($"[CLIENT] StartAttributesEdit. {username} is editing {string.Join(", ", objectIds)}");
-        Extension.SendToArma("AttributesEditStarted", [objectIds, username]);
+    public static void StartAttributesEdit(object[] objectIds, string username, int clientId) {
+        Log($"[CLIENT] StartAttributesEdit. {username} ({clientId}) is editing {string.Join(", ", objectIds)}");
+        Extension.SendToArma("AttributesEditStarted", [objectIds, username, clientId]);
     }
 
     public static void StopAttributesEdit(object[] objectIds) {

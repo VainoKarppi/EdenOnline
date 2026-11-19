@@ -138,15 +138,23 @@ locks are pinned — a `"drag"` lock follows the client that owns the move.
 Both clients must run the same extension build, because the method signatures are part of the
 handshake hash.
 
-A `StopAttributesEdit` can be lost (the holder crashed, restarted Arma or its Eden reloaded the
-mission), so an `"attributes"` lock is a **lease**: `fn_watchAttributesEdit` repeats
-`StartAttributesEdit` every `EOEX_var_LockHeartbeat` second (1 s) while the window stays open, and
-`fn_enforceLocks` drops a lock that was not renewed for `EOEX_var_LockTimeout` seconds (3 s). Both
-clients therefore need the same addon build — with the old build the lock of a still-open window
-would expire after the timeout. `EOEX_var_Locks` entries are
-`id -> [entity, username, mode, position, timestamp]`, where `"drag"` locks have no expiry (they end
-with `EndObjectDrag` or `LocksReleased`). `StartAttributesEdit` / `StopAttributesEdit` are in the
-logging blacklist, otherwise the heartbeat would flood the RPT.
+Locks are sent **once per change** (`StartAttributesEdit` when the window opens or the selection
+changes, `StopAttributesEdit` when it closes) — no heartbeat, it would only spam the other clients.
+A release that never arrives is recovered without any traffic:
+
+- `LocksReleased` (client id + username) is sent by `ClientNetworkEvents.OnOtherClientDisconnected`
+  (the holder left the game with the window still open) and by
+  `ClientNetworkMethods.RegisterUserName` (a client that registers again is either new or reconnected,
+  its previous locks are gone).
+- Locks store the holder's client id, `EOEX_var_Locks` entries are
+  `id -> [entity, username, mode, position, clientId]`, so two clients with the same profile name do
+  not release each other. `"drag"` locks carry `-1` (StartObjectDrag has no client id) and fall back
+  to the name.
+- `StartAttributesEdit` / `StopAttributesEdit` are in the logging blacklist, they fire on every
+  attributes window.
+
+Both clients must run the same addon and extension build: the method signatures are part of the
+handshake hash.
 
 ## Testing the send path
 

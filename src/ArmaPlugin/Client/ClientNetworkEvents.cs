@@ -58,7 +58,7 @@ public class ClientNetworkEvents {
         // A disconnected client cannot send StopAttributesEdit / EndObjectDrag anymore, so every
         // lock it held has to be released locally.
         try {
-            Extension.SendToArma("LocksReleased", [username]);
+            Extension.SendToArma("LocksReleased", [otherClientId, username]);
         } catch (Exception ex) {
             Log($"[CLIENT] Failed to send LocksReleased to Arma: {ex}");
         }

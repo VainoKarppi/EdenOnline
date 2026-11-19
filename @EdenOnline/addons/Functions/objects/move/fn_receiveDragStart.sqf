@@ -47,10 +47,10 @@ missionNamespace setVariable ["EOEX_var_RemoteMoveIds", _moved apply { _x # 0 }]
 missionNamespace setVariable ["EOEX_var_RemoteMoveObjects", _moved];
 
 {
-    [_x # 0, _username, "drag"] call EOEX_fnc_lockEntity;
+    [_x # 0, _username, "drag", -1] call EOEX_fnc_lockEntity;
 } forEach _moved;
 
-[format ["%1 is moving %2.", _username, (_moved apply { _x # 0 }) joinString ", "], 0, 4] call BIS_fnc_3DENNotification;
+[format ["%1 is moving %2.", _username, (_moved apply { _x # 0 }) joinString ", "], 0, 4, false, 0] call BIS_fnc_3DENNotification;
 
 private _targets = _moved apply { [_x # 1, _x # 2] };
 

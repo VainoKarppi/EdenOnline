@@ -15,12 +15,12 @@ public static partial class ArmaMethods
     /// Notifies the other clients that this client started editing the attributes of the entities.
     /// Sent via TCP (fire-and-forget), similar to StartObjectDrag.
     /// </summary>
-    public static async Task StartAttributesEdit(object[] objectIds, string username)
+    public static async Task StartAttributesEdit(object[] objectIds, string username, int clientId)
     {
         if (!Client.IsTcpConnected())
             throw new Exception("Client is not connected. Cannot start attributes edit.");
 
-        await Client.SendTcpMessageAsync(-1, "StartAttributesEdit", objectIds, username);
+        await Client.SendTcpMessageAsync(-1, "StartAttributesEdit", objectIds, username, clientId);
     }
 
     /// <summary>
