@@ -22,6 +22,7 @@ private _finalPositions = [];
 } forEach _entities;
 
 // Send END_MOVE via TCP
+// TODO We should be able to remove this, as we already send UpdateObject
 ["EndObjectDrag", [_moveId, _finalPositions], true] spawn EOEX_fnc_callExtensionAsync;
 
 // Reset move state

@@ -18,21 +18,22 @@ private _entitiesById = createHashMap;
 
 // Objects, markers (names), comments (indices) and waypoints ([group, index]) must be checked
 // differently: only objects may be passed to isNull.
+private _all3DENEntitites = all3DENEntities;
 private _isEntityValid = {
     params ["_entity"];
 
     if (_entity isEqualType objNull) exitWith { !(isNull _entity) };
-    if (_entity isEqualType "") exitWith { _entity in (all3DENEntities # 5) }; // markers
-    if (_entity isEqualType 0) exitWith { _entity in (all3DENEntities # 7) }; // comments
+    if (_entity isEqualType "") exitWith { _entity in (_all3DENEntitites # 5) }; // markers
+    if (_entity isEqualType 0) exitWith { _entity in (_all3DENEntitites # 7) }; // comments
     if (_entity isEqualType []) exitWith { (count _entity) == 2 }; // waypoints
 
     false
 };
 
 {
-    _x params [["_objectId", nil], ["_finalPosition", nil]];
+    _x params [["_objectId", nil], ["_finalPosition", nil], ["_finalRotation", nil]];
 
-    if (isNil "_objectId" || {isNil "_finalPosition"}) then { continue };
+    if (isNil "_objectId") then { continue };
 
     private _entity = _entitiesById getOrDefault [_objectId, nil];
 
@@ -42,7 +43,13 @@ private _isEntityValid = {
     };
 
     if ([_entity] call _isEntityValid) then {
-        _entity set3DENAttribute ["Position", _finalPosition];
+        if (!isNil "_finalPosition") then {
+            _entity set3DENAttribute ["Position", _finalPosition];
+        };
+        
+        if (!isNil "_finalRotation") then {
+            _entity set3DENAttribute ["Rotation", _finalRotation];
+        };
     };
 } forEach _finalPositions;
 

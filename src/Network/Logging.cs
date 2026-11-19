@@ -82,7 +82,7 @@ public readonly struct NetworkLogger
 
     public NetworkSide Side { get; }
 
-    public static List<string> BlackListKeyWords = ["""MethodName":"UpdateCamera"""];
+    public static List<string> BlackListKeyWords = ["""MethodName":"UpdateCamera""", "Invoking:UpdateCamera"];
 
     public void Debug(string? message) => Log.Write(Side, LogLevel.Debug, message);
 

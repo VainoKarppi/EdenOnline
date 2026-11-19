@@ -6,14 +6,13 @@ params ["_entity", "_property"];
 
 if !(missionNamespace getVariable ["EOEX_var_Connected",false]) exitWith {};
 
+
 if (_entity isEqualType grpNull) exitWith {};
 
 private _type = [_entity, typeName _entity] call EOEX_fnc_getObjectType;
 
 // Ignore if the entity is a group
 if (_type == "Group") exitWith {};
-
-// TODO WAYPOINTS
 
 private _id = [_entity, true] call EOEX_fnc_getId;
 if (isNil "_id" || {_id == ""}) exitWith {};
@@ -42,6 +41,11 @@ _queue set [_property, _value];
 private _timer = EOEX_var_AttributeTimers get _id;
 if (!isNil "_timer" && {!scriptDone _timer}) then { terminate _timer; };
 
+// If Position is sent, then always add also Rotation
+if (!isNil {_queue get "Position"}) then {
+	private _rotation = (_entity get3DENAttribute "Rotation") select 0;
+	_queue set ["Rotation", _rotation];
+};
 
 _timer = [_id, _entity] spawn {
 	params ["_id", "_entity"];
