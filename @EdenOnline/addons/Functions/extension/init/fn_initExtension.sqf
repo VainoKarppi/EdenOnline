@@ -48,9 +48,11 @@ EOEX_var_Layers = createHashMap;
 
 missionNamespace setVariable ["EOEX_var_MoveActive", false];
 missionNamespace setVariable ["EOEX_var_MoveLastUpdate", 0];
-missionNamespace setVariable ["EOEX_var_MoveId", -1];
+missionNamespace setVariable ["EOEX_var_MoveId", ""];
+missionNamespace setVariable ["EOEX_var_MoveIds", []];
 missionNamespace setVariable ["EOEX_var_MoveEntities", []];
 missionNamespace setVariable ["EOEX_var_MoveReferencePosition", [0, 0, 0]];
+missionNamespace setVariable ["EOEX_var_RemoteMoveIds", []];
 
 EOEX_var_IsHost = false;
 

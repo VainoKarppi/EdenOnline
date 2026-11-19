@@ -17,7 +17,14 @@ private _finalPositions = [];
 
     // Groups have no position of their own and cannot be moved directly.
     if (!isNil "_position") then {
-        _finalPositions pushBack [[_x, false] call EOEX_fnc_getId, _position];
+        private _finalState = [[_x, false] call EOEX_fnc_getId, _position];
+
+        // The rotation changes during the drag are not sent as UpdateObject either, so carry the
+        // final one here as well (fn_receiveDragEnd applies it as the optional third element).
+        private _rotation = (_x get3DENAttribute "Rotation") param [0, nil];
+        if (!isNil "_rotation") then { _finalState pushBack _rotation };
+
+        _finalPositions pushBack _finalState;
     };
 } forEach _entities;
 
@@ -28,6 +35,7 @@ private _finalPositions = [];
 // Reset move state
 missionNamespace setVariable ["EOEX_var_MoveActive", false];
 missionNamespace setVariable ["EOEX_var_MoveLastUpdate", 0];
-missionNamespace setVariable ["EOEX_var_MoveId", -1];
+missionNamespace setVariable ["EOEX_var_MoveId", ""];
+missionNamespace setVariable ["EOEX_var_MoveIds", []];
 missionNamespace setVariable ["EOEX_var_MoveEntities", []];
 missionNamespace setVariable ["EOEX_var_MoveReferencePosition", [0, 0, 0]];

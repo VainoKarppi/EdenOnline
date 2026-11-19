@@ -110,7 +110,17 @@ A **crewed vehicle** is reported twice (first its group, then the vehicle). Both
 concurrently, so `EOEX_fnc_handleCreateObject` checks for an existing ID and registers a new one
 without yielding in between; keep it that way, otherwise the same object is sent twice.
 
-Dragging sends `StartObjectDrag` / `UpdateObjectDrag` / `EndObjectDrag`. Query the selection per type
+Dragging sends `StartObjectDrag` / `UpdateObjectDrag` / `EndObjectDrag`. `OnEntityDragged` only
+fires when the drag starts, so `fn_sendObjectAttributes` feeds the dragged entity's `Position`
+changes into `fn_onEntityDragStart`, which streams the delta over UDP at 10 Hz. While
+`EOEX_var_MoveIds` contains the entity, that function drops `Position`/`Rotation` instead of sending
+them as TCP `UpdateObject`; `EndObjectDrag` carries the final position **and** rotation, and
+`fn_receiveDragEnd` registers skips for both. On the receiving side `fn_moveInterpolation` writes
+the position every frame, so `fn_sendObjectAttributes` ignores attribute events for entities in an
+active remote move (`EOEX_var_RemoteMoveIds`) — otherwise every interpolated frame is echoed back to
+the client that is dragging.
+
+Query the selection per type
 (`get3DENSelected "waypoint"` etc.): `get3DENSelected ""` nests the categories and `flatten` breaks
 waypoint references (`[group, index]`) into a group and a bare index. Also never pass a waypoint to
 `isNull`, and always call helpers with an array (`[_entity, true] call EOEX_fnc_getId`), because a

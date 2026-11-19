@@ -42,6 +42,7 @@ if (_moved isEqualTo []) exitWith {
 
 missionNamespace setVariable ["EOEX_var_RemoteMoveActive", true];
 missionNamespace setVariable ["EOEX_var_RemoteMoveId", _moveId];
+missionNamespace setVariable ["EOEX_var_RemoteMoveIds", _moved apply { _x # 0 }];
 missionNamespace setVariable ["EOEX_var_RemoteMoveObjects", _moved];
 
 private _targets = _moved apply { [_x # 1, _x # 2] };

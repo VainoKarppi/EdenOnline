@@ -31,8 +31,20 @@ if !(missionNamespace getVariable ["EOEX_var_MoveActive", false]) then {
         _objectIds pushBack ([_x, false] call EOEX_fnc_getId);
     } forEach _entities;
 
+    // Pending attribute updates describe the pre-drag position; drop them so they cannot overwrite
+    // the position that EndObjectDrag sends later.
+    {
+        private _timer = EOEX_var_AttributeTimers get _x;
+
+        if (!isNil "_timer" && {!scriptDone _timer}) then { terminate _timer };
+
+        EOEX_var_AttributeQueues deleteAt _x;
+        EOEX_var_AttributeTimers deleteAt _x;
+    } forEach _objectIds;
+
     missionNamespace setVariable ["EOEX_var_MoveActive", true];
     missionNamespace setVariable ["EOEX_var_MoveId", _moveId];
+    missionNamespace setVariable ["EOEX_var_MoveIds", _objectIds];
     missionNamespace setVariable ["EOEX_var_MoveEntities", _entities];
     missionNamespace setVariable ["EOEX_var_MoveReferencePosition", _position];
     missionNamespace setVariable ["EOEX_var_MoveLastUpdate", _now];
@@ -42,7 +54,8 @@ if !(missionNamespace getVariable ["EOEX_var_MoveActive", false]) then {
 };
 
 
-// Send movement updates at 10 Hz
+// Send movement updates at 10 Hz. OnEntityDragged may fire only once, so fn_sendObjectAttributes
+// calls this function again whenever the dragged entity's position changes.
 private _lastUpdate = missionNamespace getVariable ["EOEX_var_MoveLastUpdate", 0];
 
 if ((_now - _lastUpdate) < 0.1) exitWith {};

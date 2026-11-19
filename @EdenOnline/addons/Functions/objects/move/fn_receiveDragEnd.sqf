@@ -43,17 +43,23 @@ private _isEntityValid = {
     };
 
     if ([_entity] call _isEntityValid) then {
+        // The final writes must not be echoed back to the client that dragged the entity. The
+        // drag guard in fn_sendObjectAttributes covers the streamed frames, but these writes can
+        // raise their change events after the move was already marked as finished.
         if (!isNil "_finalPosition") then {
+            [_objectId, ["Position", _finalPosition]] call EOEX_fnc_addSkipAttributeChange;
             _entity set3DENAttribute ["Position", _finalPosition];
         };
         
         if (!isNil "_finalRotation") then {
+            [_objectId, ["Rotation", _finalRotation]] call EOEX_fnc_addSkipAttributeChange;
             _entity set3DENAttribute ["Rotation", _finalRotation];
         };
     };
 } forEach _finalPositions;
 
 missionNamespace setVariable ["EOEX_var_RemoteMoveActive", false];
-missionNamespace setVariable ["EOEX_var_RemoteMoveId", -1];
+missionNamespace setVariable ["EOEX_var_RemoteMoveId", ""];
+missionNamespace setVariable ["EOEX_var_RemoteMoveIds", []];
 missionNamespace setVariable ["EOEX_var_RemoteMoveObjects", []];
 missionNamespace setVariable ["EOEX_var_RemoteMoveTargets", []];

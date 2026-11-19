@@ -26,6 +26,20 @@ if (isNil "_value") exitWith {};
 private _skip = [_id, [_property, _value]] call EOEX_fnc_checkSkipAttributeChange;
 if (_skip) exitWith {};
 
+// A remote client is dragging this entity: fn_moveInterpolation writes its position every frame.
+// Those writes are not user edits and must not be sent back to the client that owns the drag.
+if ((missionNamespace getVariable ["EOEX_var_RemoteMoveActive", false]) && {_id in (missionNamespace getVariable ["EOEX_var_RemoteMoveIds", []])}) exitWith {};
+
+// This client is dragging the entity. The movement is streamed over UDP (UpdateObjectDrag) and the
+// final state is sent by EndObjectDrag, so sending every intermediate Position/Rotation as a TCP
+// UpdateObject only floods the connection. Feeding the position changes to onEntityDragStart keeps
+// the 10 Hz UDP stream going (OnEntityDragged itself fires only on drag start).
+if ((_property == "Position" || {_property == "Rotation"}) && {_id in (missionNamespace getVariable ["EOEX_var_MoveIds", []])}) exitWith {
+	if (_property == "Position" && {_id == (missionNamespace getVariable ["EOEX_var_MoveId", ""])}) then {
+		[_entity] call EOEX_fnc_onEntityDragStart;
+	};
+};
+
 // Always update ItemClass for markers, since this cannot be detected by the eventhandler.
 // This runs after the skip check, so a received marker attribute change is not echoed back.
 if (_type == "Marker" && _property != "ItemClass") then {
@@ -43,8 +57,10 @@ if (!isNil "_timer" && {!scriptDone _timer}) then { terminate _timer; };
 
 // If Position is sent, then always add also Rotation
 if (!isNil {_queue get "Position"}) then {
-	private _rotation = (_entity get3DENAttribute "Rotation") select 0;
-	_queue set ["Rotation", _rotation];
+	// Comments and waypoints have no Rotation attribute; the lookup returns an empty array for them.
+	private _rotation = (_entity get3DENAttribute "Rotation") param [0, nil];
+
+	if (!isNil "_rotation") then { _queue set ["Rotation", _rotation] };
 };
 
 _timer = [_id, _entity] spawn {
