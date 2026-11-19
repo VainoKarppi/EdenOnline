@@ -138,6 +138,16 @@ locks are pinned — a `"drag"` lock follows the client that owns the move.
 Both clients must run the same extension build, because the method signatures are part of the
 handshake hash.
 
+A `StopAttributesEdit` can be lost (the holder crashed, restarted Arma or its Eden reloaded the
+mission), so an `"attributes"` lock is a **lease**: `fn_watchAttributesEdit` repeats
+`StartAttributesEdit` every `EOEX_var_LockHeartbeat` seconds (2 s) while the window stays open, and
+`fn_enforceLocks` drops a lock that was not renewed for `EOEX_var_LockTimeout` seconds (6 s). Both
+clients therefore need the same addon build — with the old build the lock of a still-open window
+would expire after the timeout. `EOEX_var_Locks` entries are
+`id -> [entity, username, mode, position, timestamp]`, where `"drag"` locks have no expiry (they end
+with `EndObjectDrag` or `LocksReleased`). `StartAttributesEdit` / `StopAttributesEdit` are in the
+logging blacklist, otherwise the 2 s heartbeat would flood the RPT.
+
 ## Testing the send path
 
 ```sqf

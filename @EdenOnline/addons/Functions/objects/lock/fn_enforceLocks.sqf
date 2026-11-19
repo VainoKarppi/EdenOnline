@@ -5,6 +5,10 @@
 //
 // Dragging is handled by Eden itself and cannot be cancelled, so the position is written back every
 // frame. A "drag" lock is not pinned: there the entity follows the movement of the client that owns it.
+//
+// An "attributes" lock is renewed by the holder (StartAttributesEdit every couple of seconds), so a
+// lock whose heartbeat stopped - the holder closed the window without the Stop reaching us, or its
+// game froze - is dropped here instead of blocking the entity forever.
 
 if (!isNil "EOEX_var_LocksEnforceHandler") exitWith {};
 
@@ -12,9 +16,18 @@ EOEX_var_LocksEnforceHandler = addMissionEventHandler ["EachFrame", {
     if (isNil "EOEX_var_Locks" || {(count EOEX_var_Locks) == 0}) exitWith {};
 
     private _pinned = [];
+    private _expired = [];
+    private _timeout = missionNamespace getVariable ["EOEX_var_LockTimeout", 6];
 
     {
-        _y params [["_entity", nil], ["_username", ""], ["_mode", ""], ["_position", nil]];
+        _y params [["_entity", nil], ["_username", ""], ["_mode", ""], ["_position", nil], ["_timestamp", nil]];
+
+        // Only attribute locks are renewed; a drag lock is released by EndObjectDrag or the disconnect.
+        // A lock without a heartbeat (created by an older build) is treated as expired as well.
+        if (_mode isEqualTo "attributes" && {!(_timestamp isEqualType 0) || {(diag_tickTime - _timestamp) > _timeout}}) then {
+            _expired pushBack _x;
+            continue;
+        };
 
         if (_mode isNotEqualTo "attributes") then { continue };
         if (isNil "_entity" || {isNil "_position"}) then { continue };
@@ -36,6 +49,11 @@ EOEX_var_LocksEnforceHandler = addMissionEventHandler ["EachFrame", {
             };
         };
     } forEach EOEX_var_Locks;
+
+    // Released after the loop: unlocking inside forEach would modify the map being iterated.
+    {
+        [_x] call EOEX_fnc_unlockEntity;
+    } forEach _expired;
 
     if (_pinned isEqualTo []) exitWith {};
 

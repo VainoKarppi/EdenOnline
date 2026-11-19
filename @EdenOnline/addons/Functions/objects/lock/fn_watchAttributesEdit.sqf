@@ -5,13 +5,18 @@
 //
 // While the window is open the selected entities are reported to the other clients with
 // StartAttributesEdit, and StopAttributesEdit is sent as soon as it closes or the selection changes.
-// Entities another client is editing are not reported and their window is closed here.
+// The Start is repeated as a heartbeat: the receiving side drops an "attributes" lock that is not
+// renewed in time, so a Stop that never arrives (crashed or restarted client) cannot leave an entity
+// locked forever. Entities another client is editing are not reported and their window is closed.
 
 if (!isNil "EOEX_var_AttributesWatchActive") exitWith {};
 
 EOEX_var_AttributesWatchActive = true;
 
+private _heartbeat = missionNamespace getVariable ["EOEX_var_LockHeartbeat", 2];
+
 private _sentIds = [];
+private _lastSend = 0;
 
 while { true } do {
     sleep 0.25;
@@ -54,16 +59,20 @@ while { true } do {
         };
     };
 
-    if (_ids isEqualTo _sentIds) then { continue };
+    private _changed = _ids isNotEqualTo _sentIds;
+    private _renew = _ids isNotEqualTo [] && {(diag_tickTime - _lastSend) > _heartbeat};
 
-    if (missionNamespace getVariable ["EOEX_var_Connected", false]) then {
-        if (_sentIds isNotEqualTo []) then {
-            ["StopAttributesEdit", [_sentIds], true] call EOEX_fnc_callExtensionAsync;
-        };
+    if (!_changed && !_renew) then { continue };
 
-        if (_ids isNotEqualTo []) then {
-            ["StartAttributesEdit", [_ids, profileNameSteam], true] call EOEX_fnc_callExtensionAsync;
-        };
+    // A release is always attempted: if the connection is gone, the other clients drop the lock by
+    // expiry instead.
+    if (_changed && {_sentIds isNotEqualTo []}) then {
+        ["StopAttributesEdit", [_sentIds], true] call EOEX_fnc_callExtensionAsync;
+    };
+
+    if (_ids isNotEqualTo [] && {missionNamespace getVariable ["EOEX_var_Connected", false]}) then {
+        ["StartAttributesEdit", [_ids, profileNameSteam], true] call EOEX_fnc_callExtensionAsync;
+        _lastSend = diag_tickTime;
     };
 
     _sentIds = _ids;
