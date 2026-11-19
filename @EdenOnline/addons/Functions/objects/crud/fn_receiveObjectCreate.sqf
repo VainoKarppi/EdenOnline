@@ -28,9 +28,11 @@ private _entity = if (_type == "Layer") then {
     _attributeMap deleteAt "EOEX_Layer";
     private _parent = if (_parentId isEqualTo "") then { -1 } else { EOEX_var_Layers getOrDefault [_parentId, -1] };
 
+    private _return = nil;
     ignore3DENHistory {
-        _parent add3DENLayer (_attributeMap get "Name");
+        _return = _parent add3DENLayer (_attributeMap get "Name");
     };
+    _return
 } else {
     if (_type == "Waypoint") then {
         // The owning unit may still be in flight from the server, wait until it exists.
@@ -55,9 +57,11 @@ private _entity = if (_type == "Layer") then {
                 diag_log format ["ERROR: Missing ItemClass or Position for %1 (%2)", _type, _id];
                 nil
             } else {
+                private _return = nil;
                 ignore3DENHistory {
-                    (group _owner) create3DENEntity [_type, _attributeMap get "ItemClass", _attributeMap get "Position"];
+                    _return = (group _owner) create3DENEntity [_type, _attributeMap get "ItemClass", _attributeMap get "Position"];
                 };
+                _return
             };
         };
     } else {
@@ -70,9 +74,11 @@ private _entity = if (_type == "Layer") then {
             diag_log format ["ERROR: Missing ItemClass or Position for %1 (%2)", _type, _id];
             nil
         } else {
+            private _return = nil;
             ignore3DENHistory {
-                create3DENEntity [_type, _attributeMap get "ItemClass", _attributeMap get "Position", _isEmpty];
+                _return = create3DENEntity [_type, _attributeMap get "ItemClass", _attributeMap get "Position", _isEmpty];
             };
+            _return
         };
     };
 };
