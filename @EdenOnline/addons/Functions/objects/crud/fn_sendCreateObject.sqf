@@ -18,14 +18,22 @@ private _attributeMap = if (_isCopy) then {
 
 
 
+// A deleted entity has no position; sending the create without one only makes the receiver fail.
+private _positionResults = _object get3DENAttribute "Position";
+private _position = if (isNil "_positionResults" || {_positionResults isEqualTo []}) then { nil } else { _positionResults # 0 };
+
+if (isNil "_position") exitWith {
+    diag_log format ["ERROR: %1 (%2) has no position, its create was not sent", _type, _id];
+};
+
 // Force the values the receiver needs to create the entity at all.
 _attributeMap set ["ItemClass", typeOf _object];
+_attributeMap set ["Position", _position];
 
 // Add Rotation if not default (depends if snapping is enabled or not.)
-private _rotation = (_object get3DENAttribute "Rotation") select 0;
+private _rotationResults = _object get3DENAttribute "Rotation";
+private _rotation = if (isNil "_rotationResults" || {_rotationResults isEqualTo []}) then { nil } else { _rotationResults # 0 };
 if (!isNil "_rotation" && {_rotation isNotEqualTo [0,0,0]}) then { _attributeMap set ["Rotation", _rotation] };
-
-_attributeMap set ["Position", (_object get3DENAttribute "Position") select 0];
 
 if (_layerId != "") then {
     _attributeMap set ["EOEX_Layer", _layerId];

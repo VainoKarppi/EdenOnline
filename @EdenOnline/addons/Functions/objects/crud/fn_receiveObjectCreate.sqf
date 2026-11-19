@@ -23,7 +23,11 @@ _attributeMap = createHashMapFromArray _attributeMap;
 // Before creating the object, store the ID in the map to prevent duplicate creation
 
 private _entity = if (_type == "Layer") then {
-    private _parent = EOEX_var_Layers getOrDefault [_attributeMap deleteAt "EOEX_Layer", -1];
+    // No EOEX_Layer means the layer is created at the root (-1).
+    private _parentId = _attributeMap getOrDefault ["EOEX_Layer", ""];
+    _attributeMap deleteAt "EOEX_Layer";
+    private _parent = if (_parentId isEqualTo "") then { -1 } else { EOEX_var_Layers getOrDefault [_parentId, -1] };
+
     _parent add3DENLayer (_attributeMap get "Name");
 } else {
     if (_type == "Waypoint") then {
@@ -45,12 +49,25 @@ private _entity = if (_type == "Layer") then {
             diag_log format ["ERROR: Unable to create waypoint %1, owner %2 was not found", _id, _ownerId];
             nil
         } else {
-            (group _owner) create3DENEntity [_type, _attributeMap get "ItemClass", _attributeMap get "Position"];
+            if (isNil {_attributeMap get "ItemClass"} || {isNil {_attributeMap get "Position"}}) then {
+                diag_log format ["ERROR: Missing ItemClass or Position for %1 (%2)", _type, _id];
+                nil
+            } else {
+                (group _owner) create3DENEntity [_type, _attributeMap get "ItemClass", _attributeMap get "Position"];
+            };
         };
     } else {
         private _isEmpty = _attributeMap getOrDefault ["EOEX_IS_EMPTY", false];
         _attributeMap deleteAt "EOEX_IS_EMPTY";
-        create3DENEntity [_type, _attributeMap get "ItemClass", _attributeMap get "Position", _isEmpty];
+
+        // A create without ItemClass/Position (e.g. the sender lost the entity while it was reading
+        // the attributes) must not throw inside create3DENEntity.
+        if (isNil {_attributeMap get "ItemClass"} || {isNil {_attributeMap get "Position"}}) then {
+            diag_log format ["ERROR: Missing ItemClass or Position for %1 (%2)", _type, _id];
+            nil
+        } else {
+            create3DENEntity [_type, _attributeMap get "ItemClass", _attributeMap get "Position", _isEmpty];
+        };
     };
 };
 
@@ -148,7 +165,23 @@ if (_type == "Layer") then {
     [_id, [_x,_y]] call EOEX_fnc_addSkipAttributeChange;
 
     private _success = _entity set3DENAttribute [_x, _y];
-    if !(_success) then { diag_log format ["WARNING: INVALID ATTRIBUTES %1, %2, [%3, %4]", _id, _type, _x, _y ]; };
+
+    if (!_success) then {
+        diag_log format ["WARNING: INVALID ATTRIBUTES %1, %2, [%3, %4]", _id, _type, _x, _y ];
+    } else {
+        // Eden normalizes some values when it applies them (Rotation ends up as a slightly
+        // different float), so the change event does not match the received value. Register what
+        // the engine reports as well, otherwise every receive echoes back as an endless update.
+        private _applied = _entity get3DENAttribute _x;
+
+        if (!isNil "_applied" && {!(_applied isEqualTo [])}) then {
+            private _appliedValue = _applied # 0;
+
+            if (!isNil "_appliedValue" && {!(_appliedValue isEqualTo _y)}) then {
+                [_id, [_x, _appliedValue]] call EOEX_fnc_addSkipAttributeChange;
+            };
+        };
+    };
 } forEach _attributeMap;
 
 

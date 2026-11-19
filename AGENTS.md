@@ -175,6 +175,20 @@ sends the same key, so the layer change survives an `UpdateObject`.
 Receivers consume `EOEX_Layer`, `EOEX_IS_EMPTY` and `EOEX_GROUP` first and then skip every remaining
 `EOEX_*` key when applying the attributes, because those keys are not Eden attributes.
 
+## Preventing the echo loop
+
+Applying a received attribute raises `OnEntityAttributeChanged`, which `fn_sendObjectAttributes`
+turns back into an `UpdateObject`. That is suppressed with `EOEX_var_SkipAttributeChanges`, a
+per-ID list of `[property, value]` pairs.
+
+Eden **normalizes** some values when it applies them: `set3DENAttribute ["Rotation", [0,0,202.886]]`
+reads back as `202.885984375`, so the change event never matches the value that came over the wire.
+`fn_receiveObjectCreate`, `fn_receiveObjectUpdate` and `fn_recreateEntity` therefore register the
+**read-back** value (`get3DENAttribute` right after the successful set) in addition to the received
+one. Without that, every received rotation is sent back, the other client applies and echoes it
+again, and the two editors ping-pong forever. Keep the read-back when adding a new receive path
+(`set3DENLayer`/`EOEX_Layer` excepted — its ID does not change).
+
 Attribute values can contain quotes (e.g. `Init`, `ammoBox`), and Arma parses the callback data with
 `parseSimpleArray`. `Serializer.PrintArray` therefore doubles quotes inside strings; keep that
 escaping when adding values to a message sent to Arma.

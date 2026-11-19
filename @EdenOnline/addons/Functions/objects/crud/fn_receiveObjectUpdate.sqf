@@ -79,8 +79,23 @@ if (_classChange isNotEqualTo []) then {
     };
 
     private _success = _entity set3DENAttribute [_class, _value];
+
     if (!_success) then {
         diag_log format ["ERROR: INVALID ATTRIBUTES for %1 ID: %2", _type, _entityId];
+        continue;
+    };
+
+    // Eden normalizes some values when it applies them (Rotation ends up as a slightly different
+    // float), so the change event does not match the received value. Register what the engine
+    // reports as well, otherwise the update is sent back and echoes between the clients forever.
+    private _applied = _entity get3DENAttribute _class;
+
+    if (!isNil "_applied" && {!(_applied isEqualTo [])}) then {
+        private _appliedValue = _applied # 0;
+
+        if (!isNil "_appliedValue" && {!(_appliedValue isEqualTo _value)}) then {
+            [_entityId, [_class, _appliedValue]] call EOEX_fnc_addSkipAttributeChange;
+        };
     };
 } forEach _attributeMap;
 

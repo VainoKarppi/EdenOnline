@@ -10,10 +10,6 @@ if (_entity isEqualType grpNull) exitWith {};
 
 private _type = [_entity, typeName _entity] call EOEX_fnc_getObjectType;
 
-if (_type == "Marker" && _property != "ItemClass") then {
-	[_entity, "ItemClass"] spawn EOEX_fnc_sendObjectAttributes; // Always update ItemClass for markers, since this cannot be detected by the eventhandler
-};
-
 // Ignore if the entity is a group
 if (_type == "Group") exitWith {};
 
@@ -30,6 +26,12 @@ if (isNil "_value") exitWith {};
 // Added via: [id, [property, value]] call EOEX_fnc_addSkipAttributeChange
 private _skip = [_id, [_property, _value]] call EOEX_fnc_checkSkipAttributeChange;
 if (_skip) exitWith {};
+
+// Always update ItemClass for markers, since this cannot be detected by the eventhandler.
+// This runs after the skip check, so a received marker attribute change is not echoed back.
+if (_type == "Marker" && _property != "ItemClass") then {
+	[_entity, "ItemClass"] spawn EOEX_fnc_sendObjectAttributes;
+};
 
 
 private _queue = EOEX_var_AttributeQueues getOrDefault [_id, createHashMap, true];

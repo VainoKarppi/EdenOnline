@@ -67,7 +67,20 @@ _registry set [_id, _newEntity];
 
     if (!isNil "_value" && {_class != "ItemClass"} && {_class != "MarkerName"}) then {
         [_id, [_class, _value]] call EOEX_fnc_addSkipAttributeChange;
-        _newEntity set3DENAttribute [_class, _value];
+
+        if (_newEntity set3DENAttribute [_class, _value]) then {
+            // Eden normalizes some values when it applies them (Rotation ends up as a slightly
+            // different float), so register what the engine reports as well.
+            private _applied = _newEntity get3DENAttribute _class;
+
+            if (!isNil "_applied" && {!(_applied isEqualTo [])}) then {
+                private _appliedValue = _applied # 0;
+
+                if (!isNil "_appliedValue" && {!(_appliedValue isEqualTo _value)}) then {
+                    [_id, [_class, _appliedValue]] call EOEX_fnc_addSkipAttributeChange;
+                };
+            };
+        };
     };
 } forEach _attributes;
 
