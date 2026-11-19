@@ -128,6 +128,13 @@ The locked entities are only a **local mirror** per client: `EOEX_var_Locks` map
 entity: it notifies who holds the lock and puts the entity back to the position stored in the lock.
 `fn_watchAttributesEdit` closes the attributes window of a locked entity the same way.
 
+Eden cannot cancel a drag that already started, and its start handler fires only once, so the lock is
+enforced continuously by [`fn_enforceLocks`](@EdenOnline/addons/functions/objects/lock/fn_enforceLocks.sqf):
+an `EachFrame` handler writes the locked `Position` back whenever the entity is moved and removes the
+entity from the selection (Eden drags the selection). `fn_sendObjectAttributes` ignores those writes
+for attribute-locked entities, so a refused move never reaches the other clients. Only `"attributes"`
+locks are pinned — a `"drag"` lock follows the client that owns the move.
+
 Both clients must run the same extension build, because the method signatures are part of the
 handshake hash.
 

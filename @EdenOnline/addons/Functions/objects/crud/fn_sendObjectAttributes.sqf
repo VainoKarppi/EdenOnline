@@ -17,6 +17,12 @@ if (_type == "Group") exitWith {};
 private _id = [_entity, true] call EOEX_fnc_getId;
 if (isNil "_id" || {_id == ""}) exitWith {};
 
+// Another client is editing this entity: fn_enforceLocks pins it, so every local change is the
+// result of that pin and not a user edit.
+private _lock = (missionNamespace getVariable ["EOEX_var_Locks", createHashMap]) getOrDefault [_id, []];
+
+if (!(_lock isEqualTo []) && {(_lock # 2) isEqualTo "attributes"}) exitWith {};
+
 // Get value of the attribute that was changed.
 private _value = (_entity get3DENAttribute _property) select 0;
 if (isNil "_value") exitWith {};

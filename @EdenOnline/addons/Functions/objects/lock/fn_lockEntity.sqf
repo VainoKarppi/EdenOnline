@@ -32,3 +32,6 @@ EOEX_var_Locks set [_id, [_entity, _username, _mode, _position]];
 
 // Draws the indicator for every lock from a single handler.
 call EOEX_fnc_drawLocks;
+
+// Keeps locked entities where they are and out of the local selection.
+call EOEX_fnc_enforceLocks;

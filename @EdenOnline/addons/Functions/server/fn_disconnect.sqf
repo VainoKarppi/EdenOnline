@@ -42,6 +42,11 @@ if (!isNil "EOEX_var_LocksHandler") then {
     missionNamespace setVariable ["EOEX_var_LocksHandler", nil];
 };
 
+if (!isNil "EOEX_var_LocksEnforceHandler") then {
+    removeMissionEventHandler ["EachFrame", EOEX_var_LocksEnforceHandler];
+    missionNamespace setVariable ["EOEX_var_LocksEnforceHandler", nil];
+};
+
 if (missionNamespace getVariable ["EOEX_var_Connected", false]) then {
     // If there is no reason, it was successful
     if (_reason == "") then {

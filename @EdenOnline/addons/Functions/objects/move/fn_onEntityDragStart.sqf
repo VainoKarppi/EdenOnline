@@ -30,7 +30,7 @@ private _lock = if (isNil "_entityId") then { [] } else { (missionNamespace getV
 if !(_lock isEqualTo []) exitWith {
     _lock params ["_lockedEntity", "_username", "_mode", "_lockedPosition"];
 
-    [format ["%1 is editing %2 (%3). You cannot move it until the lock is released.", _username, _entityId, _mode], 1, 6] call BIS_fnc_3DENNotification;
+    [format ["%1 is editing %2 (%3). You cannot move it until the lock is released.", _username, _entityId, _mode], 1, 6, false, 0] call BIS_fnc_3DENNotification;
 
     if (!isNil "_lockedPosition") then {
         [_entityId, ["Position", _lockedPosition]] call EOEX_fnc_addSkipAttributeChange;

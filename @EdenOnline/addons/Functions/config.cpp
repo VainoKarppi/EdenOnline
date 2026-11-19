@@ -112,6 +112,7 @@ class CfgFunctions
             class lockEntity {};
             class unlockEntity {};
             class drawLocks {};
+            class enforceLocks {};
 
             class watchAttributesEdit {};
 
