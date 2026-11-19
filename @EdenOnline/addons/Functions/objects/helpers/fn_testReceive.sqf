@@ -19,23 +19,23 @@ waitUntil { sleep 0.1; missionNamespace getVariable ["EOEX_var_Connected", false
 sleep 1;
 
 // RECEIVE OBJECTS
-["QI56X8K4","Object",[["ItemClass","B_Soldier_GL_F"],["Position",[4636.22,1131.84,0]],["Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
-["CXCZIO8E","Trigger",[["ItemClass","EmptyDetector"],["Position",[4651.5,1928.26,0]],["Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
-["HK6WCLSR","Logic",[["ItemClass","ModuleAnimals_F"],["Position",[5581.05,1296.44,0]],["Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
-["KFCJ1X8C","Marker",[["ItemClass","mil_destroy"],["Position",[4903.78,1605.54,5]],["Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
-["GJRZY90Y","Comment",[["ItemClass","loc_talk"],["Position",[4328.92,1233.38,5]],["Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
-["M7TGTYM2","Waypoint",[["EOEX_Owner","QI56X8K4"],["ItemClass","Move"],["Position",[4713.9,1175.86,0]],["Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
-["LSZP9FEE","Layer",[["Name","Layer 2"],["Transformation",true],["Visibility",true],["Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
-["QI56X8K6","Object",[["ItemClass","O_Soldier_GL_F"],["Position",[4536.22,1131.84,0]],["Layer","LSZP9FEE"]]] spawn EOEX_fnc_receiveObjectCreate;
-["XH3CC3T9","Object",[["ItemClass","B_APC_Tracked_01_rcws_F"],["Position",[5609.42,1751.76,0]],["Layer",""],["EOEX_IS_EMPTY",true]]] spawn EOEX_fnc_receiveObjectCreate;
-["OZX6ABI7","Marker",[["ItemClass","mil_destroy"],["Position",[4903.78,1605.54,5]],["Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
+["QI56X8K4","Object",[["ItemClass","B_Soldier_GL_F"],["Position",[4636.22,1131.84,0]],["EOEX_Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
+["CXCZIO8E","Trigger",[["ItemClass","EmptyDetector"],["Position",[4651.5,1928.26,0]],["EOEX_Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
+["HK6WCLSR","Logic",[["ItemClass","ModuleAnimals_F"],["Position",[5581.05,1296.44,0]],["EOEX_Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
+["KFCJ1X8C","Marker",[["ItemClass","mil_destroy"],["Position",[4903.78,1605.54,5]],["EOEX_Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
+["GJRZY90Y","Comment",[["ItemClass","loc_talk"],["Position",[4328.92,1233.38,5]],["EOEX_Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
+["M7TGTYM2","Waypoint",[["EOEX_Owner","QI56X8K4"],["ItemClass","Move"],["Position",[4713.9,1175.86,0]],["EOEX_Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
+["LSZP9FEE","Layer",[["Name","Layer 2"],["Transformation",true],["Visibility",true],["EOEX_Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
+["QI56X8K6","Object",[["ItemClass","O_Soldier_GL_F"],["Position",[4536.22,1131.84,0]],["EOEX_Layer","LSZP9FEE"]]] spawn EOEX_fnc_receiveObjectCreate;
+["XH3CC3T9","Object",[["ItemClass","B_APC_Tracked_01_rcws_F"],["Position",[5609.42,1751.76,0]],["EOEX_Layer",""],["EOEX_IS_EMPTY",true]]] spawn EOEX_fnc_receiveObjectCreate;
+["OZX6ABI7","Marker",[["ItemClass","mil_destroy"],["Position",[4903.78,1605.54,5]],["EOEX_Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
 
 sleep 2;
 
 // RECEIVE GROUPED UNITS
 // Eden groups a unit placed within 5 m of another unit, so the create message names the leader.
-["GRPA","Object",[["ItemClass","B_Soldier_F"],["Position",[4700,6500,0]],["Layer",""]]] call EOEX_fnc_receiveObjectCreate;
-["GRPB","Object",[["ItemClass","B_Soldier_F"],["Position",[4703,6500,0]],["Layer",""],["EOEX_GROUP","GRPA"]]] call EOEX_fnc_receiveObjectCreate;
+["GRPA","Object",[["ItemClass","B_Soldier_F"],["Position",[4700,6500,0]],["EOEX_Layer",""]]] call EOEX_fnc_receiveObjectCreate;
+["GRPB","Object",[["ItemClass","B_Soldier_F"],["Position",[4703,6500,0]],["EOEX_Layer",""],["EOEX_GROUP","GRPA"]]] call EOEX_fnc_receiveObjectCreate;
 
 sleep 1;
 
@@ -47,7 +47,7 @@ diag_log format ["[EdenOnline] testReceive: grouped units share a group = %1", (
 sleep 1;
 
 // RECEIVE UPDATES
-["QI56X8K6","Object",[["Layer",""]]] call EOEX_fnc_receiveObjectUpdate;
+["QI56X8K6","Object",[["EOEX_Layer",""]]] call EOEX_fnc_receiveObjectUpdate;
 ["QI56X8K6","Object",[["pitch",0.98],["speaker","Male02PER"],["Name","asdasd"]]] call EOEX_fnc_receiveObjectUpdate;
 ["3FQ4S1G2","Group",[["Position",[4697.21,1154.58,0]]]] call EOEX_fnc_receiveObjectUpdate;
 ["QI56X8K6","Object",[["Position",[4471.52,1284.96,0]]]] call EOEX_fnc_receiveObjectUpdate;

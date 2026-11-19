@@ -1,7 +1,7 @@
 // EOEX_fnc_receiveObjectUpdate
 
 /*
-["QI56X8K6","Object",[["Layer",""]]] call EOEX_fnc_receiveObjectUpdate;
+["QI56X8K6","Object",[["EOEX_Layer",""]]] call EOEX_fnc_receiveObjectUpdate;
 ["QI56X8K6","Object",[["pitch",0.98],["speaker","Male02PER"],["Name","asdasd"]]] call EOEX_fnc_receiveObjectUpdate;
 ["3FQ4S1G2","Group",[["Position",[4697.21,1154.58,0]]]] call EOEX_fnc_receiveObjectUpdate;
 ["QI56X8K6","Object",[["Position",[4471.52,1284.96,0]]]] call EOEX_fnc_receiveObjectUpdate;
@@ -69,7 +69,7 @@ if (_classChange isNotEqualTo []) then {
     if (isNil "_class" || {isNil "_value"}) then { continue };
 
     // Special custom attributes:
-    if (_class == "Layer") then {
+    if (_class == "EOEX_Layer") then {
         private _layer = EOEX_var_Layers get _value;
         if (!isNil "_layer") then {
             private _success = _entity set3DENLayer _layer;

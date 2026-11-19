@@ -152,21 +152,28 @@ task throws `TargetParameterCountException`, and no other client ever hears abou
 
 ## Create message attributes
 
-`CreateObject` carries the entity's full attribute list from `get3DENAttributes ""`, so a created
-entity keeps init, name, variable name, presence, loadout, pylons and module specific settings.
-`fn_sendCreateObject` forces `ItemClass` (from `typeOf`), `Position` and `Layer` into that list and
-adds the EOEX bookkeeping keys. Unset attributes are `nil` and are dropped, since they cannot be
-serialized.
+Every `fn_sendCreate*` function builds the receiver's attribute list. A normal creation only sends
+what is needed to create the entity (`ItemClass`, `Position` and, when the entity is in a custom
+layer, `EOEX_Layer`); every later edit is sent as an attribute update.
+
+A **paste** can differ from the defaults in any attribute and cannot be detected attribute by
+attribute, so `fn_handleCreateObject` marks pasted entities in `EOEX_var_PastedObjects` and passes
+`_isCopy = true` (`_isCopy` is the last parameter of every `fn_sendCreate*`). The send functions then
+start from the entity's full `get3DENAttributes ""` list, so a copied entity keeps init, name,
+variable name, presence, loadout, pylons and module specific settings. Unset attributes are `nil` and
+are dropped, since they cannot be serialized. Layers always send their whole attribute list.
 
 `EOEX_IS_EMPTY` is only sent when a **vehicle really is empty** (no crew, and not a
 unit/trigger/logic); receivers default to a crewed object, which is what Eden creates for
 `isEmpty = false`. Do not send `false` explicitly — omit the attribute instead.
 
-`EOEX_GROUP` is only sent for objects, and only when the leader has its own ID. Receivers consume
-`EOEX_IS_EMPTY` and `EOEX_GROUP` first and then skip every remaining `EOEX_*` key when applying the
-attributes, because those keys are not Eden attributes.
+`EOEX_GROUP` is only sent for objects, and only when the leader has its own ID. `EOEX_Layer` carries
+the custom layer ID and is only sent when the entity is in one — `""` means the root layer, which
+is what receivers default to — because `Layer` is not an Eden attribute. `fn_updateObjectLayer`
+sends the same key, so the layer change survives an `UpdateObject`.
 
-Markers, comments and waypoints still send a short hand-built list.
+Receivers consume `EOEX_Layer`, `EOEX_IS_EMPTY` and `EOEX_GROUP` first and then skip every remaining
+`EOEX_*` key when applying the attributes, because those keys are not Eden attributes.
 
 Attribute values can contain quotes (e.g. `Init`, `ammoBox`), and Arma parses the callback data with
 `parseSimpleArray`. `Serializer.PrintArray` therefore doubles quotes inside strings; keep that

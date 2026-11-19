@@ -61,6 +61,7 @@ if (isNil "EOEX_var_DeleteQueue") then {
 
 EOEX_var_DeleteQueue pushBack [_id, _type];
 
+#pragma hemtt ignore_variables ["EOEX_var_DeleteTimer"]
 if (isNil "EOEX_var_DeleteTimer" || {scriptDone EOEX_var_DeleteTimer}) then {
     EOEX_var_DeleteTimer = [] spawn {
         // Drain until a window passes without a new removal, so nothing that arrives while the

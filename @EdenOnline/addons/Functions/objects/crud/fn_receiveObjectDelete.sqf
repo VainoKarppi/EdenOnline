@@ -18,7 +18,7 @@ private _deleted = [];
 {
     _x params [["_id", ""], ["_type", ""]];
 
-    if (_id == "") then { continue };
+    if (_id isEqualTo "") then { continue };
 
     private _entity = switch (_type) do {
         case "Object";

@@ -12,6 +12,28 @@ if (isNil "EOEX_var_AttributeQueues") then {
 // * OBJECTS
 
 // TODO add events for copy / cut / paste / undo / redo
+removeAll3DENEventHandlers "OnPaste";
+add3DENEventHandler ["OnPaste", {
+    _objects = get3DENSelected "Object";
+	EOEX_var_PastedObjects pushBackUnique (_objects);
+    EOEX_var_PastedObjects = flatten EOEX_var_PastedObjects;
+}];
+
+removeAll3DENEventHandlers "OnPaste";
+add3DENEventHandler ["OnPaste", {
+    {
+        if (_x isEqualType grpNull) then { continue };
+        _index = EOEX_var_PastedObjects pushBackUnique _x;
+
+        // Only run the EOEX_fnc_handleCreateObject for soldiers, since OnEditableEntityAdded only runs for the group.
+        if !(_x isKindOf "Man") then { continue };
+
+        if (_index != -1) then {
+            [_x] spawn EOEX_fnc_handleCreateObject;
+        };
+
+    } forEach flatten (get3DENSelected "");
+}];
 
 removeAll3DENEventHandlers "OnEditableEntityAdded";
 add3DENEventHandler ["OnEditableEntityAdded", {

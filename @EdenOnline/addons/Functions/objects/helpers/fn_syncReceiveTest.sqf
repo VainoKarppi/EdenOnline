@@ -6,8 +6,8 @@
 [] spawn {
     private _center = [520, 520, 0];
 
-    ["SYNCA", "Object", [["ItemClass", "B_Soldier_F"], ["Position", _center], ["Layer", ""]]] call EOEX_fnc_receiveObjectCreate;
-    ["SYNCB", "Object", [["ItemClass", "B_Soldier_F"], ["Position", _center vectorAdd [10, 0, 0]], ["Layer", ""]]] call EOEX_fnc_receiveObjectCreate;
+    ["SYNCA", "Object", [["ItemClass", "B_Soldier_F"], ["Position", _center], ["EOEX_Layer", ""]]] call EOEX_fnc_receiveObjectCreate;
+    ["SYNCB", "Object", [["ItemClass", "B_Soldier_F"], ["Position", _center vectorAdd [10, 0, 0]], ["EOEX_Layer", ""]]] call EOEX_fnc_receiveObjectCreate;
     sleep 0.2;
 
     private _from = EOEX_var_Objects getOrDefault ["SYNCA", objNull];

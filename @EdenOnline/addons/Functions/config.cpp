@@ -117,32 +117,24 @@ class CfgFunctions
             file = "z\eoex\addons\functions\objects\markers";
 
             class sendCreateMarker {};
-            class sendDeleteMarker {};
-            class sendUpdateMarker {};
         };
 
         class Functions_Objects_Waypoints {
             file = "z\eoex\addons\functions\objects\waypoints";
 
             class sendCreateWaypoint {};
-            class sendDeleteWaypoint {};
-            class sendUpdateWaypoint {};
         };
 
         class Functions_Objects_Comments {
             file = "z\eoex\addons\functions\objects\comments";
 
             class sendCreateComment {};
-            class sendDeleteComment {};
-            class sendUpdateComment {};
         };
 
         class Functions_Objects_Layers {
             file = "z\eoex\addons\functions\objects\layers";
 
             class sendCreateLayer {};
-            class sendDeleteLayer {};
-            class sendUpdateLayer {};
         };
 
         class Functions_Mission {

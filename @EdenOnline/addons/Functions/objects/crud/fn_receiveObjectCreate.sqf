@@ -3,17 +3,17 @@
 
 /*
 
-["QI56X8K4","Object",[["ItemClass","B_Soldier_GL_F"],["Position",[4636.22,1131.84,0]],["Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
-["CXCZIO8E","Trigger",[["ItemClass","EmptyDetector"],["Position",[4651.5,1928.26,0]],["Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
-["HK6WCLSR","Logic",[["ItemClass","ModuleAnimals_F"],["Position",[5581.05,1296.44,0]],["Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
-["KFCJ1X8C","Marker",[["ItemClass","mil_destroy"],["Position",[4903.78,1605.54,5]],["Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
-["GJRZY90Y","Comment",[["ItemClass","loc_talk"],["Position",[4328.92,1233.38,5]],["Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
-["M7TGTYM2","Waypoint",[["EOEX_Owner","QI56X8K4"],["ItemClass","Move"],["Position",[4713.9,1175.86,0]],["Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
-["LSZP9FEE","Layer",[["Name","Layer 2"],["Transformation",true],["Visibility",true],["Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
-["QI56X8K6","Object",[["ItemClass","O_Soldier_GL_F"],["Position",[4536.22,1131.84,0]],["Layer","LSZP9FEE"]]] spawn EOEX_fnc_receiveObjectCreate;
-["XH3CC3T9","Object",[["ItemClass","B_APC_Tracked_01_rcws_F"],["Position",[5609.42,1751.76,0]],["Layer",""],["EOEX_IS_EMPTY",true]]] spawn EOEX_fnc_receiveObjectCreate;
-["QYZ4ZR3G","Object",[["ItemClass","B_AFV_Wheeled_01_cannon_F"],["Position",[4588.52,6902.68,0]],["Layer",""],["EOEX_IS_EMPTY",false]]] spawn EOEX_fnc_receiveObjectCreate;
-["2QIONM7S","Object",[["ItemClass","B_Deck_Crew_F"],["Position",[4609.82,6903.2,0]],["Layer","KJG2E3NU"],["EOEX_IS_EMPTY",true],["EOEX_GROUP","P6CO3MJ7"]]] spawn EOEX_fnc_receiveObjectCreate;
+["QI56X8K4","Object",[["ItemClass","B_Soldier_GL_F"],["Position",[4636.22,1131.84,0]],["EOEX_Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
+["CXCZIO8E","Trigger",[["ItemClass","EmptyDetector"],["Position",[4651.5,1928.26,0]],["EOEX_Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
+["HK6WCLSR","Logic",[["ItemClass","ModuleAnimals_F"],["Position",[5581.05,1296.44,0]],["EOEX_Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
+["KFCJ1X8C","Marker",[["ItemClass","mil_destroy"],["Position",[4903.78,1605.54,5]],["EOEX_Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
+["GJRZY90Y","Comment",[["ItemClass","loc_talk"],["Position",[4328.92,1233.38,5]],["EOEX_Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
+["M7TGTYM2","Waypoint",[["EOEX_Owner","QI56X8K4"],["ItemClass","Move"],["Position",[4713.9,1175.86,0]],["EOEX_Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
+["LSZP9FEE","Layer",[["Name","Layer 2"],["Transformation",true],["Visibility",true],["EOEX_Layer",""]]] spawn EOEX_fnc_receiveObjectCreate;
+["QI56X8K6","Object",[["ItemClass","O_Soldier_GL_F"],["Position",[4536.22,1131.84,0]],["EOEX_Layer","LSZP9FEE"]]] spawn EOEX_fnc_receiveObjectCreate;
+["XH3CC3T9","Object",[["ItemClass","B_APC_Tracked_01_rcws_F"],["Position",[5609.42,1751.76,0]],["EOEX_Layer",""],["EOEX_IS_EMPTY",true]]] spawn EOEX_fnc_receiveObjectCreate;
+["QYZ4ZR3G","Object",[["ItemClass","B_AFV_Wheeled_01_cannon_F"],["Position",[4588.52,6902.68,0]],["EOEX_Layer",""],["EOEX_IS_EMPTY",false]]] spawn EOEX_fnc_receiveObjectCreate;
+["2QIONM7S","Object",[["ItemClass","B_Deck_Crew_F"],["Position",[4609.82,6903.2,0]],["EOEX_Layer","KJG2E3NU"],["EOEX_IS_EMPTY",true],["EOEX_GROUP","P6CO3MJ7"]]] spawn EOEX_fnc_receiveObjectCreate;
 */
 
 params ["_id", "_type", "_attributeMap"];
@@ -23,7 +23,7 @@ _attributeMap = createHashMapFromArray _attributeMap;
 // Before creating the object, store the ID in the map to prevent duplicate creation
 
 private _entity = if (_type == "Layer") then {
-    private _parent = EOEX_var_Layers getOrDefault [_attributeMap deleteAt "Layer", -1];
+    private _parent = EOEX_var_Layers getOrDefault [_attributeMap deleteAt "EOEX_Layer", -1];
     _parent add3DENLayer (_attributeMap get "Name");
 } else {
     if (_type == "Waypoint") then {
@@ -115,35 +115,37 @@ if (_type == "Layer") then {
 // Set attributes
 {
     // EOEX custom keys are bookkeeping for the create above, not Eden attributes.
-    if (_x select [0,5] == "EOEX_") then { continue };
+    if (_x select [0,5] == "EOEX_") then {
+        if (_x == "EOEX_Layer") then {
+            // Add skip attribute to prevent feedback loop
+            [_id, [_x,_y]] call EOEX_fnc_addSkipAttributeChange;
 
-    // Add skip attribute to prevent feedback loop
-    [_id, [_x,_y]] call EOEX_fnc_addSkipAttributeChange;
+            // "" means the entity is not in a custom layer, nothing to do.
+            if (_y != "") then {
+                // A composition sends its layers before the entities that use them, and a batch is
+                // applied in order, so the layer is normally already registered. Only wait when it
+                // is still in flight; sleeping unconditionally made every entity in a large paste
+                // 30 ms slower and serialized the whole batch.
+                private _layer = EOEX_var_Layers get _y;
 
-    // Special custom attributes:
-    if (_x == "Layer") then {
-        // "" means the entity is not in a custom layer, nothing to do.
-        if (_y != "") then {
-            // A composition sends its layers before the entities that use them, and a batch is
-            // applied in order, so the layer is normally already registered. Only wait when it
-            // is still in flight; sleeping unconditionally made every entity in a large paste
-            // 30 ms slower and serialized the whole batch.
-            private _layer = EOEX_var_Layers get _y;
+                if (isNil "_layer") then {
+                    sleep 0.03;
+                    _layer = EOEX_var_Layers get _y;
+                };
 
-            if (isNil "_layer") then {
-                sleep 0.03;
-                _layer = EOEX_var_Layers get _y;
-            };
-
-            if (!isNil "_layer") then {
-                private _success = _entity set3DENLayer _layer;
-                if (!_success) then { diag_log format ["ERROR: Unable to change objects layer: %1, layer: %2", _entity, _y] };
-            } else {
-                diag_log format ["WARNING: Unknown layer %1 for %2 (%3)", _y, _id, _type];
+                if (!isNil "_layer") then {
+                    private _success = _entity set3DENLayer _layer;
+                    if (!_success) then { diag_log format ["ERROR: Unable to change objects layer: %1, layer: %2", _entity, _y] };
+                } else {
+                    diag_log format ["WARNING: Unknown layer %1 for %2 (%3)", _y, _id, _type];
+                };
             };
         };
         continue;
     };
+
+    // Add skip attribute to prevent feedback loop
+    [_id, [_x,_y]] call EOEX_fnc_addSkipAttributeChange;
 
     private _success = _entity set3DENAttribute [_x, _y];
     if !(_success) then { diag_log format ["WARNING: INVALID ATTRIBUTES %1, %2, [%3, %4]", _id, _type, _x, _y ]; };
