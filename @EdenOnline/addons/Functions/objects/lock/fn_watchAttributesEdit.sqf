@@ -13,7 +13,7 @@ if (!isNil "EOEX_var_AttributesWatchActive") exitWith {};
 
 EOEX_var_AttributesWatchActive = true;
 
-private _heartbeat = missionNamespace getVariable ["EOEX_var_LockHeartbeat", 2];
+private _heartbeat = missionNamespace getVariable ["EOEX_var_LockHeartbeat", 1];
 
 private _sentIds = [];
 private _lastSend = 0;

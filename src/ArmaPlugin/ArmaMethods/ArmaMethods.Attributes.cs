@@ -32,6 +32,9 @@ public static partial class ArmaMethods
         if (!Client.IsTcpConnected())
             throw new Exception("Client is not connected. Cannot stop attributes edit.");
 
-        await Client.SendTcpMessageAsync(-1, "StopAttributesEdit", objectIds);
+        // One parameter, one wire argument: objectIds must be wrapped, otherwise every id is sent as
+        // a separate argument and the receiver's DynamicInvoke fails with a parameter count mismatch
+        // (the fire-and-forget task swallows it, so the release would silently never arrive).
+        await Client.SendTcpMessageAsync(-1, "StopAttributesEdit", [objectIds]);
     }
 }

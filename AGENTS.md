@@ -140,13 +140,13 @@ handshake hash.
 
 A `StopAttributesEdit` can be lost (the holder crashed, restarted Arma or its Eden reloaded the
 mission), so an `"attributes"` lock is a **lease**: `fn_watchAttributesEdit` repeats
-`StartAttributesEdit` every `EOEX_var_LockHeartbeat` seconds (2 s) while the window stays open, and
-`fn_enforceLocks` drops a lock that was not renewed for `EOEX_var_LockTimeout` seconds (6 s). Both
+`StartAttributesEdit` every `EOEX_var_LockHeartbeat` second (1 s) while the window stays open, and
+`fn_enforceLocks` drops a lock that was not renewed for `EOEX_var_LockTimeout` seconds (3 s). Both
 clients therefore need the same addon build — with the old build the lock of a still-open window
 would expire after the timeout. `EOEX_var_Locks` entries are
 `id -> [entity, username, mode, position, timestamp]`, where `"drag"` locks have no expiry (they end
 with `EndObjectDrag` or `LocksReleased`). `StartAttributesEdit` / `StopAttributesEdit` are in the
-logging blacklist, otherwise the 2 s heartbeat would flood the RPT.
+logging blacklist, otherwise the heartbeat would flood the RPT.
 
 ## Testing the send path
 
@@ -241,6 +241,8 @@ methods bind one wire argument to one parameter, so the batch must go out as a s
 receiver's `DynamicInvoke` see N arguments for a one-parameter method, the detached fire-and-forget
 task throws `TargetParameterCountException`, and no other client ever hears about the deletion.
 `SetInitialMissionAttributes` already follows the same pattern (`[attributeList]`).
+`StopAttributesEdit` did not and lost every release that way — a method whose only parameter is an
+array has to be wrapped exactly once, `SendTcpMessageAsync(-1, "StopAttributesEdit", [objectIds])`.
 
 ## Create message attributes
 

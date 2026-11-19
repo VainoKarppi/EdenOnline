@@ -17,7 +17,7 @@ EOEX_var_LocksEnforceHandler = addMissionEventHandler ["EachFrame", {
 
     private _pinned = [];
     private _expired = [];
-    private _timeout = missionNamespace getVariable ["EOEX_var_LockTimeout", 6];
+    private _timeout = missionNamespace getVariable ["EOEX_var_LockTimeout", 3];
 
     {
         _y params [["_entity", nil], ["_username", ""], ["_mode", ""], ["_position", nil], ["_timestamp", nil]];

@@ -46,8 +46,8 @@ EOEX_var_LocksHandler = nil;
 
 // The holder renews an "attributes" lock every LockHeartbeat seconds; it is dropped when a renewal
 // does not arrive within LockTimeout seconds (see fn_enforceLocks and fn_watchAttributesEdit).
-EOEX_var_LockHeartbeat = 2;
-EOEX_var_LockTimeout = 6;
+EOEX_var_LockHeartbeat = 1;
+EOEX_var_LockTimeout = 3;
 
 EOEX_var_PastedObjects = [];
 EOEX_var_RemovedEntities = [];
